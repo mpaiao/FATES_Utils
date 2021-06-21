@@ -282,12 +282,6 @@ ACME|E3SM)
    V_HLM_USRDAT_NAME="ELM_USRDAT_NAME"
    #---~---
 
-
-   #--- Define files with meteorological driver settings.
-   HLM_USRDAT_ORIG="${CASE_PATH}/run/datm.streams.txt.ELM1PT.ELM_USRDAT"
-   HLM_USRDAT_USER="${CASE_PATH}/user_datm.streams.txt.ELM1PT.ELM_USRDAT"
-   #---~---
-
    ;;
 CTSM|CESM)
    #---~---
@@ -331,12 +325,6 @@ CTSM|CESM)
 
    #--- Define setting for single-point
    V_HLM_USRDAT_NAME="CLM_USRDAT_NAME"
-   #---~---
-
-
-   #--- Define files with meteorological driver settings.
-   HLM_USRDAT_ORIG="${CASE_PATH}/run/datm.streams.txt.CLM1PT.CLM_USRDAT"
-   HLM_USRDAT_USER="${CASE_PATH}/user_datm.streams.txt.CLM1PT.CLM_USRDAT"
    #---~---
 
    ;;
@@ -574,6 +562,12 @@ echo "taxmode = 'cycle','cycle','cycle'" >> ${USER_NL_DATM}
 # Find the first met driver.
 case "${RESOL}" in
 ELM_USRDAT|CLM_USRDAT)
+   #--- Define files with meteorological driver settings.
+   HLM_USRDAT_ORIG="${SIMUL_PATH}/run/datm.streams.txt.CLM1PT.${RESOL}"
+   HLM_USRDAT_USER="${SIMUL_PATH}/user_datm.streams.txt.CLM1PT.${RESOL}"
+   #---~---
+
+
    ANY_METD_NC=$(/bin/ls -1 ${SITE_PATH}/${DATM_MODE}/????-??.nc 2> /dev/null | wc -l)
    if [[ ${ANY_METD_NC} ]]
    then
