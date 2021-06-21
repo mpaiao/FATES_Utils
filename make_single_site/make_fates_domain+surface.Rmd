@@ -81,7 +81,7 @@ Set the URL for the input surface data. We will only download the data in case w
 If you have your own set of input data, set a dummy URL with the actual file name.  For example, if you have the domain file `my_surface_data_file.nc`,
  set `url.domain="https://localhost/my_surface_data_file.nc"`.
 ```{r, label='input-url'}
-url_surfdata = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/surfdata_1.9x2.5_simyr2000_c141219.nc"
+url_surfdata = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_78pfts_CMIP6_simyr2000_c190214.nc"
 ```
 
 

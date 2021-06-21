@@ -47,7 +47,7 @@ SIMUL_ROOT="${HOME}/Documents/LocalData/XXXX-FATES/Simulations"
 # script will use default settings.
 #---~---
 COMP=""
-CASE_NAME="F0005_ParacouTest"
+CASE_NAME="F0004_BCITest"
 #---~---
 
 #---~---
@@ -83,13 +83,13 @@ RESOL="XXX_USRDAT"
 # Path containing all the data sets.
 SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
 # Sub-directory with data sets specific to this site.
-SITE_NAME="gyf_0.1x0.1_v1.0_c20210621"
+SITE_NAME="bci_0.1x0.1_v4.0"
 # Domain file (it must be in the SITE_NAME sub-directory).
-HLM_USRDAT_DOMAIN="domain_lnd_${SITE_NAME}.nc"
+HLM_USRDAT_DOMAIN="domain_bci_clm5.0.dev009_c180523.nc"
 # Surface data file (it must be in the SITE_NAME sub-directory).
-HLM_USRDAT_SURDAT="surfdata_${SITE_NAME}.nc"
+HLM_USRDAT_SURDAT="surfdata_bci_clm5.0.dev009_c180523.nc"
 # Calendar type for the meteorological drivers ('NO_LEAP' or 'GREGORIAN')
-METD_CALENDAR="GREGORIAN"
+METD_CALENDAR="NO_LEAP"
 #---~---
 
 #---~---
@@ -100,7 +100,7 @@ METD_CALENDAR="GREGORIAN"
 #  For additional information, check
 # https://github.com/NGEET/fates/wiki/Model-Initialization-Modes#Inventory_Format_Type_1
 #---~---
-INVENTORY_BASE="${SITE_NAME}_nounder_info.txt"
+INVENTORY_BASE="bci_inv_file_list.txt"
 #---~---
 
 
@@ -129,14 +129,14 @@ xml_settings=("DEBUG                             FALSE"
               "GMAKE                             make"
               "DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
               "DOUT_S                            TRUE"
-              "STOP_N                            16"
+              "STOP_N                            13"
               "REST_N                            1"
-              "RUN_STARTDATE                     2004-01-01"
+              "RUN_STARTDATE                     2003-01-01"
               "STOP_OPTION                       nyears"
               "XXX_FORCE_COLDSTART               on"
               "JOB_WALLCLOCK_TIME                3:00"
-              "DATM_CLMNCEP_YR_START             2004"
-              "DATM_CLMNCEP_YR_END               2019")
+              "DATM_CLMNCEP_YR_START             2003"
+              "DATM_CLMNCEP_YR_END               2016")
 #---~---
 
 
@@ -211,14 +211,14 @@ hlm_settings=("hist_empty_htapes  .true."
 #---~---
 #  Make CIME_MODEL upper-case
 #---~---
-CIME_MODEL=$(echo ${CIME_MODEL} | tr '[:lower:]' '[:upper:]')
+export ESM=$(echo ${CIME_MODEL} | tr '[:lower:]' '[:upper:]')
 #---~---
 
 #--- Update cade and simulation paths, in case a generic name was provided.
-HLM_INPUT_PATH=$(echo ${HLM_INPUT_PATH} | sed s@"XXXX"@"${CIME_MODEL}"@g)
-WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${CIME_MODEL}"@g)
-CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${CIME_MODEL}"@g)
-SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${CIME_MODEL}"@g)
+HLM_INPUT_PATH=$(echo ${HLM_INPUT_PATH} | sed s@"XXXX"@"${ESM}"@g)
+WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${ESM}"@g)
+CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${ESM}"@g)
+SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${ESM}"@g)
 #---~---
 
 #--- Current date.
@@ -237,7 +237,7 @@ SITE_PATH="${SITE_BASE_PATH}/${SITE_NAME}"
 #---~---
 #   Make changes to some of the settings based on the host model.
 #---~---
-case "${CIME_MODEL}" in
+case "${ESM}" in
 ACME|E3SM)
    #---~---
    # E3SM-FATES
@@ -246,6 +246,7 @@ ACME|E3SM)
    #--- Set host land model. Set both upper case and lower case for when needed.
    hlm="elm"
    HLM="ELM"
+   
    #---~---
 
    #--- Main path for host model
