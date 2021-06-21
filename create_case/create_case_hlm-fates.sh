@@ -83,7 +83,7 @@ RESOL="XXX_USRDAT"
 # Path containing all the data sets.
 SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
 # Sub-directory with data sets specific to this site.
-SITE_NAME="gyf_0.1x0.1_v1.0_c20210620"
+SITE_NAME="gyf_0.1x0.1_v1.0_c20210621"
 # Domain file (it must be in the SITE_NAME sub-directory).
 HLM_USRDAT_DOMAIN="domain_lnd_${SITE_NAME}.nc"
 # Surface data file (it must be in the SITE_NAME sub-directory).
@@ -438,7 +438,7 @@ cd ${CASE_PATH}
 #     Set the CIME output to the main CIME path.
 #---~---
 ./xmlchange --id DIN_LOC_ROOT     --val "${HLM_INPUT_PATH}"
-./xmlchange --id CIME_OUTPUT_ROOT --val "${SIMUL_PATH}"
+./xmlchange --id CIME_OUTPUT_ROOT --val "${SIMUL_ROOT}"
 #---~---
 
 

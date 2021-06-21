@@ -309,7 +309,6 @@ varinfo[[n]] = list( vfates = "FLDS"
 
 # Convert varinfo to a "tibble" object
 varinfo  = do.call(what=rbind,args=lapply(X=varinfo,FUN=as_tibble,stringsAsFactors=FALSE))
-nvarinfo = nrow(varinfo)
 ```
 
 
@@ -377,7 +376,7 @@ yearz   = max(datsumm$year[datsumm$fine])
 
 #---- Find and last expected time
 tstampa = make_datetime( year=yeara  ,month=1,day=1)
-tstampz = make_datetime( year=yearz+1,month=1,day=1) - dtstamp
+tstampz = make_datetime( year=yearz+1,month=1,day=1)
 ```
 
 
@@ -624,13 +623,13 @@ for (m in sequence(nmet)){
    xyt    = c(1,1,nthis)
 
    # Start list with variables. First we put the coordinates
-   nc_vlist         = list()
-   nc_vlist$LONGXY  = ncvar_def( name     = "LONGXY"
-                               , units    = "degrees_east"
-                               , dim      = nc_xy
-                               , missval  = undef
-                               , longname = "longitude"
-                               )#end ncvar_def
+   nc_vlist        = list()
+   nc_vlist$LONGXY = ncvar_def( name     = "LONGXY"
+                              , units    = "degrees_east"
+                              , dim      = nc_xy
+                              , missval  = undef
+                              , longname = "longitude"
+                              )#end ncvar_def
    nc_vlist$LATIXY = ncvar_def( name     = "LATIXY"
                               , units    = "degrees_north"
                               , dim      = nc_xy
@@ -677,7 +676,7 @@ for (m in sequence(nmet)){
                               )#end ncvar_def
 
    # Loop through FATES met drivers, add them   
-   for (v in sequence(nvarinfo)){
+   for (v in seq_along(varinfo[[1]])){
       # Handy shorter names
       v_vfates = varinfo$vfates[v]
       v_vlname = varinfo$vlname[v]
@@ -690,23 +689,42 @@ for (m in sequence(nmet)){
                                       , missval  = undef
                                       , longname = v_vlname
                                       )#end ncvar_def
-   }#end for (v in sequence(nvarinfo))
+   }#end for (v in seq_along(varinfo[[1]]))
 
    # Create file
    nc_conn = nc_create(filename=nc_file,vars=nc_vlist,verbose=FALSE)
 
-   # Put coordinates and tower height to the netcdf
+   #---~---
+   # Put coordinates, tower height and attributes to the netcdf
+   #---~---
+   # Longitude, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="LONGXY",vals=array(data=outlon     ,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid="LONGXY",attname="mode"    ,attval="time-invariant")
+   # Latitude, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="LATIXY",vals=array(data=outlat     ,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid="LATIXY",attname="mode"    ,attval="time-invariant")
+   # Tower elevation above ground level, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="ZBOT"  ,vals=array(data=site_refhgt,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid="ZBOT"  ,attname="mode"    ,attval="time-invariant")
+   # Western edge, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="EDGEW" ,vals=edge_w)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGEW" ,attname="mode"    ,attval="time-invariant")
+   # Eastern edge, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="EDGEE" ,vals=edge_e)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGEE" ,attname="mode"    ,attval="time-invariant")
+   # Southern edge, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="EDGES" ,vals=edge_s)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGES" ,attname="mode"    ,attval="time-invariant")
+   # Northern edge, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="EDGEN" ,vals=edge_n)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGEN" ,attname="mode"    ,attval="time-invariant")
+   # Time, append calendar type.
    dummy = ncvar_put(nc=nc_conn,varid="time"  ,vals=tsince)
+   dummy = ncatt_put(nc=nc_conn,varid="time"  ,attname="calendar",attval="gregorian")
+   #---~---
 
    # Put variables to the netcdf
-   for (v in sequence(nvarinfo)){
+   for (v in seq_along(varinfo[[1]])){
       # Handy shorter names
       v_vfates = varinfo$vfates[v]
       v_vlname = varinfo$vlname[v]
@@ -717,7 +735,13 @@ for (m in sequence(nmet)){
                        , varid = v_vfates
                        , vals  = array(data=met_fates[[v_vfates]],dim=xyt)
                        )#end ncvar_put
-   }#end for (v in sequence(nvarinfo))
+
+      #Add attribute to highlight this is time-dependent
+      dummy = ncatt_put( nc      = nc_conn
+                       , varid   = v_vfates
+                       , attname = "mode"
+                       , attval  = "time-dependent")
+   }#end for (v in seq_along(varinfo[[1]]))
 
    # Add title specific for this month/year.
    nc_title   = paste0( "Meteorological forcing for ",site_desc
@@ -736,8 +760,6 @@ for (m in sequence(nmet)){
       dummy = ncatt_put(nc=nc_conn,varid=0,attname=att_name,attval=att_value)
    }#end for (l in seq_along(att_global))
 
-   # Specify calendar for dimension variable time.
-   dummy = ncatt_put(nc=nc_conn,varid="time",attname="calendar",attval="gregorian")
 
    # Close the file
    dummy = nc_close(nc_conn)
