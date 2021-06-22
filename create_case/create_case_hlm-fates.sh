@@ -19,25 +19,36 @@
 CIME_MODEL="ctsm"        # Model (ctsm, cesm, or e3sm)
 PROJECT=ngeet            # Project (may not be needed)
 MACH="eschweilera"       # Machine used for preparing the case
-GMAKE="make"             # Which make to use.
 #---~---
+
+
+#---~---
+#    Debugging settings
+#
+# - DEBUG_LEVEL. The higher the number, the more information will be provided (at the 
+#   expense of running slower).  0 means no debugging (typical setting for scientific 
+#   analysis), 6 means very strict debugging (useful when developing the code).
+# - USE_FATES. Logical flag (true or false).  This option allows running the native 
+#   host land model (CLM or ELM) without FATES, which may be useful for some debugging.
+#---~---
+DEBUG_LEVEL=0
+USE_FATES=true
+#---~---
+
 
 
 #---~---
 #    Path settings:
-# HLM_INPUT_PATH: Main path containing the gridded input data (not the site-specific data).
-#                 Missing data sets will be downloaded here, so mind that this path should
-#                 have plenty of disk space available.
+#
 # WORK_PATH: The main working path (typically <host_model>/cime/scripts)
 # CASE_ROOT: The main path where to create the directory for this case.
 # SIMUL_ROOT: The main path where to create the directory for the simulation output.
 #
 # In all cases, use XXXX in the part you want to be replaced with either E3SM or CTSM.
 #---~---
-HLM_INPUT_PATH="${HOME}/Documents/LocalData/XXXX-FATES/XXXX_InputData"
 WORK_PATH="${HOME}/Models/XXXX/cime/scripts"
-CASE_ROOT="${HOME}/Documents/LocalData/XXXX-FATES/Cases"
-SIMUL_ROOT="${HOME}/Documents/LocalData/XXXX-FATES/Simulations"
+CASE_ROOT="${HOME}/Documents/LocalData/FATES/Cases"
+SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
 #---~---
 
 
@@ -45,9 +56,16 @@ SIMUL_ROOT="${HOME}/Documents/LocalData/XXXX-FATES/Simulations"
 #   Main case settings.  These variables will control compilation settings and the 
 # case name for this simulation.  It is fine to leave these blank, in which case the
 # script will use default settings.
+# 
+# Special wildcards for CASE_NAME (recommended if constantly switching between E3SM and
+# CESM).
+# - XXXX -- This will be replaced with the host model (E3SM, CESM, CTSM).
+# - YYY  -- This will be replaced with the host land model (ELM, CLM).
+# - ZZ   -- This will be replaced with EF (if running ELM-FATES), or 
+#           CF (if running CLM-FATES).
 #---~---
 COMP=""
-CASE_NAME="F0004_BCITest"
+CASE_NAME="ZZ0004_BCITest"
 #---~---
 
 #---~---
@@ -57,7 +75,6 @@ CASE_NAME="F0004_BCITest"
 # in the script).
 #---~---
 RESOL="XXX_USRDAT"
-# RESOL="1x1_brazil" # Grid resolution
 #---~---
 
 
@@ -125,16 +142,14 @@ INVENTORY_BASE="bci_inv_file_list.txt"
 #               "XXX_FORCE_COLDSTART               on"
 #               "RUN_STARTDATE                     '2001-01-01'")
 #---~---
-xml_settings=("DEBUG                             FALSE"
-              "GMAKE                             make"
-              "DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
+xml_settings=("DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
               "DOUT_S                            TRUE"
               "STOP_N                            13"
+              "RESUBMIT                          2"
               "REST_N                            1"
               "RUN_STARTDATE                     2003-01-01"
               "STOP_OPTION                       nyears"
               "XXX_FORCE_COLDSTART               on"
-              "JOB_WALLCLOCK_TIME                3:00"
               "DATM_CLMNCEP_YR_START             2003"
               "DATM_CLMNCEP_YR_END               2016")
 #---~---
@@ -209,16 +224,15 @@ hlm_settings=("hist_empty_htapes  .true."
 
 
 #---~---
-#  Make CIME_MODEL upper-case
+#  Define the host Earth System Model from upper-case CIME_MODEL.
 #---~---
-export ESM=$(echo ${CIME_MODEL} | tr '[:lower:]' '[:upper:]')
+HESM=$(echo ${CIME_MODEL} | tr '[:lower:]' '[:upper:]')
 #---~---
 
 #--- Update cade and simulation paths, in case a generic name was provided.
-HLM_INPUT_PATH=$(echo ${HLM_INPUT_PATH} | sed s@"XXXX"@"${ESM}"@g)
-WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${ESM}"@g)
-CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${ESM}"@g)
-SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${ESM}"@g)
+WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${HESM}"@g)
+CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${HESM}"@g)
+SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${HESM}"@g)
 #---~---
 
 #--- Current date.
@@ -237,7 +251,7 @@ SITE_PATH="${SITE_BASE_PATH}/${SITE_NAME}"
 #---~---
 #   Make changes to some of the settings based on the host model.
 #---~---
-case "${ESM}" in
+case "${HESM}" in
 ACME|E3SM)
    #---~---
    # E3SM-FATES
@@ -345,6 +359,20 @@ RESOL=$(echo "${RESOL}" | sed s@"XXX"@"${HLM}"@g | sed s@"xxx"@"${hlm}"@g)
 if [[ "${CASE_NAME}" == "" ]]
 then
    CASE_NAME="FX_${COMP}_${MACH}_${HLM_HASH}-${FATES_HASH}_${TODAY}"
+else
+   #--- Define short key
+   case ${HLM} in
+      CLM) ZKEY="CF" ;;
+      ELM) ZKEY="EF" ;;
+   esac
+   #---~---
+
+
+   #--- Update case name.
+   CASE_NAME=$(echo ${CASE_NAME} | sed s@"XXXX"@"${HESM}"@g)
+   CASE_NAME=$(echo ${CASE_NAME} | sed s@"YYY"@"${HLM}"@g)
+   CASE_NAME=$(echo ${CASE_NAME} | sed s@"ZZ"@"${ZKEY}"@g)
+   #---~---
 fi
 #---~---
 
@@ -438,8 +466,9 @@ cd ${CASE_PATH}
 #---~---
 #     Set the CIME output to the main CIME path.
 #---~---
-./xmlchange --id DIN_LOC_ROOT     --val "${HLM_INPUT_PATH}"
 ./xmlchange --id CIME_OUTPUT_ROOT --val "${SIMUL_ROOT}"
+./xmlchange --id DOUT_S_ROOT      --val "${SIMUL_PATH}"
+./xmlchange --id PIO_DEBUG_LEVEL  --val "${DEBUG_LEVEL}"
 #---~---
 
 
@@ -448,7 +477,8 @@ cd ${CASE_PATH}
 # DATM_MODE must be set to CLM1PT, even when running E3SM-FATES.
 #---~---
 case "${RESOL}" in
-ELM_USRDAT|CLM_USRDAT)
+?LM_USRDAT)
+
    ./xmlchange --id ATM_DOMAIN_PATH           --val "${SITE_PATH}"
    ./xmlchange --id LND_DOMAIN_PATH           --val "${SITE_PATH}"
    ./xmlchange --id ATM_DOMAIN_FILE           --val "${HLM_USRDAT_DOMAIN}"
@@ -457,6 +487,7 @@ ELM_USRDAT|CLM_USRDAT)
    ./xmlchange --id CALENDAR                  --val "${METD_CALENDAR}"
    ./xmlchange --id ${V_HLM_USRDAT_NAME}      --val "${SITE_NAME}"
    ./xmlchange --id DIN_LOC_ROOT_CLMFORC      --val "${SITE_BASE_PATH}"
+
    ;;
 esac
 #---~---
@@ -525,6 +556,17 @@ else
 fi
 #---~---
 
+#---~---
+#    In case the user wants to run the big-leaf version, disable FATES
+#---~---
+if ! ${USE_FATES}
+then
+   V_HLM_BLDNML_OPTS="${HLM}_BLDNML_OPTS"
+   ./xmlchange --id ${V_HLM_BLDNML_OPTS} --val "-bgc cn -no-megan"
+fi
+#---~---
+
+
 
 
 #---~---
@@ -562,7 +604,7 @@ echo "taxmode = 'cycle','cycle','cycle'" >> ${USER_NL_DATM}
 #---~---
 # Find the first met driver.
 case "${RESOL}" in
-ELM_USRDAT|CLM_USRDAT)
+?LM_USRDAT)
    #--- Define files with meteorological driver settings.
    HLM_USRDAT_ORIG="${SIMUL_PATH}/run/datm.streams.txt.CLM1PT.${RESOL}"
    HLM_USRDAT_USER="${SIMUL_PATH}/user_datm.streams.txt.CLM1PT.${RESOL}"
@@ -579,7 +621,7 @@ ELM_USRDAT|CLM_USRDAT)
       then
          #--- Incoming long wave radiation is absent.  Modify the stream file
          /bin/cp ${HLM_USRDAT_ORIG} ${HLM_USRDAT_USER}
-         $(sed -i '@FLDS@d' h)
+         $(sed -i '@FLDS@d' ${HLM_USRDAT_USER})
          #---~---
       fi
       #---~---
@@ -601,7 +643,7 @@ esac
 #    Append the surface data information to the namelist, in case we are using 
 #---~---
 case "${RESOL}" in
-ELM_USRDAT|CLM_USRDAT)
+?LM_USRDAT)
    # Append surface data file to the namelist.
    HLM_SURDAT_FILE="${SITE_PATH}/${HLM_USRDAT_SURDAT}"
    echo "fsurdat = '${HLM_SURDAT_FILE}'" >> ${USER_NL_HLM}
@@ -614,7 +656,7 @@ esac
 #---~---
 #     Include settings for the inventory initialisation.
 #---~---
-if [[ "${INVENTORY_BASE}" != "" ]]
+if ${USE_FATES} && [[ "${INVENTORY_BASE}" != "" ]]
 then
 
    #--- Set inventory file with full path.
@@ -635,7 +677,7 @@ fi
 #---~---
 #     Change PFT parameters if needed.
 #---~---
-if [[ ${#pft_settings[*]} -gt 0 ]]
+if ${USE_FATES} && [[ ${#pft_settings[*]} -gt 0 ]]
 then
    #--- Create a local parameter file.
    echo " + Create local parameter file."
@@ -693,13 +735,32 @@ then
       hlm_id=$(echo ${hlm_settings[h]}  | awk '{print $1}')
       hlm_id=$(echo ${hlm_id}           | sed s@"XXX"@${HLM}@g | sed s@"xxx"@${hlm}@g)
       hlm_val=$(echo ${hlm_settings[h]} | awk '{for(i=2;i<=NF;++i)printf $i""FS ; print ""}')
-      echo " ID = ${hlm_id}; VAL = ${hlm_val}"
       #---~---
 
-      touch ${USER_NL_HLM}
-      echo "${hlm_id} = ${hlm_val}" >> ${USER_NL_HLM}
+      #--- Check whether or not this is a FATES variable.
+      is_fates_var=$(echo ${hml_id} | grep -i fates | wc -l)
+      #---~---
 
+
+      #---~---
+      #   Check whether this is a FATES variable.  In case it is and USE_FATES is false,
+      # we ignore the variable.
+      #---~---
+      if ${USE_FATES} || [[ ${is_fates_var} -eq 0 ]]
+      then
+         #--- Update namelist
+         echo " ID = ${hlm_id}; VAL = ${hlm_val}"
+         touch ${USER_NL_HLM}
+         echo "${hlm_id} = ${hlm_val}" >> ${USER_NL_HLM}
+         #---~---
+      else
+         #--- Do not update.  Instead, warn the user.
+         echo " Ignoring ${hlm_id} as this a FATES variable, and USE_FATES=false."
+         #---~---
+      fi
+      #---~---
    done
+   #---~---
 else
    #--- No changes needed.
    echo " + No PFT parameter settings required."
@@ -707,10 +768,14 @@ else
 fi
 #---~---
 
+
+
 #--- Build case.
 ./case.build --clean
 ./case.build
 #---~---
+
+
 
 #--- Return to the original path.
 cd ${HERE_PATH}
