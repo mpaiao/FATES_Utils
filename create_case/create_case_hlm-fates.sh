@@ -32,7 +32,7 @@ MACH="eschweilera"       # Machine used for preparing the case
 #   host land model (CLM or ELM) without FATES, which may be useful for some debugging.
 #---~---
 DEBUG_LEVEL=0
-USE_FATES=true
+USE_FATES=false
 #---~---
 
 
@@ -282,7 +282,12 @@ ACME|E3SM)
    #--- In case compilates settings is not defined, use the default settings.
    if [[ "${COMP}" == "" ]]
    then
-      COMP="IELMFATES"
+      if ${USE_FATES}
+      then
+         COMP="IELMFATES"
+      else
+         COMP="IELMBGC"
+      fi
    fi
    #---~---
 
@@ -329,7 +334,12 @@ CTSM|CESM)
    #--- In case compilates settings is not defined, use the default settings.
    if [[ "${COMP}" == "" ]]
    then
-      COMP="I2000Clm51Fates"
+      if ${USE_FATES}
+      then
+         COMP="I2000Clm51Fates"
+      else
+         COMP="I2000Clm50BgcCrop"
+      fi
    fi
    #---~---
 
@@ -555,17 +565,6 @@ else
    #---~---
 fi
 #---~---
-
-#---~---
-#    In case the user wants to run the big-leaf version, disable FATES
-#---~---
-if ! ${USE_FATES}
-then
-   V_HLM_BLDNML_OPTS="${HLM}_BLDNML_OPTS"
-   ./xmlchange --id ${V_HLM_BLDNML_OPTS} --val "-bgc cn -no-megan"
-fi
-#---~---
-
 
 
 
