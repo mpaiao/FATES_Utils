@@ -112,14 +112,12 @@ if (! all(isfine)){
 
 Set paths and files for input and output.
 
-* **here_path**. The main path for processing data.
+* **here_path**. The main path for processing data.  The output path will be generated here.
 * **input_file**. The csv file containing the gap-filled tower/AWS data (full path).
-* **output_path**. Directory to where FATES drivers will be written.
 
 ```{r, label='path-settings'}
 here_path   = getwd()
-input_file  = file.path(here_path,"gyf_met-driver_2004-2019.csv")
-output_path = file.path(here_path,"fates_met_driver")
+input_file  = file.path(here_path,"input_csv","gyf_met-driver_2004-2019.csv")
 ```
 
 ## Author information
@@ -160,7 +158,7 @@ Provide some basic information about the tower:
 ```{r, label='met-driver-settings'}
 xid         = "gyf"
 site_desc   = "Guyaflux tower at Paracou, French Guiana"
-dat_version = "1.0"
+dat_version = "1.1"
 site_lon    = -52.912222
 site_lat    =   5.281667
 site_alt    =  30.000000
@@ -515,13 +513,14 @@ ymd_now = today(tzone = "UTC")
 ymd_lab = sprintf("%4.4i%2.2i%2.2i",year(ymd_now),month(ymd_now),day(ymd_now))
 dxy_lab = sprintf("%.1fx%.1f",dxy,dxy)
 
+# Tag specific for this site, grid, and version (used for file and path names).
+site_tag  = paste0(xid,"_",dxy_lab,"_v",dat_version,"_c",ymd_lab)
 
-# Site description, which will also be a sub-directory
-site_desc = paste0(xid,"_",dxy_lab,"_v",dat_version,"_c",ymd_lab)
-site_path = file.path(output_path,site_desc)
-metd_path = file.path(site_path,"CLM1PT_data")
 
-# Create directories 
+# Path to where we will write the drivers.
+metd_path = file.path(here_path,site_tag,"CLM1PT_data")
+
+# Create directory
 dummy = dir.create(path=metd_path  ,showWarnings=FALSE,recursive=TRUE)
 ```
 
@@ -542,10 +541,10 @@ Generate edge information for the single data point.
 ```{r, label='geo-find'}
 outlon  = site_lon %% 360.
 outlat  = site_lat
-edge_w  = (site_lon - 0.5 * dxy) %% 360.
-edge_e  = (site_lon + 0.5 * dxy) %% 360.
-edge_s  = site_lat - 0.5 * dxy
-edge_n  = site_lat + 0.5 * dxy
+edge_w  = (site_lon - dxy) %% 360.
+edge_e  = (site_lon + dxy) %% 360.
+edge_s  = site_lat - dxy
+edge_n  = site_lat + dxy
 ```
 
 Define the template for the global attributes.

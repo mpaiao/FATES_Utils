@@ -67,21 +67,20 @@ if (! all(isfine)){
 
 Set paths and files for input and output.
 
-* **here_path**. The main path for processing data.
+* **here_path**. The main path for processing data. The output path will be generated here.
 * **input_path**. The location where existing surface and domain netcdf files are located
-* **output_path**. Directory to where FATES files will be written.
 
 ```{r, label='path-settings'}
-here_path   = getwd()
-input_path  = file.path(here_path,"input_netcdf")
-output_path = file.path(here_path,"fates_domain+surface_files")
+here_path     = getwd()
+input_path    = file.path(here_path,"input_netcdf")
 ```
 
-Set the URL for the input surface data. We will only download the data in case we cannot locate these files at `input_netcdf`.
-If you have your own set of input data, set a dummy URL with the actual file name.  For example, if you have the domain file `my_surface_data_file.nc`,
- set `url.domain="https://localhost/my_surface_data_file.nc"`.
+Set the URL for the input surface data.  _This is normally a gridded data file_, not a single-site one.
+We will only download the data in case we cannot locate these files at `input_netcdf`.
+If you have your own set of input data, set a dummy URL with the actual file name.  For example, if you have the domain file `my_surface_grid_file.nc`,
+ set `url.surfgrid="https://localhost/my_surface_grid_file.nc"`.
 ```{r, label='input-url'}
-url_surfdata = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_78pfts_CMIP6_simyr2000_c190214.nc"
+url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_16pfts_Irrig_CMIP6_simyr2000_c190214.nc"
 ```
 
 
@@ -116,7 +115,7 @@ the same texture (this should be revisited once I figure out the soil layers).
 ```{r, label='site-settings'}
 xid           = "gyf"
 site_desc     = "Guyaflux tower at Paracou, French Guiana"
-dat_version   = "1.0"
+dat_version   = "1.1"
 site_lon      = -52.912222
 site_lat      =   5.281667
 site_alt      =  30.000000
@@ -126,7 +125,7 @@ site_xclay    = 37.2
 site_organic  = 31.1
 site_bedrock  = NA_real_
 undef         = -9999.99
-force_natural = FALSE
+force_natural = TRUE
 ```
 
 
@@ -148,7 +147,6 @@ unless you are debugging or adding new features.
 Ensure the input and output paths
 ```{r, label='path-checks', message=FALSE, results='hide'}
 dummy = dir.create(input_path ,showWarnings=FALSE,recursive=TRUE)
-dummy = dir.create(output_path,showWarnings=FALSE,recursive=TRUE)
 ```
 
 First, we check whether the input surface data file is already available at the input path. In case it is not, we 
@@ -156,10 +154,14 @@ download it.
 ```{r, label='load-inputs'}
 
 # Find base name
-input_surfdata = file.path(input_path,basename(url_surfdata))
+input_surfgrid = file.path(input_path,basename(url_surfgrid))
 
-# Download data in case they are not found.
-if (! file.exists(input_surfdata)) download.file(url=url_surfdata,destfile=input_surfdata)
+# Download data in case they are not found.  We wrap the command in try because often the download
+# gives an error message because the file size does not correspond to the expected, even though
+# the file downloads fine.  If the file is actually corrupted, it will fail when we try to open it.
+if (! file.exists(input_surfgrid)){
+  dummy = try(download.file(url=url_surfgrid,destfile=input_surfgrid),silent=TRUE)
+}#end if (! file.exists(input_surfgrid))
 
 ```
 
@@ -173,15 +175,19 @@ ymd_now = today(tzone = "UTC")
 ymd_lab = sprintf("%4.4i%2.2i%2.2i",year(ymd_now),month(ymd_now),day(ymd_now))
 dxy_lab = sprintf("%.1fx%.1f",dxy,dxy)
 
-# Suffix for files.
-suffix  = paste0(xid,"_",dxy_lab,"_v",dat_version,"_c",ymd_lab)
+# Tag specific for this site, grid, and version (used for file and path names).
+site_tag  = paste0(xid,"_",dxy_lab,"_v",dat_version,"_c",ymd_lab)
+
+# Set output path to be the same as the suffix
+output_path = file.path(here_path,site_tag)
+dummy       = dir.create(output_path,recursive=TRUE,showWarnings=FALSE)
 
 # Domain file.  In case the file exists, remove it.
-output_domain   = file.path(output_path,paste0("domain_lnd_",suffix,".nc"))
+output_domain   = file.path(output_path,paste0("domain_lnd_",site_tag,".nc"))
 if (file.exists(output_domain)) file.remove(output_domain)
 
 # Surface data file
-output_surfdata = file.path(output_path,paste0("surfdata_",suffix,".nc"))
+output_surfdata = file.path(output_path,paste0("surfdata_",site_tag,".nc"))
 if (file.exists(output_surfdata)) file.remove(output_surfdata)
 ```
 
@@ -196,10 +202,10 @@ clon = site_lon %% 360.
 clat = max(-90+0.5*dxy,min(90-0.5*dxy,site_lat))
 
 # Find edges
-wlon = (clon - 0.5 * dxy) %% 360.
-elon = (clon + 0.5 * dxy) %% 360.
-slat = max(-90.,clat - 0.5 * dxy)
-nlat = min(+90.,clat + 0.5 * dxy)
+wlon = (clon - dxy) %% 360.
+elon = (clon + dxy) %% 360.
+slat = max(-90.,clat - dxy)
+nlat = min(+90.,clat + dxy)
 ```
 
 
@@ -246,30 +252,35 @@ nco_dat$xc   = list( vals = array(data = clon                  , dim =   c(1,1))
                    , long = "longitude of the grid cell centre"
                    , unit = "degrees_east"
                    , dims = ij
+                   , prec = "double"
                    , attx = list( bounds = "xv")
                    )#end list
 nco_dat$yc   = list( vals = array(data = clat                  , dim =   c(1,1))
                    , long = "latitude of the grid cell centre"
                    , unit = "degrees_north"
                    , dims = ij
+                   , prec = "double"
                    , attx = list( bounds = "yv")
                    )#end list
 nco_dat$xv   = list( vals = array(data = c(wlon,elon,elon,wlon), dim = c(4,1,1))
                    , long = "longitude of grid cell vertices"
                    , unit = "degrees_east"
                    , dims = vij
+                   , prec = "double"
                    , attx = list(note = "Vertex order: 1 - SW; 2 - SE; 3 - NE; 4 - NW")
                    )#end list
 nco_dat$yv   = list( vals = array(data = c(slat,slat,nlat,nlat), dim = c(4,1,1))
                    , long = "latitude of grid cell vertices"
                    , unit = "degrees_north"
                    , dims = vij
+                   , prec = "double"
                    , attx = list(note = "Vertex order: 1 - SW; 2 - SE; 3 - NE; 4 - NW")
                    )#end list
 nco_dat$mask = list( vals = array(data =          1L           , dim =   c(1,1))
                    , long = "land domain mask"
                    , unit = ""
                    , dims = ij
+                   , prec = "integer"
                    , attx = list( note        = "Unitless."
                                 , coordinates = "xc yc"
                                 , classes     = "0 - water (not active); 1 - land (active)"
@@ -279,6 +290,7 @@ nco_dat$frac = list( vals = array(data =          1.           , dim =   c(1,1))
                    , long = "fraction of grid cell that is active"
                    , unit = ""
                    , dims = ij
+                   , prec = "double"
                    , attx = list( note        = "Unitless."
                                 , coordinates = "xc yc"
                                 , filter1     = paste0( "error if frac> 1.0+eps or "
@@ -293,6 +305,7 @@ nco_dat$area = list( vals = array(data = solid_angle           , dim =   c(1,1))
                    , long = "area (solid angle) of grid cell, in steradian"
                    , unit = "sr"
                    , dims = ij
+                   , prec = "double"
                    , attx = list( coordinates = "xc yc")
                    )#end list
 ```
@@ -307,12 +320,14 @@ for (v in seq_along(nco_dat)){
    v_long   = nco_dat[[v_vnow]]$long  # Variable description ("long name")
    v_unit   = nco_dat[[v_vnow]]$unit  # Units
    v_dims   = nco_dat[[v_vnow]]$dims  # Variable dimensions
+   v_prec   = nco_dat[[v_vnow]]$prec  # Variable type
 
    # Define netCDF variable
    nco_vlist[[v_vnow]] = ncvar_def( name     = v_vnow
                                   , units    = v_unit
                                   , dim      = v_dims
                                   , longname = v_long
+                                  , prec     = v_prec
                                   )#end ncvar_def
 }#end for (v in seq_along(nci_vlist))
 ```
@@ -322,8 +337,8 @@ Create the output netCDF file.
 ```{r, label='gen-nc4-domain'}
 
 # Create the netCDF connection
-if ("nc_output" %in% ls()){ dummy=nc_close(nc_output); file.remove(output_domain); rm(nc_output)}
-nc_output = nc_create(filename=output_domain,vars=nco_vlist)
+if ("nc_domaout" %in% ls()){ dummy=nc_close(nc_domaout); file.remove(output_domain); rm(nc_domaout)}
+nc_domaout = nc_create(filename=output_domain,vars=nco_vlist)
 
 # Define the code developer information (indirect way so the email is not visible).
 developer_name  = c( 111L, 103L, 110L, 111L,  76L,  32L, 115L, 111L,  99L, 114L,  97L,  77L)
@@ -351,7 +366,7 @@ for (l in seq_along(glob_att)){
    att_value = glob_att[[l]]
 
    # Add attribute 
-   dummy = ncatt_put(nc=nc_output,varid=0,attname=att_name,attval=att_value)
+   dummy = ncatt_put(nc=nc_domaout,varid=0,attname=att_name,attval=att_value)
 }#end for (l in seq_along(global_att))
 ```
 
@@ -363,7 +378,7 @@ for (v in seq_along(nco_dat)){
    nco_now = nco_dat[[v_vnow]]
 
    # Add variable values
-   dummy = ncvar_put(nc = nc_output,varid=v_vnow,vals=nco_now$vals)
+   dummy = ncvar_put(nc = nc_domaout,varid=v_vnow,vals=nco_now$vals)
 
    # Add extra attributes
    for (a in seq_along(nco_now$attx)){
@@ -371,7 +386,7 @@ for (v in seq_along(nco_dat)){
       a_name  = names(nco_now$attx)[a]
       a_value = nco_now$attx[[a]] 
       
-      dummy = ncatt_put(nc = nc_output, varid=v_vnow,attname=a_name,attval=a_value)
+      dummy = ncatt_put(nc = nc_domaout, varid=v_vnow,attname=a_name,attval=a_value)
    }#end for (a in seq_along(v_attx))
 }#end for (v in seq_along(nco_vlist))
 ```
@@ -379,8 +394,8 @@ for (v in seq_along(nco_dat)){
 
 Save new netCDF, and close the output file. We remove the connection from memory.
 ```{r, label='end-var-domain'}
-   dummy = nc_close(nc_output)
-   rm(nc_output)
+   dummy = nc_close(nc_domaout)
+   rm(nc_domaout)
 ```
 
 # Surface data file
@@ -394,8 +409,8 @@ soil texture and soil organic carbon, there may be local observations.  If this 
 Open the surface data file, and retrieve the grid dimensions.
 ```{r, label='load-surfdata-gridded'}
 # Open gridded surface data
-if ("nc_input" %in% ls()){dummy=nc_close(input_surfdata);rm(nc_input)}
-nc_input = nc_open(filename=input_surfdata)
+if ("nc_gridin" %in% ls()){dummy=nc_close(nc_gridin);rm(nc_gridin)}
+nc_gridin = nc_open(filename=input_surfgrid)
 ```
 
 
@@ -403,7 +418,7 @@ Retrieve global attributes from the input file, and add information about this p
 ```{r, label='set-surfdata-glob-att'}
 
 # Retrieve original attributes. We only make minor edits.
-glob_att = ncatt_get(nc = nc_input, varid = 0)
+glob_att = ncatt_get(nc = nc_gridin, varid = 0)
 
 
 # Define the code developer information (indirect way so the email is not visible).
@@ -440,9 +455,9 @@ glob_att = modifyList( glob_att, glob_new)
 Load coordinates, and identify the nearest grid point. 
 ```{r label='find-near-neighbour'}
 # Retrieve longitude and latitude
-in_lon   = melt(ncvar_get(nc=nc_input,"LONGXY"    )); names(in_lon) = c("x","y","lon"  )
-in_lat   = melt(ncvar_get(nc=nc_input,"LATIXY"    )); names(in_lat) = c("x","y","lat"  )
-in_veg   = melt(ncvar_get(nc=nc_input,"PCT_NATVEG")); names(in_veg) = c("x","y","pcveg")
+in_lon   = melt(ncvar_get(nc=nc_gridin,"LONGXY"    )); names(in_lon) = c("x","y","lon"  )
+in_lat   = melt(ncvar_get(nc=nc_gridin,"LATIXY"    )); names(in_lat) = c("x","y","lat"  )
+in_veg   = melt(ncvar_get(nc=nc_gridin,"PCT_NATVEG")); names(in_veg) = c("x","y","pcveg")
 
 # Create a tibble with coordinates
 in_coord = tibble(merge(merge(in_lon,in_lat),in_veg)) 
@@ -470,14 +485,14 @@ latitude, which will be always one (single site).
 ```{r label='set-surf-dimensions'}
 
 # List of dimension names
-nc_dnames = names(nc_input$dim)
+nc_dnames = names(nc_gridin$dim)
 
 # Loop through all the dimensions
 nc_dims = list()
 for (d in seq_along(nc_dnames)){
    # Retrieve dimensions
    d_dname   = nc_dnames[d]
-   nc_dimnow = nc_input$dim[[d_dname]]
+   nc_dimnow = nc_gridin$dim[[d_dname]]
 
    # Fix dimensions and values for longitude and latitude.
    if (d_dname %in% c("lsmlon","lsmlat")){
@@ -511,18 +526,23 @@ Define variables that should feature in the output. Every variable in the input 
 ```{r, label='set-surf-variables'}
 
 # List of variable names
-nc_vnames = names(nc_input$var)
+nc_vnames = names(nc_gridin$var)
 
-# Loop through all the variables, retrieve data and
-nc_vars   = list()
-nc_values = list()
+# This will contain variables that were actually used. We will create dummy variables for 
+# those not used, to ensure they exist in the output.
+nc_dimused = character(0)
+
+# Loop through all the variables, retrieve data and settings
+nc_vars    = list()
+nc_values  = list()
 for (v in seq_along(nc_vnames)){
    # Retrieve variable information
    v_vname = nc_vnames[v]
-   v_vinfo = nc_input$var [[v_vname]]
+   v_vinfo = nc_gridin$var [[v_vname]]
    v_vlong = v_vinfo$longname
    v_vunit = v_vinfo$unit
-   v_vmiss = v_vinfo$missval
+   v_vprec = if( v_vinfo$prec %in% "int"){"integer"}else{v_vinfo$prec}
+   v_vmiss = if( v_vinfo$prec %in% c("float","double")){v_vinfo$missval}else{NULL}
 
    # Switch the longitude and latitude dimensions with point
    if (is.null(v_vinfo$varsize)){
@@ -555,16 +575,48 @@ for (v in seq_along(nc_vnames)){
                                  , dim      = v_vdims
                                  , missval  = v_vmiss
                                  , longname = v_vlong
+                                 , prec     = v_vprec
                                  )#end ncvar_def
 
    # Load the data 
-   nc_values[[v_vname]] = ncvar_get( nc             = nc_input
+   nc_values[[v_vname]] = ncvar_get( nc             = nc_gridin
                                    , varid          = v_vname
                                    , start          = v_start
                                    , count          = v_count
                                    , collapse_degen = FALSE
                                    )#end ncvar_get
+
+   # Update the list of dimensions used.
+   nc_dimused = sort(unique(c(nc_dimused,names(v_vdims))))
 }#end for (v in seq_along(nc_vnames))
+```
+
+
+Create dummy variables for unused dimensions. It may not be necessary, but this ensures every variable is included.
+```{r, label='make_var-unused-dims'}
+# Make data set
+is_unused = which(! (names(nc_dims) %in% nc_dimused))
+for (u in is_unused){
+   # Retrieve dimension information
+   u_dname = names(nc_dims)[u]
+   un_dims = nc_dims[[u_dname]]
+   u_dlong = paste0("Dummy variable to retain dimension ",un_dims$longname)
+   u_dunit = un_dims$units
+   u_dvals = un_dims$vals
+   u_dprec = typeof(u_dvals)
+
+   # Load information to define the data set.
+   nc_vars[[u_dname]] = ncvar_def( name     = u_dname
+                                 , units    = u_dunit
+                                 , dim      = un_dims
+                                 , longname = u_dlong
+                                 , prec     = u_dprec
+                                 )#end ncvar_def
+
+   # Load the data 
+   nc_values[[u_dname]] = u_dvals
+   
+}#end for (u in is_unused)
 ```
 
 
@@ -643,7 +695,7 @@ Create the output files.
 ```{r, label='gen-output'}
 
 # Create output netCDF
-nc_output = nc_create(filename = output_surfdata,vars=nc_vars)
+nc_surfout = nc_create(filename = output_surfdata,vars=nc_vars)
 
 # Add global attributes
 for (a in seq_along(glob_att)){
@@ -652,7 +704,7 @@ for (a in seq_along(glob_att)){
    a_value = glob_att[[a_name]] 
 
    # Include global attribute      
-   dummy = ncatt_put(nc = nc_output, varid=0,attname=a_name,attval=a_value)
+   dummy = ncatt_put(nc = nc_surfout, varid=0,attname=a_name,attval=a_value)
 }#end for (a in seq_along(glob_att))
 
 # Add variables
@@ -662,11 +714,11 @@ for (v in seq_along(nc_values)){
    v_value = nc_values[[v_name]] 
 
    # Add variable values
-   dummy = ncvar_put(nc = nc_output,varid=v_name,vals=v_value)
+   dummy = ncvar_put(nc = nc_surfout,varid=v_name,vals=v_value)
 }#end for (v in seq_along(nc_values))
 
 # Close input and output files
-dummy = nc_close(nc = nc_input)
-dummy = nc_close(nc = nc_output)
+dummy = nc_close(nc = nc_gridin )
+dummy = nc_close(nc = nc_surfout)
 ```
 
