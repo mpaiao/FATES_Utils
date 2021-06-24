@@ -32,7 +32,7 @@ MACH="eschweilera"       # Machine used for preparing the case
 #   host land model (CLM or ELM) without FATES, which may be useful for some debugging.
 #---~---
 DEBUG_LEVEL=0
-USE_FATES=false
+USE_FATES=true
 #---~---
 
 
@@ -65,7 +65,7 @@ SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
 #           CF (if running CLM-FATES).
 #---~---
 COMP=""
-CASE_NAME="ZZ0004_BCITest"
+CASE_NAME="F0005_ParacouTest_YYY-FATES"
 #---~---
 
 #---~---
@@ -100,13 +100,13 @@ RESOL="XXX_USRDAT"
 # Path containing all the data sets.
 SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
 # Sub-directory with data sets specific to this site.
-SITE_NAME="bci_0.1x0.1_v4.0"
+SITE_NAME="gyf_0.1x0.1_v1.1_c20210623"
 # Domain file (it must be in the SITE_NAME sub-directory).
-HLM_USRDAT_DOMAIN="domain_bci_clm5.0.dev009_c180523.nc"
+HLM_USRDAT_DOMAIN="domain_lnd_${SITE_NAME}.nc"
 # Surface data file (it must be in the SITE_NAME sub-directory).
-HLM_USRDAT_SURDAT="surfdata_bci_clm5.0.dev009_c180523.nc"
+HLM_USRDAT_SURDAT="surfdata_${SITE_NAME}.nc"
 # Calendar type for the meteorological drivers ('NO_LEAP' or 'GREGORIAN')
-METD_CALENDAR="NO_LEAP"
+METD_CALENDAR="GREGORIAN"
 #---~---
 
 #---~---
@@ -117,7 +117,8 @@ METD_CALENDAR="NO_LEAP"
 #  For additional information, check
 # https://github.com/NGEET/fates/wiki/Model-Initialization-Modes#Inventory_Format_Type_1
 #---~---
-INVENTORY_BASE="bci_inv_file_list.txt"
+#INVENTORY_BASE="${SITE_NAME}_nounder_info.txt"
+INVENTORY_BASE=""
 #---~---
 
 
@@ -142,16 +143,13 @@ INVENTORY_BASE="bci_inv_file_list.txt"
 #               "XXX_FORCE_COLDSTART               on"
 #               "RUN_STARTDATE                     '2001-01-01'")
 #---~---
-xml_settings=("DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
-              "DOUT_S                            TRUE"
-              "STOP_N                            13"
-              "RESUBMIT                          2"
-              "REST_N                            1"
-              "RUN_STARTDATE                     2003-01-01"
+xml_settings=("STOP_N                            16"
+              "RUN_STARTDATE                     2004-01-01"
               "STOP_OPTION                       nyears"
+              "RESUBMIT                          2"
               "XXX_FORCE_COLDSTART               on"
-              "DATM_CLMNCEP_YR_START             2003"
-              "DATM_CLMNCEP_YR_END               2016")
+              "DATM_CLMNCEP_YR_START             2004"
+              "DATM_CLMNCEP_YR_END               2019")
 #---~---
 
 
@@ -172,10 +170,7 @@ xml_settings=("DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
 #               "fates_smpsc        1 -200000.0"
 #               "fates_smpsc        2 -300000.0")
 #---~---
-pft_settings=("fates_wood_density 1      0.65"
-              "fates_wood_density 2      0.75"
-              "fates_smpsc        1 -200000.0"
-              "fates_smpsc        2 -300000.0")
+pft_settings=()
 #---~---
 
 
@@ -198,9 +193,9 @@ pft_settings=("fates_wood_density 1      0.65"
 #
 # For variable names, you can use hlm or HLM as a wildcard for the host land model.
 #---~---
-hlm_settings=("hist_empty_htapes  .true."
-              "hist_mfilt         480"
-              "hist_nhtfrq        -1"
+hlm_settings=("hist_empty_htapes            .true."
+              "use_fates_ed_prescribed_phys .false."
+              "fates_parteh_mode            1"
               "hist_fincl1        'GPP_BY_AGE', 'PATCH_AREA_BY_AGE', 'BA_SCLS', \
                                   'BA_SCLS','NPLANT_CANOPY_SCLS','NPLANT_UNDERSTORY_SCLS',\
                                   'DDBH_CANOPY_SCLS','DDBH_UNDERSTORY_SCLS', \
@@ -507,32 +502,34 @@ esac
 #     Set the PE layout for a single-site run (unlikely that users would change this).
 #---~---
 ./xmlchange --id NTASKS_ATM --val 1
-./xmlchange --id NTASKS_CPL --val 1
-./xmlchange --id NTASKS_GLC --val 1
-./xmlchange --id NTASKS_OCN --val 1
-./xmlchange --id NTASKS_WAV --val 1
-./xmlchange --id NTASKS_ICE --val 1
 ./xmlchange --id NTASKS_LND --val 1
 ./xmlchange --id NTASKS_ROF --val 1
+./xmlchange --id NTASKS_ICE --val 1
+./xmlchange --id NTASKS_OCN --val 1
+./xmlchange --id NTASKS_CPL --val 1
+./xmlchange --id NTASKS_GLC --val 1
+./xmlchange --id NTASKS_WAV --val 1
 ./xmlchange --id NTASKS_ESP --val 1
-./xmlchange --id ROOTPE_ATM --val 0
-./xmlchange --id ROOTPE_CPL --val 0
-./xmlchange --id ROOTPE_GLC --val 0
-./xmlchange --id ROOTPE_OCN --val 0
-./xmlchange --id ROOTPE_WAV --val 0
-./xmlchange --id ROOTPE_ICE --val 0
-./xmlchange --id ROOTPE_LND --val 0
-./xmlchange --id ROOTPE_ROF --val 0
-./xmlchange --id ROOTPE_ESP --val 0
+
 ./xmlchange --id NTHRDS_ATM --val 1
-./xmlchange --id NTHRDS_CPL --val 1
-./xmlchange --id NTHRDS_GLC --val 1
-./xmlchange --id NTHRDS_OCN --val 1
-./xmlchange --id NTHRDS_WAV --val 1
-./xmlchange --id NTHRDS_ICE --val 1
 ./xmlchange --id NTHRDS_LND --val 1
 ./xmlchange --id NTHRDS_ROF --val 1
+./xmlchange --id NTHRDS_ICE --val 1
+./xmlchange --id NTHRDS_OCN --val 1
+./xmlchange --id NTHRDS_CPL --val 1
+./xmlchange --id NTHRDS_GLC --val 1
+./xmlchange --id NTHRDS_WAV --val 1
 ./xmlchange --id NTHRDS_ESP --val 1
+
+./xmlchange --id ROOTPE_ATM --val 0
+./xmlchange --id ROOTPE_LND --val 0
+./xmlchange --id ROOTPE_ROF --val 0
+./xmlchange --id ROOTPE_ICE --val 0
+./xmlchange --id ROOTPE_OCN --val 0
+./xmlchange --id ROOTPE_CPL --val 0
+./xmlchange --id ROOTPE_GLC --val 0
+./xmlchange --id ROOTPE_WAV --val 0
+./xmlchange --id ROOTPE_ESP --val 0
 #---~---
 
 
@@ -779,4 +776,5 @@ fi
 #--- Return to the original path.
 cd ${HERE_PATH}
 #---~---
+
 
