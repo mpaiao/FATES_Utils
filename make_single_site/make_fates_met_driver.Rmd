@@ -6,6 +6,10 @@ output:
   html_document:
     df_print: paged
   pdf_document: default
+knit: (function(input_file, encoding) {
+  out_dir = file.path(dirname(input_file),"docs_make_fates_met_driver");
+  dummy   = dir.create(out_dir,showWarnings=FALSE,recursive=TRUE);
+  rmarkdown::render(input_file,encoding=encoding,output_file=file.path(out_dir,"index.html"))})
 references:
 - id: bolton1980mwr
   title: The computation of equivalent potential temperature
@@ -24,7 +28,7 @@ references:
 # Reset session:
 
 Use this chunk to fully reset R.
-```{r echo=FALSE, message=FALSE, results='hide'}
+```{r message=FALSE, results='hide'}
 # Unload all packages except for the R default ones
 plist = names(sessionInfo()$otherPkgs)
 if (length(plist) > 0){
@@ -133,9 +137,9 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **data_usage_notes**. Brief data usage note message.
 ```{r }
 author_name  = "Thats You"
-author_email = "youremail@somewhere.gov"
+author_email = "yourself@somewhere.gov"
 datprov_name = "Data Provider"
-datprov_email = "nice.collaborator@somewhere.edu"
+datprov_email = "amazing.collaborator@somewhere.edu"
 data_usage_notes = paste0( " If you plan to use these data for any scientific analysis,"
                          , " you should contact the data provider first and ask for permission"
                          , " to use the data and check with them how to acknowledge their"

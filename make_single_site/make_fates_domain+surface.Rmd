@@ -6,6 +6,10 @@ output:
   html_document:
     df_print: paged
   pdf_document: default
+knit: (function(input_file, encoding) {
+  out_dir = file.path(dirname(input_file),"docs_make_fates_domain+surface");
+  dummy   = dir.create(out_dir,showWarnings=FALSE,recursive=TRUE);
+  rmarkdown::render(input_file,encoding=encoding,output_file=file.path(out_dir,"index.html"))})
 ---
 
 # Introduction
@@ -18,7 +22,7 @@ site-specific information you might have.
 # Reset session:
 
 Use this chunk to fully reset R.
-```{r echo=FALSE, message=FALSE, results='hide'}
+```{r message=FALSE, results='hide'}
 # Unload all packages except for the R default ones
 plist = names(sessionInfo()$otherPkgs)
 if (length(plist) > 0){
@@ -93,8 +97,8 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **author_name**. Person who is generating these files (typically it's you).
 * **author_email**. Contact email (so people can reach out to you if problems arise).
 ```{r }
-author_name  = "That's You"
-author_email = "youremail@somewhere.gov"
+author_name  = "Thats You"
+author_email = "yourself@somewhere.gov"
 ```
 
 ## Site information
