@@ -16,9 +16,9 @@
 
 
 #--- Main settings.
-CIME_MODEL="ctsm"        # Model (ctsm, cesm, or e3sm)
-PROJECT=ngeet            # Project (may not be needed)
-MACH="eschweilera"       # Machine used for preparing the case
+export HESM="CTSM"        # Host "Earth System Model". (E3SM, CESM, CTSM)
+export PROJECT=ngeet            # Project (may not be needed)
+export MACH="eschweilera"       # Machine used for preparing the case
 #---~---
 
 
@@ -31,8 +31,8 @@ MACH="eschweilera"       # Machine used for preparing the case
 # - USE_FATES. Logical flag (true or false).  This option allows running the native 
 #   host land model (CLM or ELM) without FATES, which may be useful for some debugging.
 #---~---
-DEBUG_LEVEL=0
-USE_FATES=true
+export DEBUG_LEVEL=0
+export USE_FATES=true
 #---~---
 
 
@@ -46,9 +46,9 @@ USE_FATES=true
 #
 # In all cases, use XXXX in the part you want to be replaced with either E3SM or CTSM.
 #---~---
-WORK_PATH="${HOME}/Models/XXXX/cime/scripts"
-CASE_ROOT="${HOME}/Documents/LocalData/FATES/Cases"
-SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
+export WORK_PATH="${HOME}/Models/XXXX/cime/scripts"
+export CASE_ROOT="${HOME}/Documents/LocalData/FATES/Cases"
+export SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
 #---~---
 
 
@@ -56,25 +56,27 @@ SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
 #   Main case settings.  These variables will control compilation settings and the 
 # case name for this simulation.  It is fine to leave these blank, in which case the
 # script will use default settings.
-# 
-# Special wildcards for CASE_NAME (recommended if constantly switching between E3SM and
-# CESM).
-# - XXXX -- This will be replaced with the host model (E3SM, CESM, CTSM).
-# - YYY  -- This will be replaced with the host land model (ELM, CLM).
-# - ZZ   -- This will be replaced with EF (if running ELM-FATES), or 
-#           CF (if running CLM-FATES).
 #---~---
-COMP=""
-CASE_NAME="F0005_ParacouTest_YYY-FATES"
+export COMP=""
+export CASE_NAME="D0005_ParacouTest"
 #---~---
+
+
+#---~---
+#   Append git commit to the case name?
+#---~---
+export APPEND_GIT_HASH=false
+#---~---
+
+
 
 #---~---
 #   Grid resolution.  If this is a standard ELM/CLM grid resolution, variables defined
 # in the site information block below will be ignored.  In case you want to use the 
-# site information, set RESOL to XXX_USRDAT. (The host model will be replaced later 
+# site information, set RESOL to YYY_USRDAT. (The host model will be replaced later 
 # in the script).
 #---~---
-RESOL="XXX_USRDAT"
+export RESOL="YYY_USRDAT" # Grid resolution
 #---~---
 
 
@@ -98,15 +100,15 @@ RESOL="XXX_USRDAT"
 #     might be needed for FATES).
 #---~---
 # Path containing all the data sets.
-SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
+export SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
 # Sub-directory with data sets specific to this site.
-SITE_NAME="gyf_0.1x0.1_v1.1_c20210623"
+export SITE_NAME="1x1pt-paracouGUF_v1.3_c20210628"
 # Domain file (it must be in the SITE_NAME sub-directory).
-HLM_USRDAT_DOMAIN="domain_lnd_${SITE_NAME}.nc"
+export HLM_USRDAT_DOMAIN="domain.lnd.${SITE_NAME}_navy.nc"
 # Surface data file (it must be in the SITE_NAME sub-directory).
-HLM_USRDAT_SURDAT="surfdata_${SITE_NAME}.nc"
+export HLM_USRDAT_SURDAT="surfdata_${SITE_NAME}.nc"
 # Calendar type for the meteorological drivers ('NO_LEAP' or 'GREGORIAN')
-METD_CALENDAR="GREGORIAN"
+export METD_CALENDAR="GREGORIAN"
 #---~---
 
 #---~---
@@ -117,8 +119,7 @@ METD_CALENDAR="GREGORIAN"
 #  For additional information, check
 # https://github.com/NGEET/fates/wiki/Model-Initialization-Modes#Inventory_Format_Type_1
 #---~---
-#INVENTORY_BASE="${SITE_NAME}_nounder_info.txt"
-INVENTORY_BASE=""
+export INVENTORY_BASE="1x1pt-paracouGUF_v1.3_c20210628_nounder_info.txt"
 #---~---
 
 
@@ -135,9 +136,7 @@ INVENTORY_BASE=""
 # xml_settings=()
 #
 # Changes in xml settings
-# xml_settings=("DEBUG                             FALSE"
-#               "GMAKE                             make"
-#               "DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
+# xml_settings=("DOUT_S_SAVE_INTERIM_RESTART_FILES TRUE"
 #               "DOUT_S                            TRUE"
 #               "STOP_N                            10"
 #               "XXX_FORCE_COLDSTART               on"
@@ -147,7 +146,8 @@ xml_settings=("STOP_N                            16"
               "RUN_STARTDATE                     2004-01-01"
               "STOP_OPTION                       nyears"
               "RESUBMIT                          2"
-              "XXX_FORCE_COLDSTART               on"
+              "YYY_FORCE_COLDSTART               on"
+              "DATM_CLMNCEP_YR_ALIGN             2004"
               "DATM_CLMNCEP_YR_START             2004"
               "DATM_CLMNCEP_YR_END               2019")
 #---~---
@@ -170,7 +170,10 @@ xml_settings=("STOP_N                            16"
 #               "fates_smpsc        1 -200000.0"
 #               "fates_smpsc        2 -300000.0")
 #---~---
-pft_settings=()
+pft_settings=("fates_wood_density 1      0.65"
+              "fates_wood_density 2      0.75"
+              "fates_smpsc        1 -200000.0"
+              "fates_smpsc        2 -300000.0")
 #---~---
 
 
@@ -193,13 +196,17 @@ pft_settings=()
 #
 # For variable names, you can use hlm or HLM as a wildcard for the host land model.
 #---~---
-hlm_settings=("hist_empty_htapes            .true."
-              "use_fates_ed_prescribed_phys .false."
-              "fates_parteh_mode            1"
-              "hist_fincl1        'GPP_BY_AGE', 'PATCH_AREA_BY_AGE', 'BA_SCLS', \
-                                  'BA_SCLS','NPLANT_CANOPY_SCLS','NPLANT_UNDERSTORY_SCLS',\
-                                  'DDBH_CANOPY_SCLS','DDBH_UNDERSTORY_SCLS', \
-                                  'MORTALITY_CANOPY_SCLS','MORTALITY_UNDERSTORY_SCLS'")
+hlm_settings=("hist_empty_htapes .true."
+              "hist_fincl1       'AGB','AGB_SCLS','AR','EFLX_LH_TOT',\
+                                 'FSH','ELAI','FIRE','FLDS','FSDS','FSR','GPP','HR',\
+                                 'NEP','GPP_BY_AGE','PATCH_AREA_BY_AGE','BA_SCLS',\
+                                 'CANOPY_AREA_BY_AGE','NPLANT_CANOPY_SCLS',\
+                                 'NPLANT_UNDERSTORY_SCLS','DDBH_CANOPY_SCLS',\
+                                 'DDBH_UNDERSTORY_SCLS','MORTALITY_CANOPY_SCLS',\
+                                 'MORTALITY_UNDERSTORY_SCLS','GPP_SCPF','AR_SCPF',\
+                                 'NPP_SCPF','ELAI','ESAI','TLAI','TSAI','LAI_BY_AGE',\
+                                 'LAI_CANOPY_SCLS','LAI_UNDERSTORY_SCLS',\
+                                 'PATCH_AREA_BY_AGE'")
 #---~---
 
 
@@ -218,28 +225,29 @@ hlm_settings=("hist_empty_htapes            .true."
 #-------------------------------------------------------------------------------------------
 
 
+
 #---~---
 #  Define the host Earth System Model from upper-case CIME_MODEL.
 #---~---
-HESM=$(echo ${CIME_MODEL} | tr '[:lower:]' '[:upper:]')
+export HESM=$(echo ${HESM} | tr '[:lower:]' '[:upper:]')
 #---~---
 
 #--- Update cade and simulation paths, in case a generic name was provided.
-WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${HESM}"@g)
-CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${HESM}"@g)
-SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${HESM}"@g)
+export WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${HESM}"@g)
+export CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${HESM}"@g)
+export SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${HESM}"@g)
 #---~---
 
 #--- Current date.
-TODAY=$(date +"%Y-%m-%d")
+export TODAY=$(date +"%Y-%m-%d")
 #---~---
 
 #--- Current path.
-HERE_PATH=$(pwd)
+export HERE_PATH=$(pwd)
 #---~---
 
 #--- Site path.
-SITE_PATH="${SITE_BASE_PATH}/${SITE_NAME}"
+export SITE_PATH="${SITE_BASE_PATH}/${SITE_NAME}"
 #---~---
 
 
@@ -247,54 +255,44 @@ SITE_PATH="${SITE_BASE_PATH}/${SITE_NAME}"
 #   Make changes to some of the settings based on the host model.
 #---~---
 case "${HESM}" in
-ACME|E3SM)
+E3SM)
    #---~---
    # E3SM-FATES
    #---~---
 
+   #--- Set CIME model.
+   export CIME_MODEL="e3sm"
+   #---~---
+
    #--- Set host land model. Set both upper case and lower case for when needed.
-   hlm="elm"
-   HLM="ELM"
-   
+   export hlm="elm"
+   export HLM="ELM"
    #---~---
 
    #--- Main path for host model
-   HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
    #---~---
 
    #--- Main path for FATES
-   FATESMODEL_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
+   export FATESMODEL_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
    #---~---
 
    #--- Additional options for "create_newcase"
-   NEWCASE_OPTS=""
+   export NEWCASE_OPTS=""
    #---~---
 
    #--- Main source path for FATES.
-   FATES_SRC_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
+   export FATES_SRC_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
    #---~---
 
    #--- In case compilates settings is not defined, use the default settings.
-   if [[ "${COMP}" == "" ]]
+   if ${USE_FATES} && [[ "${COMP}" == "" ]]
    then
-      if ${USE_FATES}
-      then
-         COMP="IELMFATES"
-      else
-         COMP="IELMBGC"
-      fi
+      export COMP="IELMFATES"
+   elif [[ "${COMP}" == "" ]]
+   then
+      export COMP="IELMBGC"
    fi
-   #---~---
-
-
-   #--- Define version of host model and FATES
-   HLM_HASH="E$(cd ${HOSTMODEL_PATH}; git log -n 1 --pretty=%h)"
-   FATES_HASH="F$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)"
-   #---~---
-
-
-   #--- Define settings for single-point
-   V_HLM_USRDAT_NAME="ELM_USRDAT_NAME"
    #---~---
 
    ;;
@@ -303,48 +301,41 @@ CTSM|CESM)
    # CESM-FATES or CTSM-FATES
    #---~---
 
+   #--- Set CIME model.
+   export CIME_MODEL="cesm"
+   #---~---
+
    #--- Set host land model. Set both upper case and lower case for when needed.
-   hlm="clm"
-   HLM="CLM"
+   export hlm="clm"
+   export HLM="CLM"
    #---~---
 
 
    #--- Main path for host model
-   HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
    #---~---
 
    #--- Main path for FATES
-   FATESMODEL_PATH="${HOSTMODEL_PATH}/src/fates"
+   export FATESMODEL_PATH="${HOSTMODEL_PATH}/src/fates"
    #---~---
 
    #--- Additional options for "create_newcase"
-   NEWCASE_OPTS="--run-unsupported"
+   export NEWCASE_OPTS="--run-unsupported"
    #---~---
 
    #--- Main source path for FATES.
-   FATES_SRC_PATH="${HOSTMODEL_PATH}/src/fates"
+   export FATES_SRC_PATH="${HOSTMODEL_PATH}/src/fates"
    #---~---
 
 
    #--- In case compilates settings is not defined, use the default settings.
-   if [[ "${COMP}" == "" ]]
+   if ${USE_FATES} && [[ "${COMP}" == "" ]]
    then
-      if ${USE_FATES}
-      then
-         COMP="I2000Clm51Fates"
-      else
-         COMP="I2000Clm50BgcCrop"
-      fi
+      export COMP="I2000Clm51Fates"
+   elif [[ "${COMP}" == "" ]]
+   then
+      export COMP="I2000Clm51Bgc"
    fi
-   #---~---
-
-   #--- Define version of host model and FATES
-   HLM_HASH="C$(cd ${HOSTMODEL_PATH}; git log -n 1 --pretty=%h)"
-   FATES_HASH="F$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)"
-   #---~---
-
-   #--- Define setting for single-point
-   V_HLM_USRDAT_NAME="CLM_USRDAT_NAME"
    #---~---
 
    ;;
@@ -352,32 +343,46 @@ esac
 #---~---
 
 
+#--- Define version of host model and FATES
+export HLM_HASH="${HLM}-$(cd ${HOSTMODEL_PATH};   git log -n 1 --pretty=%h)"
+export FATES_HASH="FATES-$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)"
+#---~---
+
+
+#--- Define setting for single-point
+export V_HLM_USRDAT_NAME="${HLM}_USRDAT_NAME"
+#---~---
+
+
 #--- Substitute wildcards in the resolution with the actual model
-RESOL=$(echo "${RESOL}" | sed s@"XXX"@"${HLM}"@g | sed s@"xxx"@"${hlm}"@g)
+export RESOL=$(echo "${RESOL}" | sed s@"YYY"@"${HLM}"@g | sed s@"yyy"@"${hlm}"@g)
 #---~---
 
 
 #---~---
-#   Build the case name in case the case name was not provided (I know, lots of "cases"
-# in one sentence).
+#   Set default case name prefix in case none was provided.
 #---~---
 if [[ "${CASE_NAME}" == "" ]]
 then
-   CASE_NAME="FX_${COMP}_${MACH}_${HLM_HASH}-${FATES_HASH}_${TODAY}"
+   export CASE_NAME="SX_${COMP}_${MACH}_${TODAY}"
+fi
+#---~---
+
+
+#---~---
+#   Append github commit hash, or a simple host-model / FATES tag.
+#---~---
+if ${USE_FATES} && ${APPEND_GIT_HASH}
+then
+   export CASE_NAME="${CASE_NAME}_${HLM_HASH}_${FATES_HASH}"
+elif ${APPEND_GIT_HASH}
+then
+   export CASE_NAME="${CASE_NAME}_${HLM_HASH}_BigLeaf"
+elif ${USE_FATES}
+then
+   export CASE_NAME="${CASE_NAME}_${HLM}_FATES"
 else
-   #--- Define short key
-   case ${HLM} in
-      CLM) ZKEY="CF" ;;
-      ELM) ZKEY="EF" ;;
-   esac
-   #---~---
-
-
-   #--- Update case name.
-   CASE_NAME=$(echo ${CASE_NAME} | sed s@"XXXX"@"${HESM}"@g)
-   CASE_NAME=$(echo ${CASE_NAME} | sed s@"YYY"@"${HLM}"@g)
-   CASE_NAME=$(echo ${CASE_NAME} | sed s@"ZZ"@"${ZKEY}"@g)
-   #---~---
+   export CASE_NAME="${CASE_NAME}_${HLM}_BigLeaf"
 fi
 #---~---
 
@@ -385,14 +390,14 @@ fi
 #---~---
 #    Set paths for case and simulation.
 #---~---
-CASE_PATH="${CASE_ROOT}/${CASE_NAME}"
-SIMUL_PATH="${SIMUL_ROOT}/${CASE_NAME}"
+export CASE_PATH="${CASE_ROOT}/${CASE_NAME}"
+export SIMUL_PATH="${SIMUL_ROOT}/${CASE_NAME}"
 #---~---
 
 
 
 #--- Namelist for the host land model.
-USER_NL_HLM="${CASE_PATH}/user_nl_${hlm}"
+export USER_NL_HLM="${CASE_PATH}/user_nl_${hlm}"
 #---~---
 
 
@@ -471,9 +476,9 @@ cd ${CASE_PATH}
 #---~---
 #     Set the CIME output to the main CIME path.
 #---~---
-./xmlchange --id CIME_OUTPUT_ROOT --val "${SIMUL_ROOT}"
-./xmlchange --id DOUT_S_ROOT      --val "${SIMUL_PATH}"
-./xmlchange --id PIO_DEBUG_LEVEL  --val "${DEBUG_LEVEL}"
+./xmlchange CIME_OUTPUT_ROOT="${SIMUL_ROOT}"
+./xmlchange DOUT_S_ROOT="${SIMUL_PATH}"
+./xmlchange PIO_DEBUG_LEVEL="${DEBUG_LEVEL}"
 #---~---
 
 
@@ -483,15 +488,14 @@ cd ${CASE_PATH}
 #---~---
 case "${RESOL}" in
 ?LM_USRDAT)
-
-   ./xmlchange --id ATM_DOMAIN_PATH           --val "${SITE_PATH}"
-   ./xmlchange --id LND_DOMAIN_PATH           --val "${SITE_PATH}"
-   ./xmlchange --id ATM_DOMAIN_FILE           --val "${HLM_USRDAT_DOMAIN}"
-   ./xmlchange --id LND_DOMAIN_FILE           --val "${HLM_USRDAT_DOMAIN}"
-   ./xmlchange --id DATM_MODE                 --val "CLM1PT"
-   ./xmlchange --id CALENDAR                  --val "${METD_CALENDAR}"
-   ./xmlchange --id ${V_HLM_USRDAT_NAME}      --val "${SITE_NAME}"
-   ./xmlchange --id DIN_LOC_ROOT_CLMFORC      --val "${SITE_BASE_PATH}"
+   ./xmlchange DATM_MODE="CLM1PT"
+   ./xmlchange CALENDAR="${METD_CALENDAR}"
+   ./xmlchange ${V_HLM_USRDAT_NAME}="${SITE_NAME}"
+   ./xmlchange ATM_DOMAIN_PATH="${SITE_PATH}"
+   ./xmlchange LND_DOMAIN_PATH="${SITE_PATH}"
+   ./xmlchange ATM_DOMAIN_FILE="${HLM_USRDAT_DOMAIN}"
+   ./xmlchange LND_DOMAIN_FILE="${HLM_USRDAT_DOMAIN}"
+   ./xmlchange DIN_LOC_ROOT_CLMFORC="${SITE_BASE_PATH}"
 
    ;;
 esac
@@ -501,35 +505,35 @@ esac
 #---~---
 #     Set the PE layout for a single-site run (unlikely that users would change this).
 #---~---
-./xmlchange --id NTASKS_ATM --val 1
-./xmlchange --id NTASKS_LND --val 1
-./xmlchange --id NTASKS_ROF --val 1
-./xmlchange --id NTASKS_ICE --val 1
-./xmlchange --id NTASKS_OCN --val 1
-./xmlchange --id NTASKS_CPL --val 1
-./xmlchange --id NTASKS_GLC --val 1
-./xmlchange --id NTASKS_WAV --val 1
-./xmlchange --id NTASKS_ESP --val 1
+./xmlchange NTASKS_ATM=1
+./xmlchange NTASKS_LND=1
+./xmlchange NTASKS_ROF=1
+./xmlchange NTASKS_ICE=1
+./xmlchange NTASKS_OCN=1
+./xmlchange NTASKS_CPL=1
+./xmlchange NTASKS_GLC=1
+./xmlchange NTASKS_WAV=1
+./xmlchange NTASKS_ESP=1
 
-./xmlchange --id NTHRDS_ATM --val 1
-./xmlchange --id NTHRDS_LND --val 1
-./xmlchange --id NTHRDS_ROF --val 1
-./xmlchange --id NTHRDS_ICE --val 1
-./xmlchange --id NTHRDS_OCN --val 1
-./xmlchange --id NTHRDS_CPL --val 1
-./xmlchange --id NTHRDS_GLC --val 1
-./xmlchange --id NTHRDS_WAV --val 1
-./xmlchange --id NTHRDS_ESP --val 1
+./xmlchange NTHRDS_ATM=1
+./xmlchange NTHRDS_LND=1
+./xmlchange NTHRDS_ROF=1
+./xmlchange NTHRDS_ICE=1
+./xmlchange NTHRDS_OCN=1
+./xmlchange NTHRDS_CPL=1
+./xmlchange NTHRDS_GLC=1
+./xmlchange NTHRDS_WAV=1
+./xmlchange NTHRDS_ESP=1
 
-./xmlchange --id ROOTPE_ATM --val 0
-./xmlchange --id ROOTPE_LND --val 0
-./xmlchange --id ROOTPE_ROF --val 0
-./xmlchange --id ROOTPE_ICE --val 0
-./xmlchange --id ROOTPE_OCN --val 0
-./xmlchange --id ROOTPE_CPL --val 0
-./xmlchange --id ROOTPE_GLC --val 0
-./xmlchange --id ROOTPE_WAV --val 0
-./xmlchange --id ROOTPE_ESP --val 0
+./xmlchange ROOTPE_ATM=0
+./xmlchange ROOTPE_LND=0
+./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
+./xmlchange ROOTPE_GLC=0
+./xmlchange ROOTPE_WAV=0
+./xmlchange ROOTPE_ESP=0
 #---~---
 
 
@@ -545,13 +549,13 @@ then
    do
       #--- Retrieve settings.
       xml_id=$(echo ${xml_settings[x]}  | awk '{print $1}')
-      xml_id=$(echo ${xml_id}           | sed s@"XXX"@${HLM}@g | sed s@"xxx"@${hlm}@g)
+      xml_id=$(echo ${xml_id}           | sed s@"YYY"@${HLM}@g | sed s@"yyy"@${hlm}@g)
       xml_val=$(echo ${xml_settings[x]} | awk '{print $2}')
       echo " ID = ${xml_id}; VAL = ${xml_val}"
       #---~---
 
       #--- Update settings.
-      ./xmlchange --id ${xml_id} --val "${xml_val}"
+      ./xmlchange ${xml_id}="${xml_val}"
       #---~---
 
    done
@@ -729,7 +733,7 @@ then
    do
       #--- Retrieve settings.
       hlm_id=$(echo ${hlm_settings[h]}  | awk '{print $1}')
-      hlm_id=$(echo ${hlm_id}           | sed s@"XXX"@${HLM}@g | sed s@"xxx"@${hlm}@g)
+      hlm_id=$(echo ${hlm_id}           | sed s@"YYY"@${HLM}@g | sed s@"yyy"@${hlm}@g)
       hlm_val=$(echo ${hlm_settings[h]} | awk '{for(i=2;i<=NF;++i)printf $i""FS ; print ""}')
       #---~---
 
@@ -776,5 +780,4 @@ fi
 #--- Return to the original path.
 cd ${HERE_PATH}
 #---~---
-
 

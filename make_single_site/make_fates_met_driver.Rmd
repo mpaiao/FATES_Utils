@@ -59,8 +59,8 @@ file containing the following variables:
 * Air temperature
 * Humidity. One of the following must be provided (and this order of preference):
   - Specific humidity
-  - Mixing ratio
   - Vapour pressure 
+  - Mixing ratio
   - Relative humidity
 * Wind speed
 * Incident solar irradiance
@@ -114,10 +114,12 @@ Set paths and files for input and output.
 
 * **here_path**. The main path for processing data.  The output path will be generated here.
 * **input_file**. The csv file containing the gap-filled tower/AWS data (full path).
+* **output_path**. The main output path for the data. A sub-directory for this site will be created.
 
 ```{r, label='path-settings'}
 here_path   = getwd()
 input_file  = file.path(here_path,"input_csv","gyf_met-driver_2004-2019.csv")
+output_path = file.path(path.expand("~"),"Data","FATES_DataSets")
 ```
 
 ## Author information
@@ -130,10 +132,10 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **datprov_email**. Data provider email.
 * **data_usage_notes**. Brief data usage note message.
 ```{r }
-author_name  = "Marcos Longo"
-author_email = "mlongo@lbl.gov"
-datprov_name = "Damien Bonal"
-datprov_email = "damien.bonal@inrae.fr"
+author_name  = "Thats You"
+author_email = "youremail@somewhere.gov"
+datprov_name = "Data Provider"
+datprov_email = "nice.collaborator@somewhere.edu"
 data_usage_notes = paste0( " If you plan to use these data for any scientific analysis,"
                          , " you should contact the data provider first and ask for permission"
                          , " to use the data and check with them how to acknowledge their"
@@ -156,14 +158,14 @@ Provide some basic information about the tower:
 * **undef**. A number to denote missing values. This is needed by NetCDF, but the data should not have any
 
 ```{r, label='met-driver-settings'}
-xid         = "gyf"
+xid         = "paracouGUF"
 site_desc   = "Guyaflux tower at Paracou, French Guiana"
-dat_version = "1.1"
+dat_version = "1.3"
 site_lon    = -52.912222
 site_lat    =   5.281667
 site_alt    =  30.000000
 site_refhgt =   58.0
-dxy         =   0.1
+dxy         =   1.0
 undef       = -9999.99
 ```
 
@@ -202,19 +204,21 @@ the variables names and units as defined in the table below:
 **QBOT**^1^        | Specific humidity            | kg kg^-1^
 **RBOT**^1^        | Vapour mixing ratio          | kg kg^-1^
 **EBOT**^1^        | Vapour pressure              | Pa
-**RH**^1^          | Relative humidity            | fraction (Pa Pa^-1^)
+**RH**^1^          | Relative humidity            | %
 **WIND**           | Wind speed                   | m s^-1^
 **FSDS**           | Incident solar irradiance    | W m^-2^
 **FLDS**^2^        | Incident longwave irradiance | W m^-2^
 **PRECTmms**       | Precipitation rate           | kg m^-2^ s^-1^ (mm s^-1^)
+**ZBOT**^3^        | Observational height         | m
 
 **Notes** 
 
 1. Only one of the humidity variables must be provided. If more than one is provided, the 
-script will use only the first one.
+script will use only the first one.  The output will always contain both specific humidity (QBOT) and relative humidity (RH).
 2. Incident longwave irradiance (FLDS) is currently not required by ELM or CLM.  
 In case you have the data, we suggest to add it to the output as it could be useful for
 other purposes.  Otherwise, delete/comment the list entry for FLDS in the following chunk.
+3. Observational height (ZBOT) is very rarely provided in the meteorological driver time series file as it is normally a fixed value reflecting the measurement height. In almost all cases, this variable will be set using `site_refhgt` instead.
 
 
 First, we define some unit conversion constants for the chunk below
@@ -264,12 +268,12 @@ varinfo[[n]] = list( vfates = "TBOT"
                    , mult   = 1.
                    )#end list
 n       = n + 1
-varinfo[[n]] = list( vfates = "RH"
-                   , vlname = "relative humidity at the tower"
-                   , vunits = "Pa/Pa"
-                   , vinput = "atm.rhv"
+varinfo[[n]] = list( vfates = "QBOT"
+                   , vlname = "specific humidity at the tower"
+                   , vunits = "kg/kg"
+                   , vinput = "atm.shv"
                    , add0   = 0.
-                   , mult   = pc_2_frac
+                   , mult   = g_2_kg
                    )#end list
 n       = n + 1
 varinfo[[n]] = list( vfates = "WIND"
@@ -441,9 +445,9 @@ met_fates = met_fates %>% mutate( time = tstamp) %>% relocate(c("time",varinfo$v
 ```
 
 
-# Derive specific humidity
+# Derive humidity
 
-This step is only needed if specific humidity was provided. In case not, we derive specific humidity ($q_{v}$) [ $\mathrm{kg_{v}\,kg_{a}^{-1}}$] using one the following relationships (in this order of preference), using the fact that specific humidity is the ratio of mass (or partial density) of water vapour $\rho_{v}$ [$\mathrm{kg_{v}\,m^{-3}}$] and total mass (or density) of air ($\rho_{a}$)  [$\mathrm{kg_{a}\,m^{-3}}$].
+This step is only needed if specific humidity was not provided. In this case, we derive specific humidity ($q_{v}$) [ $\mathrm{kg_{v}\,kg_{a}^{-1}}$] using one the following relationships (in this order of preference), using the fact that specific humidity is the ratio of mass (or partial density) of water vapour $\rho_{v}$ [$\mathrm{kg_{v}\,m^{-3}}$] and total mass (or density) of air ($\rho_{a}$)  [$\mathrm{kg_{a}\,m^{-3}}$].
 
 * _Mixing ratio_ $r_v$ [ $\mathrm{kg_{v}\,kg_{d}^{-1}}$] is defined as the ratio between partial density of water vapour $\rho_{v}$ and partial density of dry air ($\rho_{d}$) [$\mathrm{kg_{d}\,m^{-3}}$]. Assuming that $\rho_{a} = \rho_{v} + \rho_{d}$, we can relate mixing ratio and specific humidity as: $$\begin{align} & q_{v} = \frac{r_{v}}{r_{v}+1} \end{align}.$$
 
@@ -452,8 +456,8 @@ and dry air ($\mathcal{M}_d = 2.897 \times 10^{-2}\,\mathrm{kg\,mol^{-1}}$): $$\
 & q_{v} = \frac{\varepsilon{}\,e_{v}}{p - \left(1 - \varepsilon{}\right)\,e_{v}}
 \end{align},$$ where $p$ [$\mathrm{Pa}$] is the total air pressure and $\varepsilon = \mathcal{M}_{v} / \mathcal{M}_{d}$.
 
-* _Relative humidity_ ($f_{v}$) [fraction, or $\mathrm{Pa\,Pa^{-1}$] is defined as $f_{v}=e_{v}/e_{v}^{\star}$, where $e_{v}^{\star}$ is the vapour pressure at saturation, which depends on temperature $T$ [$\mathrm{K}$]. To derive specific humidity, we use [@bolton1980mwr] empirical equation for $e_{v}^{\star}$ to derive $e_{v}$: $$\begin{align}
-& e_{v} = f_{v}\,e_{0}\,\exp{\left[ \frac{17.67\,\left( T - T_{0}\right)}{T - 29.65} \right]}
+* _Relative humidity_ ($\mathrm{RH}$) [$\%$] is defined as $\mathrm{RH} = 100 \, e_{v}/e_{v}^{\star}$, where $e_{v}^{\star}$ is the vapour pressure at saturation, which depends on temperature $T$ [$\mathrm{K}$]. To derive specific humidity, we use [@bolton1980mwr] empirical equation for $e_{v}^{\star}$ to derive $e_{v}$: $$\begin{align}
+& e_{v} = 0.01 \, \mathrm{RH} \,e_{0}\,\exp{\left[ \frac{17.67\,\left( T - T_{0}\right)}{T - 29.65} \right]}
 \end{align},$$ where $e_{0} = 611.66\,\mathrm{Pa}$ is the vapour pressure of saturation at $T_{0}=273.15\,\mathrm{K}$. We then convert $e_{v}$ to $q_{v}$ using the same equation described above.
 
 ```{r, label='define-specific-humidity'}
@@ -472,23 +476,35 @@ esat_0C = 611.65685464
 
 
 if ("QBOT" %in% names(met_fates)){
-   # Specific humidity already in the meteorological driver, do nothing.
-   cat(" - Specific humidity included in the input data.")
-}else if ("RBOT" %in% names(met_fates)){
-   # Find specific humidity from mixing ratio
+   # Specific humidity already in the meteorological driver, find relative humidity.
+   cat(" - Specific humidity included in the input data. Find relative humidity")
    met_fates = met_fates %>%
-               mutate( QBOT = RBOT / (1. + RBOT))
-}else if ("EBOT" %in% names(met_fates)){
-   # Find specific humidity from vapour pressure
-   met_fates = met_fates %>%
-               mutate( QBOT = eps_mol * EBOT / (PSRF - (1. - eps_mol) * EBOT))
-}else{
+               mutate( EBOT = PSRF * QBOT / (eps_mol + (1. - eps_mol) * QBOT)
+                     , ESAT = esat_0C * exp( 17.67 * (TBOT - degC_2_K) / (TBOT - 29.65))
+                     , RH   = frac_2_pc * EBOT / ESAT
+                     ) %>% select(! c(EBOT,ESAT))
+}else if("RH" %in% names(met_fates)){
    # Find specific humidity from vapour pressure
    met_fates = met_fates %>%
                mutate( ESAT = esat_0C * exp( 17.67 * (TBOT - degC_2_K) / (TBOT - 29.65))
-                     , EBOT = RH * ESAT
+                     , EBOT = pc_2_frac * RH * ESAT
                      , QBOT = eps_mol * EBOT / (PSRF - (1. - eps_mol) * EBOT)
                      ) %>% select(! c(ESAT,EBOT))
+}else if ("EBOT" %in% names(met_fates)){
+   # Find specific humidity from vapour pressure
+   met_fates = met_fates %>%
+               mutate( QBOT = eps_mol * EBOT / (PSRF - (1. - eps_mol) * EBOT)
+                     , ESAT = esat_0C * exp( 17.67 * (TBOT - degC_2_K) / (TBOT - 29.65))
+                     , RH   = frac_2_pc * EBOT / ESAT
+                     ) %>% select(! c(ESAT))
+}else{
+   # Find specific humidity from mixing ratio
+   met_fates = met_fates %>%
+               mutate( QBOT = RBOT / (1. + RBOT)
+                     , EBOT = PSRF * QBOT / (eps_mol + (1. - eps_mol) * QBOT)
+                     , ESAT = esat_0C * exp( 17.67 * (TBOT - degC_2_K) / (TBOT - 29.65))
+                     , RH   = frac_2_pc * EBOT / ESAT
+                     ) %>% select(! c(EBOT,ESAT))
 }
 
 # Update or insert specific humidity to the list of output variables.
@@ -497,11 +513,36 @@ varinfo = varinfo %>%
                              , vlname = "specific humidity at the tower"
                              , vunits = "kg/kg"
                              )#end tibble
+                     ) %>%
+          rows_upsert( tibble( vfates = "RH"
+                             , vlname = "relative humidity at the tower"
+                             , vunits = "%"
+                             )#end tibble
                      )#end rows_upsert
 
 ```
 
 
+# Define height
+
+The reference height must be defined as a time series, even though in almost all cases the reference height will be a constant.  In the unlikely case that the variable was provided in the met driver, we leave it unchanged, otherwise we add a dummy variable.
+
+```{r, label='define-height'}
+
+# Create a dummy time series for height
+if (! ("ZBOT" %in% names(met_fates)) ){
+   met_fates = met_fates %>% mutate(ZBOT = 0. * TBOT + site_refhgt)
+}#end if (! ("ZBOT" %in% names(met_fates)) )
+
+# Update or insert height to the list of output variables.
+varinfo = varinfo %>%
+          rows_upsert( tibble( vfates = "ZBOT"
+                             , vlname = "observational height"
+                             , vunits = "m"
+                             )#end tibble
+                     )#end rows_upsert
+
+```
 
 # Data output
 
@@ -511,14 +552,13 @@ Create paths for output, using FATES convention.
 # Labels for describing the data set.
 ymd_now = today(tzone = "UTC")
 ymd_lab = sprintf("%4.4i%2.2i%2.2i",year(ymd_now),month(ymd_now),day(ymd_now))
-dxy_lab = sprintf("%.1fx%.1f",dxy,dxy)
 
 # Tag specific for this site, grid, and version (used for file and path names).
-site_tag  = paste0(xid,"_",dxy_lab,"_v",dat_version,"_c",ymd_lab)
+site_tag  = paste0("1x1pt-",xid,"_v",dat_version,"_c",ymd_lab)
 
 
 # Path to where we will write the drivers.
-metd_path = file.path(here_path,site_tag,"CLM1PT_data")
+metd_path = file.path(output_path,site_tag,"CLM1PT_data")
 
 # Create directory
 dummy = dir.create(path=metd_path  ,showWarnings=FALSE,recursive=TRUE)
@@ -539,12 +579,18 @@ nmet = length(met_output)
 
 Generate edge information for the single data point.
 ```{r, label='geo-find'}
-outlon  = site_lon %% 360.
-outlat  = site_lat
-edge_w  = (site_lon - dxy) %% 360.
-edge_e  = (site_lon + dxy) %% 360.
-edge_s  = site_lat - dxy
-edge_n  = site_lat + dxy
+# Find precision for the coordinates (typically 1% of the grid size).
+outprec = -floor(log10(dxy*0.01))
+
+# Standardise coordinates (and make sure latitude cannot exceed the poles).
+outlon  = round(site_lon,outprec) %% 360.
+outlat  = max(-90,min(90-0.5*dxy,round(site_lat,outprec)))
+
+# Find edges.
+edge_w = (outlon - 0.5 * dxy) %% 360.
+edge_e = (outlon + 0.5 * dxy) %% 360.
+edge_s = outlat - 0.5 * dxy
+edge_n = outlat + 0.5 * dxy
 ```
 
 Define the template for the global attributes.
@@ -635,12 +681,6 @@ for (m in sequence(nmet)){
                               , missval  = undef
                               , longname = "latitude"
                               )#end ncvar_def
-   nc_vlist$ZBOT   = ncvar_def( name     = "ZBOT"
-                              , units    = "m"
-                              , dim      = nc_xy
-                              , missval  = undef
-                              , longname = "observational height"
-                              )#end ncvar_def
    nc_vlist$EDGEW  = ncvar_def( name     = "EDGEW"
                               , units    = "degrees_east"
                               , dim      = nc_s
@@ -702,9 +742,6 @@ for (m in sequence(nmet)){
    # Latitude, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="LATIXY",vals=array(data=outlat     ,dim=xy))
    dummy = ncatt_put(nc=nc_conn,varid="LATIXY",attname="mode"    ,attval="time-invariant")
-   # Tower elevation above ground level, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="ZBOT"  ,vals=array(data=site_refhgt,dim=xy))
-   dummy = ncatt_put(nc=nc_conn,varid="ZBOT"  ,attname="mode"    ,attval="time-invariant")
    # Western edge, append time-invariant tag
    dummy = ncvar_put(nc=nc_conn,varid="EDGEW" ,vals=edge_w)
    dummy = ncatt_put(nc=nc_conn,varid="EDGEW" ,attname="mode"    ,attval="time-invariant")

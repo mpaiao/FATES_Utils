@@ -69,10 +69,12 @@ Set paths and files for input and output.
 
 * **here_path**. The main path for processing data. The output path will be generated here.
 * **input_path**. The location where existing surface and domain netcdf files are located
+* **output_path**. The main output path for the data. A sub-directory for this site will be created.
 
 ```{r, label='path-settings'}
-here_path     = getwd()
-input_path    = file.path(here_path,"input_netcdf")
+here_path   = getwd()
+input_path  = file.path(here_path,"input_netcdf")
+output_path = file.path(path.expand("~"),"Data","FATES_DataSets")
 ```
 
 Set the URL for the input surface data.  _This is normally a gridded data file_, not a single-site one.
@@ -81,6 +83,7 @@ If you have your own set of input data, set a dummy URL with the actual file nam
  set `url.surfgrid="https://localhost/my_surface_grid_file.nc"`.
 ```{r, label='input-url'}
 url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_16pfts_Irrig_CMIP6_simyr2000_c190214.nc"
+url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/surfdata_0.47x0.63_16pfts_Irrig_CMIP6_simyr2000_c180508.nc"
 ```
 
 
@@ -91,8 +94,8 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **author_name**. Person who is generating these files (typically it's you).
 * **author_email**. Contact email (so people can reach out to you if problems arise).
 ```{r }
-author_name  = "Marcos Longo"
-author_email = "mlongo@lbl.gov"
+author_name  = "Thats You"
+author_email = "youremail@somewhere.gov"
 ```
 
 ## Site information
@@ -113,13 +116,13 @@ the same texture (this should be revisited once I figure out the soil layers).
 * **force_natural**. Should we overwrite the fraction cover of global gridded data set, so natural vegetation becomes 100%?
 
 ```{r, label='site-settings'}
-xid           = "gyf"
+xid           = "paracouGUF"
 site_desc     = "Guyaflux tower at Paracou, French Guiana"
-dat_version   = "1.1"
+dat_version   = "1.3"
 site_lon      = -52.912222
 site_lat      =   5.281667
 site_alt      =  30.000000
-dxy           =   0.1
+dxy           =  1.0
 site_xsand    = 56.2
 site_xclay    = 37.2
 site_organic  = 31.1
@@ -131,9 +134,11 @@ force_natural = TRUE
 
 Additional settings for retrieving the surface gridded data
 
-* **pcveg_min**. Minimum percentage of natural vegetation to consider when loading surface grid. This can be useful to avoid selecting a grid cell over the ocean when using a coastal site.
+* **pcveg_min**. Minimum percentage of natural vegetation to consider when loading surface grid. This can be useful to avoid selecting a grid cell over non-natural vegetation  when using a site in heavily degraded areas.
+* **landfrac_min**. Minimum fraction of land to consider when loading surface grid. This can be useful to avoid selecting a grid cell over the ocean when using a coastal site.
 ```{r, label='surf-data-settings'}
-pcveg_min = 8.00
+pcveg_min    = 8.00
+landfrac_min = 0.50
 ```
 
 This concludes the initial settings.  From this point on, you may not need to change anything,
@@ -149,18 +154,18 @@ Ensure the input and output paths
 dummy = dir.create(input_path ,showWarnings=FALSE,recursive=TRUE)
 ```
 
-First, we check whether the input surface data file is already available at the input path. In case it is not, we 
-download it.
+First, we check whether the input surface data file is already available at the input path. In case it is not, we download it.  Because some of the files may be very large, we temporarily expand R's default timeout for the operation to one day.
 ```{r, label='load-inputs'}
 
 # Find base name
 input_surfgrid = file.path(input_path,basename(url_surfgrid))
 
-# Download data in case they are not found.  We wrap the command in try because often the download
-# gives an error message because the file size does not correspond to the expected, even though
-# the file downloads fine.  If the file is actually corrupted, it will fail when we try to open it.
+# Download data in case they are not found.  Often these files are huge, so we tempo
 if (! file.exists(input_surfgrid)){
-  dummy = try(download.file(url=url_surfgrid,destfile=input_surfgrid),silent=TRUE)
+  orig.timeout = getOption("timeout")
+  dummy = options(timeout=86400)
+  dummy = download.file(url=url_surfgrid,destfile=input_surfgrid)
+  dummy = options(timeout=orig.timeout)
 }#end if (! file.exists(input_surfgrid))
 
 ```
@@ -173,21 +178,20 @@ Build the output file names, following the ELM/CLM convention.
 # Labels for describing the data set.
 ymd_now = today(tzone = "UTC")
 ymd_lab = sprintf("%4.4i%2.2i%2.2i",year(ymd_now),month(ymd_now),day(ymd_now))
-dxy_lab = sprintf("%.1fx%.1f",dxy,dxy)
 
 # Tag specific for this site, grid, and version (used for file and path names).
-site_tag  = paste0(xid,"_",dxy_lab,"_v",dat_version,"_c",ymd_lab)
+site_tag  = paste0("1x1pt-",xid,"_v",dat_version,"_c",ymd_lab)
 
-# Set output path to be the same as the suffix
-output_path = file.path(here_path,site_tag)
-dummy       = dir.create(output_path,recursive=TRUE,showWarnings=FALSE)
+#    Set output path to be the same as the site tag.
+site_path   = file.path(output_path,site_tag)
+dummy       = dir.create(site_path  ,recursive=TRUE,showWarnings=FALSE)
 
 # Domain file.  In case the file exists, remove it.
-output_domain   = file.path(output_path,paste0("domain_lnd_",site_tag,".nc"))
+output_domain   = file.path(site_path,paste0("domain.lnd.",site_tag,"_navy.nc"))
 if (file.exists(output_domain)) file.remove(output_domain)
 
 # Surface data file
-output_surfdata = file.path(output_path,paste0("surfdata_",site_tag,".nc"))
+output_surfdata = file.path(site_path,paste0("surfdata_",site_tag,".nc"))
 if (file.exists(output_surfdata)) file.remove(output_surfdata)
 ```
 
@@ -197,15 +201,19 @@ The domain file is written entirely from the information provided at the beginni
 
 First, we set the centre and edge of the grid cells. Make sure longitude is always set from $0^\circ$ to $360^\circ$, and that the centre of the latitude points are not too close to the poles.
 ```{r, label='set-coords'}
-# Ensure the longitude and latitude are correctly bounded.
-clon = site_lon %% 360.
-clat = max(-90+0.5*dxy,min(90-0.5*dxy,site_lat))
+
+# Find precision for the coordinates (typically 1% of the grid size).
+cprec = -floor(log10(dxy*0.01))
+
+# Standardise coordinates (and make sure latitude cannot exceed the poles).
+clon  = round(site_lon,cprec) %% 360.
+clat  = max(-90,min(90-0.5*dxy,round(site_lat,cprec)))
 
 # Find edges
-wlon = (clon - dxy) %% 360.
-elon = (clon + dxy) %% 360.
-slat = max(-90.,clat - dxy)
-nlat = min(+90.,clat + dxy)
+wlon = (clon - 0.5 * dxy) %% 360.
+elon = (clon + 0.5 * dxy) %% 360.
+slat = max(-90.,clat - 0.5 * dxy)
+nlat = min(+90.,clat + 0.5 * dxy)
 ```
 
 
@@ -455,12 +463,13 @@ glob_att = modifyList( glob_att, glob_new)
 Load coordinates, and identify the nearest grid point. 
 ```{r label='find-near-neighbour'}
 # Retrieve longitude and latitude
-in_lon   = melt(ncvar_get(nc=nc_gridin,"LONGXY"    )); names(in_lon) = c("x","y","lon"  )
-in_lat   = melt(ncvar_get(nc=nc_gridin,"LATIXY"    )); names(in_lat) = c("x","y","lat"  )
-in_veg   = melt(ncvar_get(nc=nc_gridin,"PCT_NATVEG")); names(in_veg) = c("x","y","pcveg")
+in_lon   = melt(ncvar_get(nc=nc_gridin,"LONGXY"      )); names(in_lon)  = c("x","y","lon"   )
+in_lat   = melt(ncvar_get(nc=nc_gridin,"LATIXY"      )); names(in_lat)  = c("x","y","lat"   )
+in_veg   = melt(ncvar_get(nc=nc_gridin,"PCT_NATVEG"  )); names(in_veg)  = c("x","y","pcveg" )
+in_land  = melt(ncvar_get(nc=nc_gridin,"LANDFRAC_PFT")); names(in_land) = c("x","y","fland" )
 
 # Create a tibble with coordinates
-in_coord = tibble(merge(merge(in_lon,in_lat),in_veg)) 
+in_coord = tibble(merge(merge(merge(in_lon,in_lat),in_veg),in_land)) 
 
 
 # Define function that takes longitude/latitude and find distances.
@@ -471,11 +480,13 @@ rdist_wrap = function(lon,lat,lon0,lat0){
 
 # Find the distances.
 in_coord = in_coord %>%
-           mutate( dist = rdist_wrap(lon=lon,lat=lat,lon0=site_lon,lat0=site_lat))
+           mutate( dist = rdist_wrap(lon=lon,lat=lat,lon0=clon,lat0=clat))
 
 
 # Select the nearest neighbour
-in_near = in_coord %>% filter(pcveg > pcveg_min) %>% slice(which.min(dist))
+in_near = in_coord %>% 
+          filter((pcveg > pcveg_min) & (fland > landfrac_min)) %>% 
+          slice(which.min(dist))
 in_xy   = in_near %>% select(c(x,y)) %>% unlist(); names(in_xy) = NULL
 ```
 
@@ -500,6 +511,11 @@ for (d in seq_along(nc_dnames)){
       nc_dimnow = modifyList( x   = nc_dimnow
                             , val = list( len = 1L, vals = sequence(1L))
                             )#end modifyList
+   # }else if (d_dname %in% "time"){
+   #    # Time is not properly set in some nc maps.
+   #    nc_dimnow = modifyList( x   = nc_dimnow
+   #                          , val = list(vals=seq_along(nc_dimnow$vals))
+   #                          )#end modifyList
    }#end if (nc_dimnow)
 
    # Decide whether to append calendar information
@@ -623,8 +639,8 @@ for (u in is_unused){
 In case texture and soil organic content were provided, we use the site-specific information instead. Currently the site-specific soil texture will be assumed constant, and the site-specific soil organic contant will be used to re-scale all the layers.  We also replace the longitude and latitude information with the site-specific information. Finally, in case `force_natural` is true, we impose percentage of natural vegetation to 100%.
 ```{r, label='set-site-specific'}
 # Re-set coordinates
-nc_values$LONGXY = 0. * nc_values$LONGXY + site_lon
-nc_values$LATIXY = 0. * nc_values$LATIXY + site_lon
+nc_values$LONGXY = 0. * nc_values$LONGXY + clon
+nc_values$LATIXY = 0. * nc_values$LATIXY + clat
 
 # Re-define percentage of natural vegetation to 100%, and other classes to 0%
 if (force_natural){
