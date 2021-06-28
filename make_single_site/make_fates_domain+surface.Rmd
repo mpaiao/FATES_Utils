@@ -82,8 +82,7 @@ We will only download the data in case we cannot locate these files at `input_ne
 If you have your own set of input data, set a dummy URL with the actual file name.  For example, if you have the domain file `my_surface_grid_file.nc`,
  set `url.surfgrid="https://localhost/my_surface_grid_file.nc"`.
 ```{r, label='input-url'}
-url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_16pfts_Irrig_CMIP6_simyr2000_c190214.nc"
-url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/surfdata_0.47x0.63_16pfts_Irrig_CMIP6_simyr2000_c180508.nc"
+url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.24/surfdata_0.125x0.125_hist_16pfts_Irrig_CMIP6_simyr2005_c190613.nc"
 ```
 
 
@@ -94,7 +93,7 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **author_name**. Person who is generating these files (typically it's you).
 * **author_email**. Contact email (so people can reach out to you if problems arise).
 ```{r }
-author_name  = "Thats You"
+author_name  = "That's You"
 author_email = "youremail@somewhere.gov"
 ```
 
@@ -690,6 +689,7 @@ if (is_site_organic){
 }#end if (! is.na(site_organic))
 ```
 
+
 In case depth to bedrock in known, include it in the list of variables.
 ```{r, label='set-bedrock'}
 if (! is.na(site_bedrock)){
@@ -697,7 +697,7 @@ if (! is.na(site_bedrock)){
    nc_vars$zbedrock = ncvar_def( name     = "zbedrock"
                                , units    = "m"
                                , dim      = nc_dims[c("lsmlon","lsmlat")]
-                               , missval  = nc_input$var$PCT_SAND$missval
+                               , missval  = nc_gridin$var$PCT_SAND$missval
                                , longname = "soil depth"
                                )#end ncvar_def 
 
@@ -705,6 +705,27 @@ if (! is.na(site_bedrock)){
    nc_values$zbedrock = array(data=site_bedrock,dim=c(1,1))
 }#end if (! is.na(site_bedrock))
 ```
+
+
+Variable `T_BUILDING_MAX` used to be part of every surface data.  Apparently CLM dropped this variable, but ELM continues to require it.  If the reference surface data set is a recent one, this variable will be missing and the surface data file will not work with ELM.  To address this, we use `T_BUILDING_MIN` to re-generate `T_BUILDING_MAX`, by applying an offset compatible with older surface data files.
+```{r, label='set-t-building-max'}
+if (! ("T_BUILDING_MAX" %in% names(nc_vars))){
+   # Create maximum interior building temperature
+   nc_vars$T_BUILDING_MAX = ncvar_def( name     = "T_BUILDING_MAX"
+                                     , units    = "K"
+                                     , dim      = nc_dims[c("lsmlon","lsmlat","numurbl")]
+                                     , missval  = nc_gridin$var$T_BUILDING_MIN$missval
+                                     , longname = "maximum interior building temperature"
+                                     )#end ncvar_def 
+
+   # Append value to the list of values
+   dT_building              = c(15,rep(39,times=nc_dims$numurbl$len-1))
+   nc_values$T_BUILDING_MAX = nc_values$T_BUILDING_MIN + dT_building
+}# end if (! ("T_BUILDING_MAX" %in% names(nc_vars)))
+
+```
+
+
 
 
 Create the output files.
