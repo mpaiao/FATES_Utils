@@ -55,10 +55,12 @@ This script reads in hourly meteorological data from towers or automatic weather
 and generates the meteorological driver files for FATES.  The input file must be a csv 
 file containing the following variables:
 
-* Year
-* Month
-* Day
-* Hour
+* Time.  Either multiple vectors defining the time, or one column with full time information, which should contain the following variables (any order).
+  - year
+  - month
+  - day
+  - hour
+  - minute
 * Atmospheric pressure
 * Air temperature
 * Humidity. One of the following must be provided (and this order of preference):
@@ -136,7 +138,7 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **datprov_email**. Data provider email.
 * **data_usage_notes**. Brief data usage note message.
 ```{r }
-author_name  = "Thats You"
+author_name  = "Thats you"
 author_email = "yourself@somewhere.gov"
 datprov_name = "Data Provider"
 datprov_email = "amazing.collaborator@somewhere.edu"
@@ -164,7 +166,7 @@ Provide some basic information about the tower:
 ```{r, label='met-driver-settings'}
 xid         = "paracouGUF"
 site_desc   = "Guyaflux tower at Paracou, French Guiana"
-dat_version = "1.3"
+dat_version = "1.4"
 site_lon    = -52.912222
 site_lat    =   5.281667
 site_alt    =  30.000000
@@ -173,12 +175,45 @@ dxy         =   1.0
 undef       = -9999.99
 ```
 
-UTC offset, if data are provided in local time. For example, if the location is in the 
-Western Hemisphere and the time zone is UTC-3, then utc_off should be -3.
-**Important**.  If the input data are already in UTC, then set utc_off to zero.
+Useful variables for time conversion:
+* **UTC offset**, if data are provided in local time. For example, if the location is in the 
+Western Hemisphere and the time zone is UTC-3, then utc_off should be -3 (**Important**.  If the input data are already in UTC, then set `utc_off` to zero).
+* **Year offset**, if year is provided with two digits. For example, if the data are for 2003-2016 but the years are in 03-16 format, set `year_off` to 2000.  If the year is already provided in four digits, set it to zero.
 ```{r, label='utc-settings'}
-utc_off = -3
+utc_off  = -3
+year_off = 0
 ```
+
+
+Next, we identify how time information is provided, by setting variable `date_colname`.  
+* If `date_colname=NA_character_`, then variable `dateinfo` must contain the names of the columns corresponding to year (`year`), month (`month`), day (`day`), hour (`hour`), and minute (`min`), respectively. If minute is absent, set it to `NA_character_`.
+* Otherwise, `date_colname` indicates the name of the column in the input data that has the time information (_case sensitive_). In this case, variable `dateinfo` should indicate the position of each piece of the time information, following the examples below.  If minute is absent, set it to `NA_integer_`
+
+**Example of time string** | **year** | **month** | **day** | **hour** | **min**
+---------------------------|----------|-----------|---------|----------|---------
+06/29/2021 14:30:22        | 3        | 1         | 2       | 4        | 5
+06/29/2021 14:30           | 3        | 1         | 2       | 4        | 5
+29/06/2021 14:30           | 3        | 2         | 1       | 4        | 5
+2021-06-29 14:30           | 1        | 2         | 3       | 4        | 5
+06/29/2021 14              | 3        | 1         | 2       | 4        | NA
+
+```{r, label='time-settings'}
+# Is date provided as multi-column (TRUE) or single string (FALSE)?
+date_colname = NA_character_
+
+# Time information.  
+dateinfo = c( year = "year", month = "month", day = "day", hour = "hour", min = "min")
+
+# Examples of time information:
+# - If date_colname is NA_character_
+# dateinfo = c( year = "Year", month = "Month", day = "Date", hour = "Hour", min = "Minute")
+#
+# - If date_colname is a column in the input data.
+# dateinfo = c( year = 3, month = 1, day = 2, hour = 4, min = 5)
+
+```
+
+
 
 How to interpret the time stamp.  Currently there are three options, as described below.
 To help illustrating the cases, we give examples of the beginning and end of average
@@ -347,7 +382,49 @@ Read in the csv file.
 ```{r, label='csv-load'}
 metd_orig = read.csv(file=input_file,header=TRUE,comment.char="",stringsAsFactors=FALSE)
 metd_orig = tibble(metd_orig)
-metd_orig = mutate( .data  = metd_orig
+```
+
+
+Standardise time. It must be a vector of type `lubritime`.
+```{r, label='standard-time'}
+if (is.na(date_colname)){
+   # Create minute column in case it is missing.
+   if (is.na(dateinfo[["min"]])){
+      dateinfo[["min"]] = "Minute"
+      metd_orig$Minute  = rep(x=0,times=nrow(metd_orig))
+   }#end if (is.na(dateinfo[["min"]]))
+   
+   # Find date variables and rename them.
+   idx                   = match(dateinfo,names(metd_orig))
+   names(metd_orig)[idx] = names(dateinfo)
+
+}else{
+   # Split the time label
+   decomp_time = lapply( X   = tstrsplit( metd_orig[[date_colname]],"[^0-9]")
+                       , FUN = as.numeric
+                       )#end lapply
+
+   # In case minute is missing, append a vector with zeroes.
+   if (is.na(dateinfo[["min"]])){
+      decomp_time       = c(decomp_time,list(0*decomp_time[[1]]))
+      dateinfo[["min"]] = length(decomp_time)
+   }#end if (is.na(dateinfo[["min"]]))
+
+   # Select list elements that are useful for time.
+   decomp_time        = decomp_time[dateinfo]
+   names(decomp_time) = names(dateinfo)
+   decomp_time        = as.data.table(decomp_time)
+
+   # Merge time information to the main tibble.
+   metd_orig = as_tibble(cbind(metd_orig,decomp_time))
+   
+   
+}#end if (is.na(date_colname) && is.na(dateinfo[["min"]]))
+
+
+# Create lubridate-friendly time stamp
+metd_orig = metd_orig %>%
+            mutate( year   = year + year_off
                   , tstamp = make_datetime( year   = year
                                           , month  = month
                                           , day    = day
@@ -711,7 +788,7 @@ for (m in sequence(nmet)){
                               )#end ncvar_def
    nc_vlist$time   = ncvar_def( name     = "time"
                               , units    = paste0( "days since ",as.character(first_this)
-                                                 , " 00:00:00"
+                                                 , " 00:00:00 UTC"
                                                  )#end paste0
                               , dim      = nc_t
                               , missval  = undef
@@ -773,7 +850,7 @@ for (m in sequence(nmet)){
       #Add variable information
       dummy = ncvar_put( nc    = nc_conn
                        , varid = v_vfates
-                       , vals  = array(data=met_fates[[v_vfates]],dim=xyt)
+                       , vals  = array(data=met_this[[v_vfates]],dim=xyt)
                        )#end ncvar_put
 
       #Add attribute to highlight this is time-dependent
