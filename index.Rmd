@@ -1,0 +1,17 @@
+---
+title: "FATES Utilities"
+author: "Marcos Longo"
+date: "14-Jul-2021"
+---
+
+These documents and scripts are provided to support the set up of 
+[FATES](https://github.com/NGEET/fates) for single-site simulations.
+
+* [make_fates_met_driver.Rmd](make_fates_met_driver.html).  This R Markdown file creates single-point meteorological drivers for ELM or CLM (FATES' host models).
+* [make_fates_domain+surface.Rmd](make_fates_domain+surface.html).  This R Markdown file creates single-point domain and surface files for ELM or CLM.
+* [create_case_hlm-fates.sh](create_case_hlm-fates.html).  This shell script creates a case for a single-point simulation using either ELM-FATES or CLM-FATES (it can be used for non-FATES simulations too).
+* [fates_plot_monthly.Rmd](fates_plot_monthly.html).  This script reads in ELM or CLM output (with or without FATES), and generates some time series of variables of interest.
+
+
+**Important**
+1. To run `fates_plot_monthly.Rmd`, make sure to download the directory "RUtils" available on [GitHub](https://github.com/mpaiao/FATES_Utils), and set variable `srcdir` with the local location.

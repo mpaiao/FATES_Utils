@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Marcos Longo" />
+
+
+<title>FATES post-processing script</title>
+
+<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+<link rel="stylesheet" href="styles.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">FATES Utilities</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="make_fates_met_driver.html">Meteorological driver</a>
+</li>
+<li>
+  <a href="make_fates_domain+surface.html">Surface/Domain files</a>
+</li>
+<li>
+  <a href="create_case_hlm-fates.html">Set up single-site runs</a>
+</li>
+<li>
+  <a href="fates_plot_monthly.html">Single-site visualisation with R</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">FATES post-processing script</h1>
+<h4 class="author">Marcos Longo</h4>
+<h4 class="date">12-Jul-2021</h4>
+
+</div>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This R Markdown document guides how to build a set of output figures for a FATES simulation at a single site. The script is (permanently?) under development, and new features may be incorporated over time.</p>
+<p>To run this script, you will need to have FATES simulations, and a few additional scripts (typically located at the <code>&lt;path to&gt;/RUtils</code> directory. Most scripts are generic utilities, but you may want to check and edit the following scripts: * <strong>fates_varlist.r</strong>. This script contains a list of FATES-specific variables, which may be grouped by size class, age, PFT. * <strong>hlm_varlist.r</strong>. This script contains a list of host land model variables, which may be useful for verifying the biogeophysical cycles.</p>
+<p>Check the comments of these scripts for additional details.</p>
+</div>
+<div id="reset-session" class="section level1">
+<h1>Reset session</h1>
+<p>Use this chunk to fully reset R.</p>
+<pre class="r"><code># Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) &gt; 0){
+   dummy = sapply(X=paste0(&quot;package:&quot;,plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) &gt; 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())</code></pre>
+</div>
+<div id="initial-settings" class="section level1">
+<h1>Initial settings</h1>
+<p>First we set some useful paths and initial settings.</p>
+<ul>
+<li><code>home.path</code>. The main path. Typically the main home/scratch directory where sub-directories are located.</li>
+<li><code>hesm.path</code>. The main path to where the simulation outputs are written.</li>
+<li><code>simul</code>. Label for the simulation to be plotted (typically also a sub-directory in <code>hesm.path</code>).</li>
+<li><code>simul.desc</code>. Simulation description to be printed in plot titles. Not a path, but it is easier to forget setting this variable if it is not right next to <code>simul</code>.</li>
+<li><code>simul.root</code>. List of all possible locations for output netCDF files. Normally both ELM and CLM paths should be included, so the script works with both.</li>
+<li><code>srcdir</code>. Directory with additional R scripts that have extra settings. <strong>Important</strong>. This must be downloaded from <a href="https://github.com/mpaiao/FATES_Utils">GitHub</a>.</li>
+<li><code>plot.root</code>. Directory to where plots will be written.</li>
+</ul>
+<pre class="r"><code>home.path  = path.expand(&quot;~&quot;)
+hesm.root  = file.path(home.path,&quot;Documents/LocalData/FATES/Simulations&quot;) # Current directory.
+simul      = &quot;D0005_ParacouTest_CLM_FATES&quot;                     # File label for current simulation.
+simul.desc = &quot;D0005: Paracou test (CLM-FATES)&quot;                 # Current simulation description.
+simul.root = c( file.path(hesm.root,simul,&quot;run&quot;)               # Main simulation path, list all
+              , file.path(hesm.root,simul,&quot;lnd&quot;,&quot;hist&quot;)        #   possibilities, the code will
+              )#end c                                          #   use the first valid one.
+srcdir     = file.path(home.path,&quot;Util/RUtils&quot;)                # Path with additional scripts.
+plot.root  = file.path(hesm.root,&quot;figures&quot;,simul)              # Directory for figures.
+
+# Output path for time series
+tspoi.path    = file.path(plot.root,&quot;tseries_poi&quot;  )
+tstheme.path  = file.path(plot.root,&quot;tseries_theme&quot;)
+tsage.path    = file.path(plot.root,&quot;tseries_age&quot;  )
+tsdbh.path    = file.path(plot.root,&quot;tseries_dbh&quot;  )
+tspft.path    = file.path(plot.root,&quot;tseries_pft&quot;  )
+
+# Create output paths
+dummy      = dir.create(tspoi.path  ,recursive = TRUE,showWarnings = FALSE)
+dummy      = dir.create(tstheme.path,recursive = TRUE,showWarnings = FALSE)
+dummy      = dir.create(tsage.path  ,recursive = TRUE,showWarnings = FALSE)
+dummy      = dir.create(tsdbh.path  ,recursive = TRUE,showWarnings = FALSE)
+dummy      = dir.create(tspft.path  ,recursive = TRUE,showWarnings = FALSE)</code></pre>
+<p>Set time range to be included in the plots.</p>
+<pre class="r"><code>whena      = &quot;01/01/2004&quot; # First time (MM/DD/YYYY)
+whenz      = &quot;12/01/2019&quot; # Last time (MM/DD/YYYY)</code></pre>
+<p><em>Optional</em>. Here we define the plant functional types to include in the plots. We define the basic PFT information in variable <code>pftinfo</code>, which is a list. Each list element contains the following sub-elements: * <em>id</em>. PFT index in FATES. * <em>key</em>. Short name to define PFT in data structures. Prefer strings that start with a letter, and have only letters, numbers, <code>.</code>, and <code>_</code>. * <strong>short</strong>. Short name to define PFT in figure legends. Feel free to use spaces, <code>plotmath</code> symbols and other characters, but keep them short. * <strong>desc</strong>. Long name to define PFTs, for general information. * <strong>colour</strong>. Colour associated with PFT. Prefer to use R’s hexadecimal format (e.g. <code>"#1F78B4"</code>).</p>
+<p>In some cases setting names and descriptions for PFTs will not be feasible (e.g., when many PFTs are included). In this case, set <code>user.pftinfo=FALSE</code>.</p>
+<pre class="r"><code># Use the user-defined PFT settings?
+user.pftinfo = TRUE
+
+# List of PFTs, in case user.pftinfo is TRUE
+n            = 0
+pftinfo      = list()
+n            = n + 1
+pftinfo[[n]] = list( id     = 1
+                   , key    = &quot;pft01&quot;
+                   , short  = &quot;GenBLTr&quot;
+                   , desc   = &quot;Generic Broadleaf Tropical Tree&quot;
+                   , colour = &quot;#66C2A4&quot;
+                   )#end list</code></pre>
+<p>General plot options for <code>ggplot</code></p>
+<pre class="r"><code>gg.device  = c(&quot;pdf&quot;) # Output devices to use (Check ggsave for acceptable formats)
+gg.depth   = 300      # Plot resolution (dpi)
+gg.ptsz    = 18       # Font size
+gg.width   = 8.5      # Plot width (units below)
+gg.height  = 8.5      # Plot height (units below)
+gg.units   = &quot;in&quot;     # Units for plot size
+gg.screen  = TRUE     # Show plots on screen as well?
+gg.tfmt    = &quot;%Y&quot;     # Format for time 
+
+ndevice = length(gg.device)</code></pre>
+</div>
+<div id="main-script" class="section level1">
+<h1>Main script</h1>
+<p><strong>Note:</strong> Changes beyond this point are only needed if you are developing the notebook.</p>
+<p>Load packages and tools</p>
+<pre class="r"><code>source(file.path(srcdir,&quot;load.everything.r&quot;))</code></pre>
+<pre><code>##  + Load scripts from /Users/marcoslongo/Util/RUtils.</code></pre>
+<pre class="r"><code>isok = require(ncdf4)</code></pre>
+<pre><code>## Loading required package: ncdf4</code></pre>
+<pre class="r"><code>if (! isok) stop(&quot;This script requires package \&quot;ncdf4\&quot;.&quot;)</code></pre>
+<p>Initial settings.</p>
+<pre class="r"><code>#--- Convert strings to dates.
+whena  = chron(whena)
+whenz  = chron(whenz)
+montha = nummonths(whena)
+yeara  = numyears(whena)
+monthz = nummonths(whenz)
+yearz  = numyears(whenz)
+nyears = yearz-yeara
+#---~---
+
+
+#--- Build time series.
+if (yeara == yearz){
+  when = chron(paste(seq(from=montha,to=monthz,by=1)),1,yeara,sep=&quot;/&quot;)
+}else{
+  when = c( chron(paste(seq(from=montha,to=12,by=1),1,yeara,sep=&quot;/&quot;))
+          , chron(paste( rep(seq(from=1,to=12,by=1),times=nyears-1)
+                       , 1
+                       , rep(seq(from=yeara+1,to=yearz-1,by=1),each=12)
+                       , sep=&quot;/&quot;
+                       )#end paste
+                 )#end chron
+          , chron(paste(seq(from=1,to=monthz,by=1),1,yearz,sep=&quot;/&quot;))
+          )#end c  
+}#end if (yeara == yearz)
+#---~---
+
+
+#--- Number of times
+nwhen = length(when)
+#---~---</code></pre>
+<p>Use the first time to load a few settings (dimensions, soil information).</p>
+<pre class="r"><code>if (&quot;nc.conn&quot; %in% ls()){dummy = nc_close(nc.conn); rm(nc.conn)}
+
+#--- Extract times and build all possible file names
+w.month    = nummonths(when[1])
+w.year     = numyears (when[1])
+w.ymlab    = sprintf(&quot;%4.4i-%2.2i&quot;,w.year,w.month)
+hlm.midfix = c(&quot;elm.h0&quot;,&quot;clm2.h0&quot;)
+nc.base    = paste0(simul,&quot;.&quot;,hlm.midfix,&quot;.&quot; ,w.ymlab,&quot;.nc&quot;)
+nc.file    = file.path( rep(x = simul.root, times = length(nc.base   ))
+                      , rep(x = nc.base   , each  = length(simul.root))
+                      )#end file.path
+#---~---
+  
+
+  
+#--- Identify which model and path to use.
+idx = which(file.exists(nc.file))
+if (length(idx) &gt; 0){
+   #--- Load the correct file.
+   nc.file=(nc.file[idx])[1]
+   nc.base=basename(nc.file)
+   cat0(&quot; + Read data from file &quot;,nc.base,&quot;.&quot;)
+   #---~---
+
+   #--- Remember which path and model to use for other times
+   simul.root = dirname(nc.file)
+   sel.midfix = mapply(FUN=grepl,pattern=as.list(hlm.midfix),MoreArgs=list(x=nc.base))
+   hlm.midfix = hlm.midfix[sel.midfix]
+   #---~---
+}else{
+   #--- No file was found. Stop the run
+   cat0(&quot; + Neither CLM nor ELM expected files found.&quot;)
+   cat0(&quot;   - Expected ELM file:    &quot;,nc.file[1],&quot;.&quot;)
+   cat0(&quot;   - Expected CLM file:    &quot;,nc.file[4],&quot;.&quot;)
+   cat0(&quot;   - Alternative ELM file: &quot;,nc.file[2],&quot;.&quot;)
+   cat0(&quot;   - Alternative CLM file: &quot;,nc.file[3],&quot;.&quot;)
+   stop(&quot; Invalid files, perhaps incorrect simulation?&quot;)
+   #---~---
+}#end if (length(idx) &gt; 0)
+#---~---
+  
+  
+#--- Open NetCDF connection and retrieve variable names
+nc.conn  = nc_open(filename=nc.file)
+nc.nvars = nc.conn$nvars
+nc.ndims = nc.conn$ndims
+nc.dlist = rep(NA_character_,times=nc.ndims)
+nc.vlist = rep(NA_character_,times=nc.nvars)
+for (d in sequence(nc.ndims)) nc.dlist[d] = nc.conn$dim[[d]]$name
+for (v in sequence(nc.nvars)) nc.vlist[v] = nc.conn$var[[v]]$name
+#---~---
+
+#---~---
+# Gather dimension information, then initialise matrices
+#---~---
+
+#--- List of age classes
+idxage   = match(&quot;fates_levage&quot;,nc.dlist)
+if (is.finite(idxage)){
+   ages     = nc.conn$dim[[idxage]]$vals
+   nages    = nc.conn$dim[[idxage]]$len
+   agekeys  = sprintf(&quot;age.%3.3i&quot;,ages)
+   agelabs  = c( paste0(&quot;paste(&quot;,ages[-nages],&quot;-&quot;,ages[-1],&quot;)&quot;)
+               , paste0(&quot;paste(&quot;,ages[nages],&quot;-infinity)&quot;)
+               )#end c
+   agelabs  = parse(text=agelabs)
+}else{
+   ages     = numeric(0L)
+   nages    = 0L
+   agekeys  = character(0L)
+   agelabs  = character(0L)
+}#end if (is.na(idxage))
+#---~---
+
+#--- List of size classes
+idxdbh   = match(&quot;fates_levscls&quot;,nc.dlist)
+if (is.finite(idxdbh)){
+   dbhs     = nc.conn$dim[[idxdbh]]$vals
+   ndbhs    = nc.conn$dim[[idxdbh]]$len
+   dbhkeys  = sprintf(&quot;dbh.%3.3i&quot;,dbhs)
+   dbhlabs  = c( paste0(&quot;paste(&quot;,dbhs[-ndbhs],&quot;-&quot;,dbhs[-1],&quot;)&quot;)
+               , paste0(&quot;paste(&quot;,dbhs[ndbhs],&quot;-infinity)&quot;)
+               )#end dbhlabs
+   dbhlabs  = parse(text=dbhlabs)
+}else{
+   dbhs    = numeric(0L)
+   ndbhs   = 0L
+   dbhkeys = character(0L)
+   dbhlabs = character(0L)
+}#end if (is.finite(idxdbh))
+#---~---
+ 
+#--- List of PFT classes (only if not using user-defined classes).
+idxpft   = match(&quot;fates_levpft&quot;,nc.dlist)
+if (! is.finite(idxpft)){
+   #--- PFT index not found. Skip PFTs altogether.
+   pftinfo = data.table( id               = numeric(0L)
+                       , key              = character(0L)
+                       , short            = character(0L)
+                       , desc             = character(0L)
+                       , colour           = character(0L)
+                       , stringsAsFactors = FALSE
+                       )#end data.table
+   #---~---
+}else if (! user.pftinfo){
+   #--- Select all PFTs available
+   pftids  = nc.conn$dim[[idxpft]]$vals
+   npftids = nc.conn$dim[[idxpft]]$len
+   #---~---
+
+   #--- Build data table with all the PFTs.
+   pftinfo = data.table( id               = pftids
+                       , key              = sprintf(&quot;pft%2.2i&quot; ,pftids)
+                       , short            = sprintf(&quot;PFT%2.2i&quot; ,pftids)
+                       , desc             = sprintf(&quot;PFT %2.2i&quot;,pftids)
+                       , colour           = brewer.pal(n=npftids,name=&quot;PuBuGn&quot;)
+                       , stringsAsFactors = FALSE
+                       )#end data.table
+   #---~---
+}else{
+   #--- Convert user-defined pftinfo to a &quot;data table&quot; object
+   pftinfo  = do.call(what=rbind,args=lapply(X=pftinfo,FUN=as.data.table,stringsAsFactors=FALSE))
+}#end if (! is.finite(idxpft))
+#---~---
+
+#--- Set number of PFTs (active PFTs only) 
+npfts = nrow(pftinfo)
+#---~---
+   
+#--- Retrieve all variables by age class. We also test whether
+nc.byage = nc.vlist[grepl(pattern=&quot;_BY_AGE$&quot;,x=nc.vlist)]
+nc.pref  = tolower(gsub(pattern=&quot;_BY_AGE$&quot;,replacement=&quot;&quot;,x=nc.byage))
+nc.keep  = nc.pref %in% fatesvar$vnam
+no.byage = nc.byage[! nc.keep]
+nc.byage = nc.byage[  nc.keep]
+nbyage   = length(nc.byage)
+#---~---
+
+#---~---
+#    Retrieve all variables by size class. We also test whether total LAI can be
+# obtained from under storey and canopy.
+#---~---
+is.size   = grepl(pattern=&quot;_SCLS$&quot;,x=nc.vlist) | grepl(pattern=&quot;_SCPF$&quot;,x=nc.vlist)
+nc.bydbh  = nc.vlist[is.size]
+nc.pref   = gsub(pattern=&quot;_SCLS$&quot;,replacement=&quot;&quot;,x=nc.bydbh)
+nc.pref   = gsub(pattern=&quot;_SCPF$&quot;,replacement=&quot;&quot;,x=nc.pref )
+nc.pref   = tolower(nc.pref)
+nc.keep   = nc.pref %in% fatesvar$vnam
+no.bydbh  = nc.bydbh[! nc.keep]
+nc.bydbh  = unique(nc.bydbh[  nc.keep])
+if (  all(c(&quot;LAI_UNDERSTORY_SCLS&quot;,&quot;LAI_CANOPY_SCLS&quot;) %in% nc.bydbh)
+   &amp;&amp; (! &quot;LAI_SCLS&quot; %in% nc.bydbh) ){
+   nc.bydbh    = unique(c(nc.bydbh,&quot;LAI_SCLS&quot;))
+   laidbh.last = TRUE
+}else if (  all(c(&quot;LAI_UNDERSTORY_SCPF&quot;,&quot;LAI_CANOPY_SCPF&quot;) %in% nc.bydbh)
+   &amp;&amp; (! &quot;LAI_SCPF&quot; %in% nc.bydbh) ){
+   nc.bydbh    = unique(c(nc.bydbh,&quot;LAI_SCPF&quot;))
+   laidbh.last = TRUE
+}else{
+   laidbh.last = FALSE
+}#end if (  all(c(&quot;LAI_UNDERSTORY_SCLS&quot;,&quot;LAI_CANOPY_SCLS&quot;) %in% nc.bydbh)
+nbydbh    = length(nc.bydbh)
+#---~---
+
+    
+#---~---
+#    Retrieve all variables by PFT. We also test whether total LAI can be
+# obtained from under storey and canopy.
+#---~---
+is.pft    = grepl(pattern=&quot;_SCPF$&quot;,x=nc.vlist)
+nc.bypft  = nc.vlist[is.pft]
+nc.pref   = tolower(gsub(pattern=&quot;_SCPF$&quot;,replacement=&quot;&quot;,x=nc.bypft ))
+nc.keep   = nc.pref %in% fatesvar$vnam
+no.bypft  = nc.bypft[! nc.keep]
+nc.bypft  = unique(nc.bypft[  nc.keep])
+if (  all(c(&quot;LAI_UNDERSTORY_SCPF&quot;,&quot;LAI_CANOPY_SCPF&quot;) %in% nc.bypft)
+   &amp;&amp; (! &quot;LAI_SCPF&quot; %in% nc.bypft) ){
+   nc.bypft    = unique(c(nc.bypft,&quot;LAI_SCPF&quot;))
+   laipft.last = TRUE
+}else{
+   laipft.last = FALSE
+}#end if (  all(c(&quot;LAI_UNDERSTORY_SCPF&quot;,&quot;LAI_CANOPY_SCPF&quot;) %in% nc.bypft)
+nbypft    = length(nc.bypft)
+#---~---
+
+
+#--- Retrieve all &quot;1D&quot; variables that are available at the host model.
+nc.pref   = tolower(x=nc.vlist)
+nc.keep   = nc.pref %in% hlm1dvar$vnam
+no.hlm1d  = nc.vlist[! nc.keep]
+nc.hlm1d  = nc.vlist[  nc.keep]
+if (  ( all(c(&quot;QSOIL&quot;,&quot;QVEGT&quot;,&quot;QVEGE&quot;) %in% nc.bydbh) )
+   &amp;&amp; (! &quot;QEVTR&quot; %in% nc.bydbh) ){
+   nc.hlm1d = unique(c(nc.bydbh,&quot;QEVTR&quot;))
+   etr.last = TRUE
+}else{
+   etr.last = FALSE
+}#end if (all(c(&quot;QSOIL&quot;,&quot;QVEGT&quot;,&quot;QVEGE&quot;) %in% nc.bydbh))
+nhlm1d    = length(nc.hlm1d)
+#---~---
+
+
+#--- Initialise list of variables by age class.
+byage  = list()
+for (a in sequence(nbyage)){
+   nc.nvnow        = nc.byage[a]
+   nc.pref         = tolower(gsub(pattern=&quot;_BY_AGE$&quot;,replacement=&quot;&quot;,x=nc.nvnow))
+   f               = match(nc.pref,fatesvar$vnam)
+   f.vnam          = fatesvar$vnam[f]
+   byage[[f.vnam]] = matrix(data=NA_real_,nrow=nwhen,ncol=nages,dimnames=list(NULL,agekeys))
+}#end for (a in sequence(nbyage))
+#---~---
+
+#--- Initialise list of variables by size class
+bydbh = list()
+for (d in sequence(nbydbh)){
+   nc.nvnow        = nc.bydbh[d]
+   nc.pref         = gsub(pattern=&quot;_SCLS$&quot;,replacement=&quot;&quot;,x=nc.nvnow)
+   nc.pref         = gsub(pattern=&quot;_SCPF$&quot;,replacement=&quot;&quot;,x=nc.pref )
+   nc.pref         = tolower(nc.pref)
+   f               = match(nc.pref,fatesvar$vnam)
+   f.vnam          = fatesvar$vnam[f]
+   bydbh[[f.vnam]] = matrix(data=NA_real_,nrow=nwhen,ncol=ndbhs,dimnames=list(NULL,dbhkeys))
+}#end for (d in sequence(nbydbh))
+#---~---
+
+#--- Initialise list of variables by PFT class
+bypft = list()
+for (p in sequence(nbypft)){
+   nc.nvnow        = nc.bypft[p]
+   nc.pref         = tolower(gsub(pattern=&quot;_SCPF$&quot;,replacement=&quot;&quot;,x=nc.nvnow))
+   nc.pref         = tolower(nc.pref)
+   f               = match(nc.pref,fatesvar$vnam)
+   f.vnam          = fatesvar$vnam[f]
+   bypft[[f.vnam]] = matrix(data=NA_real_,nrow=nwhen,ncol=npfts,dimnames=list(NULL,pftinfo$key))
+}#end for (d in sequence(nbypft))
+#---~---
+
+#--- Initialise 1D variables available at the HLM
+hlm1d = as.data.table( matrix( data     = NA_real_
+                             , nrow     = nwhen
+                             , ncol     = nhlm1d
+                             , dimnames = list(NULL,tolower(nc.hlm1d))
+                             )#end matrix
+                     )#end as.data.table
+#---~---
+
+
+#--- Load soil layers
+slayer = data.table( zsoi   = ncvar_get(nc=nc.conn,varid=&#39;ZSOI&#39;  )
+                   , dzsoi  = ncvar_get(nc=nc.conn,varid=&#39;DZSOI&#39; )
+                   , bsw    = ncvar_get(nc=nc.conn,varid=&#39;BSW&#39;   )
+                   , hksat  = ncvar_get(nc=nc.conn,varid=&#39;HKSAT&#39; )
+                   , sucsat = ncvar_get(nc=nc.conn,varid=&#39;SUCSAT&#39;)
+                   , watsat = ncvar_get(nc=nc.conn,varid=&#39;WATSAT&#39;)
+                   )#end data.table
+#---~---
+
+
+#--- Load indices
+index_scpf = data.table( scls   = ncvar_get(nc=nc.conn,varid=&#39;fates_scmap_levscpf&#39;  )
+                       , pft    = ncvar_get(nc=nc.conn,varid=&#39;fates_pftmap_levscpf&#39; )
+                       )#end data.table
+#---~---
+
+# Close connection
+dummy   = nc_close(nc.conn)</code></pre>
+<p>Loop through the times, and load the data sets.</p>
+<pre class="r"><code>if (&quot;nc.conn&quot; %in% ls()){dummy = nc_close(nc.conn); rm(nc.conn)}</code></pre>
+<pre><code>## Error in R_nc4_close: NetCDF: Not a valid ID</code></pre>
+<pre class="r"><code>for (w in sequence(nwhen)){
+   #--- Extract times and build file name
+   w.month  = nummonths(when[w])
+   w.year   = numyears (when[w])
+   w.ymlab  = sprintf(&quot;%4.4i-%2.2i&quot;,w.year,w.month)
+   nc.base  = paste0(simul,&quot;.&quot;,hlm.midfix,&quot;.&quot; ,w.ymlab,&quot;.nc&quot;)
+   nc.file  = file.path(simul.root,nc.base)
+   #---~---
+
+   #-- Find conversion factors for monthly variables.
+   cmon.day = daymax(w.month,w.year)
+   cmon.hr  = day.hr  * cmon.day
+   cmon.min = day.min * cmon.day
+   cmon.sec = day.sec * cmon.day
+   #---~---
+
+  
+   #--- Open NetCDF connection and retrieve variable names
+   nc.conn  = nc_open(filename=nc.file)
+   nc.nvars = nc.conn$nvars
+   nc.vlist = rep(NA_character_,times=nc.nvars)
+   for (v in sequence(nc.nvars)) nc.vlist[v] = nc.conn$var[[v]]$name
+   #---~---
+
+    
+
+   #--- Read variables by age, and assign current values to the matrix.  
+   for (a in sequence(nbyage)){
+      nc.nvnow            = nc.byage[a]
+      nc.pref             = tolower(gsub(pattern=&quot;_BY_AGE$&quot;,replacement=&quot;&quot;,x=nc.nvnow))
+      f                   = match(nc.pref,fatesvar$vnam)
+      f.vnam              = fatesvar$vnam[f]
+      f.add0              = eval(parse(text=fatesvar$add0[f]))
+      f.mult              = eval(parse(text=fatesvar$mult[f]))
+      nc.dat              = ncvar_get(nc=nc.conn,varid=nc.nvnow)
+      byage[[f.vnam]][w,] = f.add0 + f.mult * nc.dat
+   }#end for (a in sequence(nbyage))
+   #---~---
+
+   #---~--- 
+   #   Read variables by size, and assign current values to the matrix.  In case LAI
+   # is in the list and it is the last variable, we calculate it from canopy and under
+   # storey, after loading all variables
+   #---~---
+   for (d in sequence(nbydbh-laidbh.last)){
+      nc.nvnow            = nc.bydbh[d]
+      is.scpf             = grepl(pattern=&quot;_SCPF$&quot;,x=nc.nvnow)
+      nc.pref             = gsub(pattern=&quot;_SCLS$&quot;,replacement=&quot;&quot;,x=nc.nvnow)
+      nc.pref             = gsub(pattern=&quot;_SCPF$&quot;,replacement=&quot;&quot;,x=nc.pref )
+      nc.pref             = tolower(nc.pref)
+      f                   = match(nc.pref,fatesvar$vnam)
+      f.vnam              = fatesvar$vnam[f]
+      f.add0              = eval(parse(text=fatesvar$add0[f]))
+      f.mult              = eval(parse(text=fatesvar$mult[f]))
+      f.aggr              = match.fun(fatesvar$aggr[f])
+      nc.dat              = ncvar_get(nc=nc.conn,varid=nc.nvnow)
+      nc.dat              = f.add0 + f.mult * nc.dat
+      if (is.scpf){
+         #--- Aggregate data by size class
+         nc.aggr        = tapply( X     = nc.dat
+                                , INDEX = index_scpf$scls
+                                , FUN   = f.aggr
+                                , na.rm = TRUE
+                                )#end tapply
+         names(nc.aggr) = NULL
+         bydbh[[f.vnam]][w,] = nc.aggr
+         #---~---
+      }else{
+         #--- Variable is truly a size class.
+         bydbh[[f.vnam]][w,] = nc.dat
+         #---~---
+      }#end if (is.scpf)
+      #---~---
+   }#end for (d in sequence(nbydbh-laidbh.last))
+   #---~---
+
+   #--- Find total LAI if sought.
+   if (laidbh.last){
+      bydbh$lai[w,] = bydbh$lai_canopy[w,] + bydbh$lai_understory[w,]
+   }#end if (lai.last)
+   #---~---
+
+
+
+   #---~--- 
+   #   Read variables by PFT, and assign current values to the matrix.  In case LAI
+   # is in the list and it is the last variable, we calculate it from canopy and under
+   # storey, after loading all variables
+   #---~---
+   for (p in sequence(nbypft-laipft.last)){
+      # Load variable information
+      nc.nvnow = nc.bypft[p]
+      nc.pref  = tolower(gsub(pattern=&quot;_SCPF$&quot;,replacement=&quot;&quot;,x=nc.nvnow))
+      f        = match(nc.pref,fatesvar$vnam)
+      f.vnam   = fatesvar$vnam[f]
+      f.add0   = eval(parse(text=fatesvar$add0[f]))
+      f.mult   = eval(parse(text=fatesvar$mult[f]))
+      f.aggr   = match.fun(fatesvar$aggr[f])
+      f.dbh01  = fatesvar$dbh01[f]
+      #---~---
+
+      #--- Retrieve data.
+      nc.dat   = ncvar_get(nc=nc.conn,varid=nc.nvnow)
+      #---~---
+
+      #--- Decide whether or not to exclude the first DBH class.
+      if (f.dbh01){
+         seldbh = rep(TRUE,times=length(nc.dat))
+      }else{
+         seldbh = ! (index_scpf$scls %in% c(1))
+      }#end if (f.dbh01)
+      #---~---
+
+      #--- Aggregate data by size class
+      nc.aggr        = tapply( X     = f.add0 + f.mult * nc.dat[seldbh]
+                             , INDEX = index_scpf$pft[seldbh]
+                             , FUN   = f.aggr
+                             , na.rm = TRUE
+                             )#end tapply
+      names(nc.aggr) = NULL
+      #---~---
+
+      #--- Brind only the PFTs we are interested in.
+      bypft[[f.vnam]][w,] = nc.aggr[pftinfo$id]
+      #---~---
+   }#end for (d in sequence(nbydbh-laidbh.last))
+   #---~---
+
+   #--- Find total LAI if sought.
+   if (laipft.last){
+      bypft$lai[w,] = bypft$lai_canopy[w,] + bypft$lai_understory[w,]
+   }#end if (laipft.last)
+   #---~---
+
+    
+   #--- Read 1D variables  
+   for (v in sequence(nhlm1d-etr.last)){
+      nc.nvnow            = nc.hlm1d[v]
+      nc.pref             = tolower(x=nc.nvnow)
+      h                   = match(nc.pref,hlm1dvar$vnam)
+      h.vnam              = hlm1dvar$vnam[h]
+      h.add0              = eval(parse(text=hlm1dvar$add0[h]))
+      h.mult              = eval(parse(text=hlm1dvar$mult[h]))
+      nc.dat              = ncvar_get(nc=nc.conn,varid=nc.nvnow)
+      hlm1d[[h.vnam]][w]  = h.add0 + h.mult * nc.dat
+   }#for (h in sequence(nhlm1d))
+   #---~---
+
+   #--- Find total ET.
+   if (etr.last){
+      bydbh$qevtr[w,] = bydbh$qeve[w,] + bydbh$qevtr[w,] + bydbh$qsoil[w,]
+   }#end if (lai.last)
+   #---~---
+
+   # Close connection
+   dummy   = nc_close(nc.conn)
+  
+}#end for (w in sequence(nwhen))</code></pre>
+<p>Scale variables by age that should be reported as stacks with the patch area by age. Note that patch area by age must be always included in FATES output. Patch area by age itself should not be scaled.</p>
+<pre class="r"><code>#--- Scale patch variables by age that should be stacked. 
+cat0(&quot; + Rescale variables by age class.&quot;)</code></pre>
+<pre><code>##  + Rescale variables by age class.</code></pre>
+<pre class="r"><code>for (a in sequence(nbyage)){
+   #--- Match variables
+   f        = match(names(byage)[a],fatesvar$vnam)
+   f.vnam   = fatesvar$vnam [f]
+   f.desc   = fatesvar$desc [f]
+   f.stack  = fatesvar$stack[f]
+   #---~---
+
+   #--- Proceed only if the variable is stacked and not the patch area.
+   if (f.stack &amp;&amp; (! (f.vnam %in% &quot;patch_area&quot;))){
+      cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+      byage[[f.vnam]] = byage[[f.vnam]] * byage$patch_area
+   }#end if (f.stack &amp;&amp; (! (f.vnam %in% &quot;patch_area&quot;)))
+      
+}#end for (a in sequence(nbyage))</code></pre>
+<pre><code>##    - Canopy area.
+##    - Gross Primary Productivity.
+##    - Leaf area index.</code></pre>
+<p>Turn data matrices into molten data tables (preferred data structure for plotting and analysing).</p>
+<pre class="r"><code>#--- Turn age-dependent matrices into data tables
+cat0(&quot; + Turn age-dependent matrices into data tables.&quot;)</code></pre>
+<pre><code>##  + Turn age-dependent matrices into data tables.</code></pre>
+<pre class="r"><code>age.melt = NULL
+for (a in sequence(nbyage)){
+   #--- Match variables.
+   f        = match(names(byage)[a],fatesvar$vnam)
+   f.vnam   = fatesvar$vnam[f]
+   f.desc   = fatesvar$desc[f]
+   cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+   #---~---
+
+   #--- Create molten data table for this variable.  
+   now.age      = as.data.table(byage[[f.vnam]])
+   now.age$when = chron(when)
+   now.melt     = data.table(melt(data=now.age,id.vars=&quot;when&quot;,variable.name=&quot;age&quot;,value.name=f.vnam))
+   #---~---
+
+   #--- Merge data table
+   if (is.null(age.melt)){
+      age.melt = now.melt
+   }else{
+      age.melt = merge(x=age.melt,y=now.melt,by=c(&quot;when&quot;,&quot;age&quot;),all=TRUE)
+   }#end if (is.null(age.melt))
+   #---~---
+}#end for (a in sequence(nbyage))</code></pre>
+<pre><code>##    - Canopy area.
+##    - Gross Primary Productivity.
+##    - Leaf area index.
+##    - Patch area.</code></pre>
+<pre class="r"><code>#---~---
+
+#--- Turn size-dependent matrices into data tables
+cat0(&quot; + Turn size-dependent matrices into data tables.&quot;)</code></pre>
+<pre><code>##  + Turn size-dependent matrices into data tables.</code></pre>
+<pre class="r"><code>dbh.melt = NULL
+for (d in sequence(nbydbh)){
+   #--- Match variables.
+   f        = match(names(bydbh)[d],fatesvar$vnam)
+   f.vnam   = fatesvar$vnam[f]
+   f.desc   = fatesvar$desc[f]
+   cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+   #---~---
+
+   #--- Create molten data table for this variable.  
+   now.dbh      = as.data.table(bydbh[[d]])
+   now.dbh$when = chron(when)
+   now.melt     = data.table(melt(data=now.dbh,id.vars=&quot;when&quot;,variable.name=&quot;dbh&quot;,value.name=f.vnam))
+   #---~---
+
+   #--- Merge data table
+   if (is.null(dbh.melt)){
+      dbh.melt = now.melt
+   }else{
+      dbh.melt = merge(x=dbh.melt,y=now.melt,by=c(&quot;when&quot;,&quot;dbh&quot;),all=TRUE)
+   }#end if (is.null(scls.melt))
+   #---~---
+}#end for (d in sequence(nbydbh))</code></pre>
+<pre><code>##    - Above-ground biomass.
+##    - Basal area.
+##    - Carbon balance (Canopy).
+##    - Carbon balance (Understory).
+##    - Growth rate (Canopy).
+##    - Growth rate (Understory).
+##    - Understory demotion rate.
+##    - Gross Primary Productivity.
+##    - Leaf area index (Canopy).
+##    - Leaf area index (Understory).
+##    - Mortality rate (Age senescence).
+##    - Mortality rate (Background).
+##    - Mortality rate (Hydraulic).
+##    - Mortality rate (C Starvation).
+##    - Mortality rate (Impact).
+##    - Mortality rate (Fire).
+##    - Mortality rate (Termination).
+##    - Mortality rate (Logging).
+##    - Mortality rate (Freezing).
+##    - Mortality rate (Senescence).
+##    - Mortality rate (Canopy).
+##    - Mortality rate (Understory).
+##    - Number density (Canopy).
+##    - Number density (Understory).
+##    - Canopy promotion rate.
+##    - Trimming (Canopy).
+##    - Trimming (Understory).
+##    - Leaf area index.</code></pre>
+<pre class="r"><code>#---~---
+
+#--- Turn PFT-dependent matrices into data tables
+cat0(&quot; + Turn PFT-dependent matrices into data tables.&quot;)</code></pre>
+<pre><code>##  + Turn PFT-dependent matrices into data tables.</code></pre>
+<pre class="r"><code>pft.melt = NULL
+for (p in sequence(nbypft)){
+   #--- Match variables.
+   f        = match(names(bypft)[p],fatesvar$vnam)
+   f.vnam   = fatesvar$vnam[f]
+   f.desc   = fatesvar$desc[f]
+   cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+   #---~---
+
+   #--- Create molten data table for this variable.  
+   now.pft      = as.data.table(bypft[[p]])
+   now.pft$when = chron(when)
+   now.melt     = data.table(melt(data=now.pft,id.vars=&quot;when&quot;,variable.name=&quot;pft&quot;,value.name=f.vnam))
+   #---~---
+
+   #--- Merge data table
+   if (is.null(pft.melt)){
+      pft.melt = now.melt
+   }else{
+      pft.melt = merge(x=pft.melt,y=now.melt,by=c(&quot;when&quot;,&quot;pft&quot;),all=TRUE)
+   }#end if (is.null(pft.melt))
+   #---~---
+}#end for (p in sequence(nbypft))</code></pre>
+<pre><code>##    - Above-ground biomass.
+##    - Basal area.
+##    - Growth rate (Canopy).
+##    - Growth rate (Understory).
+##    - Gross Primary Productivity.
+##    - Mortality rate (Age senescence).
+##    - Mortality rate (Background).
+##    - Mortality rate (Hydraulic).
+##    - Mortality rate (C Starvation).
+##    - Mortality rate (Impact).
+##    - Mortality rate (Fire).
+##    - Mortality rate (Termination).
+##    - Mortality rate (Logging).
+##    - Mortality rate (Freezing).
+##    - Mortality rate (Senescence).
+##    - Mortality rate (Canopy).
+##    - Mortality rate (Understory).
+##    - Number density (Canopy).
+##    - Number density (Understory).</code></pre>
+<pre class="r"><code>#---~---
+
+#--- Remove data that are not molten.
+byage = age.melt
+bydbh = dbh.melt
+bypft = pft.melt
+rm(age.melt,dbh.melt,pft.melt)
+#---~---
+
+#--- Convert dbh and age classes into integers
+cat0(&quot; + Convert classes to integers.&quot;)</code></pre>
+<pre><code>##  + Convert classes to integers.</code></pre>
+<pre class="r"><code>byage$age = as.numeric(byage$age)
+bydbh$dbh = as.numeric(bydbh$dbh)
+bypft$pft = as.numeric(bypft$pft)
+#---~---</code></pre>
+<p>Plot time series by age:</p>
+<pre class="r"><code>cat0(&quot; + Plot time series of age-dependent variables.&quot;)
+
+#--- Title for legend
+age.legend = desc.unit(desc=&quot;Age&quot;,unit=untab$yr)
+#---~---
+
+age.loop   = which(fatesvar$vnam %in% names(byage))
+gg.age   = list()
+for (f in age.loop){
+  #--- Match variables.
+  f.vnam   = fatesvar$vnam [f]
+  f.desc   = fatesvar$desc [f]
+  f.unit   = fatesvar$unit [f]
+  f.stack  = fatesvar$stack[f]
+  cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+  #---~---
+  
+  #--- Temporary data table. We convert the classes back to factor.
+  f.byage     = byage
+  f.byage$age = factor(f.byage$age,levels=sequence(nages))
+  f.colages   = viridis(nages,option=&quot;D&quot;,direction=-1)
+  f.agelabs   = agelabs
+  #---~---
+  
+  #--- Initialise plot (decide whether to plot lines or stacks).
+  if (f.stack){
+     gg.now = ggplot(data=f.byage,aes_string(x=&quot;when&quot;,y=f.vnam,group=&quot;age&quot;,fill=&quot;age&quot;))
+     gg.now = gg.now + scale_fill_manual(name=age.legend,labels=f.agelabs,values=f.colages)
+     gg.now = gg.now + geom_area(position=&quot;stack&quot;,show.legend = TRUE)
+  }else{
+     gg.now = ggplot(data=f.byage,aes_string(x=&quot;when&quot;,y=f.vnam,group=&quot;age&quot;,colour=&quot;age&quot;))
+     gg.now = gg.now + scale_colour_manual(name=age.legend,labels=f.agelabs,values=f.colages)
+     gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
+  }#end if (f.stack)
+  gg.now = gg.now + labs(title=simul.desc)
+  gg.now = gg.now + scale_x_chron(format=gg.tfmt)
+  gg.now = gg.now + xlab(&quot;Simulation time&quot;)
+  gg.now = gg.now + ylab(desc.unit(desc=f.desc,unit=untab[[f.unit]],twolines=TRUE))
+  gg.now = gg.now + theme_grey( base_size = gg.ptsz, base_family = &quot;Helvetica&quot;,base_line_size = 0.5,base_rect_size =0.5)
+  gg.now = gg.now + theme( legend.position   = &quot;bottom&quot;
+                         , axis.text.x       = element_text( size   = gg.ptsz
+                                                           , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                           )#end element_text
+                         , axis.text.y       = element_text( size   = gg.ptsz
+                                                           , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                           )#end element_text
+                         , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                         )#end theme
+  #---~---
+  
+  #--- Save plot.
+  for (d in sequence(ndevice)){
+    f.output = paste0(f.vnam,&quot;-tsage-&quot;,simul,&quot;.&quot;,gg.device[d])
+    dummy = ggsave( filename = f.output
+                  , plot     = gg.now
+                  , device   = gg.device[d]
+                  , path     = tsage.path
+                  , width    = gg.width
+                  , height   = gg.height
+                  , units    = gg.units
+                  , dpi      = gg.depth
+                  )#end ggsave
+  }#end for (o in sequence(nout))
+  #---~---
+
+  #--- Write plot settings to the list.
+  gg.age[[f.vnam]] = gg.now
+  #---~---
+}#end for (a in age.loop)
+
+
+#--- If sought, plot images on screen
+if (gg.screen) gg.age</code></pre>
+<p><img src="fates_plot_monthly_files/figure-html/plot-tsage-1.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsage-2.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsage-3.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsage-4.png" width="672" /></p>
+<pre class="r"><code>#---~---</code></pre>
+<p>Plot time series by size class:</p>
+<pre class="r"><code>cat0(&quot; + Plot time series of size-dependent variables.&quot;)
+
+#--- Title for legend
+dbh.legend = desc.unit(desc=&quot;DBH&quot;,unit=untab$cm)
+#---~---
+
+dbh.loop = which(fatesvar$vnam %in% names(bydbh))
+gg.dbh   = list()
+for (f in dbh.loop){
+  #--- Match variables.
+  f.vnam   = fatesvar$vnam [f]
+  f.desc   = fatesvar$desc [f]
+  f.unit   = fatesvar$unit [f]
+  f.stack  = fatesvar$stack[f]
+  f.dbh01  = fatesvar$dbh01[f]
+  cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+  #---~---
+  
+  #--- Decide whether to plot the first class.
+  if (f.dbh01){
+    #--- Keep all classes.
+    f.bydbh     = bydbh
+    f.bydbh$dbh = factor(f.bydbh$dbh,levels=sequence(ndbhs))
+    f.coldbhs   = magma(ndbhs,direction=1)
+    f.dbhlabs   = dbhlabs
+    #---~---
+  }else{
+    #--- Exclude first class.
+    bye         = as.numeric(bydbh$dbh) %in% 1
+    f.bydbh     = bydbh[! bye,]
+    f.bydbh$dbh = factor(f.bydbh$dbh,levels=sequence(ndbhs)[-1])
+    f.coldbhs   = magma(ndbhs,direction=1)[-1]
+    f.dbhlabs   = dbhlabs[-1]
+    #---~---
+  }#end if (f.dbh01)
+  #---~---
+   
+  #--- Initialise plot (decide whether to plot lines or stacks).
+  if (f.stack){
+     gg.now = ggplot(data=f.bydbh,aes_string(x=&quot;when&quot;,y=f.vnam,group=&quot;dbh&quot;,fill=&quot;dbh&quot;))
+     gg.now = gg.now + scale_fill_manual(name=dbh.legend,labels=f.dbhlabs,values=f.coldbhs)
+     gg.now = gg.now + geom_area(position=position_stack(reverse = TRUE),show.legend = TRUE)
+  }else{
+     gg.now = ggplot(data=f.bydbh,aes_string(x=&quot;when&quot;,y=f.vnam,group=&quot;dbh&quot;,colour=&quot;dbh&quot;))
+     gg.now = gg.now + scale_colour_manual(name=dbh.legend,labels=f.dbhlabs,values=f.coldbhs)
+     gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
+  }#end if (f.stack)
+  gg.now = gg.now + labs(title=simul.desc)
+  gg.now = gg.now + scale_x_chron(format=gg.tfmt)
+  gg.now = gg.now + xlab(&quot;Simulation time&quot;)
+  gg.now = gg.now + ylab(desc.unit(desc=f.desc,unit=untab[[f.unit]],twolines=TRUE))
+  gg.now = gg.now + theme_grey( base_size = gg.ptsz, base_family = &quot;Helvetica&quot;,base_line_size = 0.5,base_rect_size =0.5)
+  gg.now = gg.now + theme( legend.position   = &quot;bottom&quot;
+                         , axis.text.x       = element_text( size   = gg.ptsz
+                                                           , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                           )#end element_text
+                         , axis.text.y       = element_text( size   = gg.ptsz
+                                                           , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                           )#end element_text
+                         , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                         )#end theme
+  #---~---
+
+  #--- Save plot.
+  for (d in sequence(ndevice)){
+    f.output = paste0(f.vnam,&quot;-tsdbh-&quot;,simul,&quot;.&quot;,gg.device[d])
+    dummy = ggsave( filename = f.output
+                  , plot     = gg.now
+                  , device   = gg.device[d]
+                  , path     = tsdbh.path
+                  , width    = gg.width
+                  , height   = gg.height
+                  , units    = gg.units
+                  , dpi      = gg.depth
+                  )#end ggsave
+  }#end for (o in sequence(nout))
+  #---~---
+
+  #--- Write plot settings to the list.
+  gg.dbh[[f.vnam]] = gg.now
+  #---~---
+}#end for (a in age.loop)
+
+
+#--- If sought, plot images on screen
+if (gg.screen) gg.dbh</code></pre>
+<p><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-1.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-2.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-3.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-4.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-5.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-6.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-7.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-8.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-9.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-10.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-11.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-12.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-13.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-14.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-15.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-16.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-17.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-18.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-19.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-20.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-21.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-22.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-23.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-24.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-25.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-26.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-27.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tsdbh-28.png" width="672" /></p>
+<pre class="r"><code>#---~---</code></pre>
+<p>Plot time series by plant functional type:</p>
+<pre class="r"><code>cat0(&quot; + Plot time series of size-dependent variables.&quot;)
+
+#--- Title for legend
+pft.legend = &quot;Plant functional types&quot;
+#---~---
+
+pft.loop = which(fatesvar$vnam %in% names(bypft))
+gg.pft   = list()
+for (f in pft.loop){
+  #--- Match variables.
+  f.vnam   = fatesvar$vnam [f]
+  f.desc   = fatesvar$desc [f]
+  f.unit   = fatesvar$unit [f]
+  f.stack  = fatesvar$stack[f]
+  cat0(&quot;   - &quot;,f.desc,&quot;.&quot;)
+  #---~---
+  
+  #--- Set plotting characteristics.
+  f.bypft     = bypft
+  f.bypft$pft = factor(f.bypft$pft,levels=sequence(npfts))
+  f.colpfts   = pftinfo$colour
+  f.pftlabs   = pftinfo$short
+  #---~---
+
+  #--- Initialise plot (decide whether to plot lines or stacks).
+  if (f.stack){
+     gg.now = ggplot(data=f.bypft,aes_string(x=&quot;when&quot;,y=f.vnam,group=&quot;pft&quot;,fill=&quot;pft&quot;))
+     gg.now = gg.now + scale_fill_manual(name=pft.legend,labels=f.pftlabs,values=f.colpfts)
+     gg.now = gg.now + geom_area(position=position_stack(reverse = FALSE),show.legend = TRUE)
+  }else{
+     gg.now = ggplot(data=f.bypft,aes_string(x=&quot;when&quot;,y=f.vnam,group=&quot;pft&quot;,colour=&quot;pft&quot;))
+     gg.now = gg.now + scale_colour_manual(name=pft.legend,labels=f.pftlabs,values=f.colpfts)
+     gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
+  }#end if (f.stack)
+  gg.now = gg.now + labs(title=simul.desc)
+  gg.now = gg.now + scale_x_chron(format=gg.tfmt)
+  gg.now = gg.now + xlab(&quot;Simulation time&quot;)
+  gg.now = gg.now + ylab(desc.unit(desc=f.desc,unit=untab[[f.unit]],twolines=TRUE))
+  gg.now = gg.now + theme_grey( base_size = gg.ptsz, base_family = &quot;Helvetica&quot;,base_line_size = 0.5,base_rect_size =0.5)
+  gg.now = gg.now + theme( legend.position   = &quot;bottom&quot;
+                         , axis.text.x       = element_text( size   = gg.ptsz
+                                                           , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                           )#end element_text
+                         , axis.text.y       = element_text( size   = gg.ptsz
+                                                           , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                           )#end element_text
+                         , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                         )#end theme
+  #---~---
+
+  #--- Save plot.
+  for (d in sequence(ndevice)){
+    f.output = paste0(f.vnam,&quot;-tspft-&quot;,simul,&quot;.&quot;,gg.device[d])
+    dummy = ggsave( filename = f.output
+                  , plot     = gg.now
+                  , device   = gg.device[d]
+                  , path     = tspft.path
+                  , width    = gg.width
+                  , height   = gg.height
+                  , units    = gg.units
+                  , dpi      = gg.depth
+                  )#end ggsave
+  }#end for (o in sequence(nout))
+  #---~---
+
+  #--- Write plot settings to the list.
+  gg.pft[[f.vnam]] = gg.now
+  #---~---
+}#end for (a in age.loop)
+
+
+#--- If sought, plot images on screen
+if (gg.screen) gg.pft</code></pre>
+<p><img src="fates_plot_monthly_files/figure-html/plot-tspft-1.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-2.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-3.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-4.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-5.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-6.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-7.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-8.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-9.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-10.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-11.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-12.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-13.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-14.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-15.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-16.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-17.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-18.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tspft-19.png" width="672" /></p>
+<pre class="r"><code>#---~---</code></pre>
+<p>Plot theme time series:</p>
+<pre class="r"><code>cat0(&quot; + Plot time series of thematically linked variables.&quot;)
+
+gg.theme   = list()
+for (th in sequence(ntstheme)){
+  #--- Match variables.
+  th.thnam  = tstheme$thnam  [th]
+  th.thdesc = tstheme$thdesc [th]
+  th.thunit = tstheme$thunit [th]
+  th.vnames = tstheme$vnames [th]
+  th.vcols  = tstheme$vcols  [th]
+  th.stack  = tstheme$tsstack[th]
+
+  #--- Split variables to include in this plot (plot only when all data are available).
+  th.vlist   = c(unlist(strsplit(x=th.vnames,split=&quot;\\+&quot;)))
+  th.match   = match(th.vlist,hlm1dvar$vnam)
+  th.vdesc   = hlm1dvar$desc[th.match]
+  th.labels  = parse(text=paste0(&quot;paste(&quot;,hlm1dvar$short[th.match],&quot;)&quot;))
+  n.th.vlist = length(th.vlist)
+  #---~---
+
+  #--- Proceed only if all variables exist in the output
+  if (all(th.vlist %in% names(hlm1d))){
+     #--- Title for legend
+     cat0(&quot;   - &quot;,th.thdesc,&quot;.&quot;)
+     #---~---
+
+     #--- Temporary data table. We convert the classes back to factor.
+     thmelt       = hlm1d[,..th.vlist]
+     thmelt$when  = chron(when)
+     thmelt       = melt( data          = thmelt
+                        , id.vars       = &quot;when&quot;
+                        , variable.name = &quot;idvar&quot;
+                        , measure.vars  = th.vlist
+                        , value.name    = th.thnam
+                        )#end melt
+     thmelt       = data.table(thmelt)
+     thmelt$idvar = factor(as.integer(thmelt$idvar))
+     #---~---
+
+       
+     #--- Find colours for theme plot.
+     th.funcol   = try(match.fun(th.vcols),silent=TRUE)
+     if (&quot;try-error&quot; %in% is(th.funcol)){
+       th.colour = c(unlist(strsplit(x=th.vcols,split=&quot;\\+&quot;)))
+     }else{
+       th.colour = th.funcol(n=n.th.vlist)
+     }#end if (&quot;try-error %in% is(th.funcol))
+     #---~---
+  
+     
+     
+     #--- Initialise plot (decide whether to plot lines or stacks).
+     if (th.stack){
+        gg.now = ggplot(data=thmelt,aes_string(x=&quot;when&quot;,y=th.thnam,group=&quot;idvar&quot;,fill=&quot;idvar&quot;))
+        gg.now = gg.now + scale_fill_manual(name=character(0),labels=th.labels,values=th.colour)
+        gg.now = gg.now + geom_area(position=&quot;stack&quot;,show.legend = TRUE)
+     }else{
+        gg.now = ggplot(data=thmelt,aes_string(x=&quot;when&quot;,y=th.thnam,group=&quot;idvar&quot;,colour=&quot;idvar&quot;))
+        gg.now = gg.now + scale_colour_manual(name=character(0),labels=th.labels,values=th.colour)
+        gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
+     }#end if (f.stack)
+     gg.now = gg.now + labs(title=simul.desc)
+     gg.now = gg.now + scale_x_chron(format=gg.tfmt)
+     gg.now = gg.now + xlab(&quot;Simulation time&quot;)
+     gg.now = gg.now + ylab(desc.unit(desc=th.thdesc,unit=untab[[th.thunit]],twolines=TRUE))
+     gg.now = gg.now + theme_grey( base_size      = gg.ptsz
+                                 , base_family    = &quot;Helvetica&quot;
+                                 , base_line_size = 0.5
+                                 , base_rect_size = 0.5
+                                 )#end theme_grey
+     gg.now = gg.now + theme( legend.position   = &quot;bottom&quot;
+                            , axis.text.x       = element_text( size   = gg.ptsz
+                                                              , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                              )#end element_text
+                            , axis.text.y       = element_text( size   = gg.ptsz
+                                                              , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
+                                                              )#end element_text
+                            , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                            )#end theme
+     #---~---
+  
+     #--- Save plot.
+     for (d in sequence(ndevice)){
+        th.output = paste0(th.thnam,&quot;-tstheme-&quot;,simul,&quot;.&quot;,gg.device[d])
+        dummy = ggsave( filename = th.output
+                      , plot     = gg.now
+                      , device   = gg.device[d]
+                      , path     = tstheme.path
+                      , width    = gg.width
+                      , height   = gg.height
+                      , units    = gg.units
+                      , dpi      = gg.depth
+                      )#end ggsave
+     }#end for (o in sequence(nout))
+     #---~---
+
+     #--- Write plot settings to the list.
+     gg.theme[[th.thnam]] = gg.now
+     #---~---
+    
+  }#end if (all(th.vlist %in% names(hlm1d))))    
+  #---~---
+}#end for (a in age.loop)
+
+
+#--- If sought, plot images on screen
+if (gg.screen) gg.theme</code></pre>
+<p><img src="fates_plot_monthly_files/figure-html/plot-tstheme-1.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-2.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-3.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-4.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-5.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-6.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-7.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-8.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-9.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-10.png" width="672" /></p>
+<pre class="r"><code>#---~---</code></pre>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

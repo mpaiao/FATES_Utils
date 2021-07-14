@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Marcos Longo" />
+
+
+<title>Create case for ELM-FATES or CLM-FATES</title>
+
+<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+<link rel="stylesheet" href="styles.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">FATES Utilities</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="make_fates_met_driver.html">Meteorological driver</a>
+</li>
+<li>
+  <a href="make_fates_domain+surface.html">Surface/Domain files</a>
+</li>
+<li>
+  <a href="create_case_hlm-fates.html">Set up single-site runs</a>
+</li>
+<li>
+  <a href="fates_plot_monthly.html">Single-site visualisation with R</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Create case for ELM-FATES or CLM-FATES</h1>
+<h4 class="author">Marcos Longo</h4>
+<h4 class="date">14-Jul-2021</h4>
+
+</div>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>The <a href="https://github.com/mpaiao/FATES_Utils/blob/master/create_case_hlm-fates.sh">create_case_hlm-fates.sh</a> script generates a case for a single-point simulation for a user-defined site. It assumes all the site-specific data files (<code>SITE_NAME</code>) are located in the <code>SITE_BASE_PATH</code> folder.</p>
+<p>This script does not take any arguments. Instead, the beginning of the script has many variables to control the simulation settings.</p>
+<p><em>Important</em>. Use the actual script for setting up the case. The R Markdown file is for documentation only. Once I figure out how to write shell scripts (as opposed to shell chunks) within R Markdown, this message will be removed.</p>
+</div>
+<div id="main-setings." class="section level1">
+<h1>Main setings.</h1>
+<p>First we define which model to run and where to run:</p>
+<pre class="bash"><code>#--- Main settings.
+export HESM=&quot;CTSM&quot;              # Host &quot;Earth System Model&quot;. (E3SM, CESM, CTSM)
+export PROJECT=ngeet            # Project (may not be needed)
+export MACH=&quot;eschweilera&quot;       # Machine used for preparing the case
+#---~---</code></pre>
+<p>The settings below are useful for debugging the code:</p>
+<ul>
+<li><code>DEBUG_LEVEL</code>. The higher the number, the more information will be provided (at the expense of running slower). 0 means no debugging (typical setting for scientific analysis), 6 means very strict debugging (useful when developing the code).</li>
+<li><code>USE_FATES</code>. Logical flag (<code>true</code> or <code>false</code>). This option allows running the native host land model (CLM or ELM) without FATES, which may be useful for some debugging.</li>
+</ul>
+<pre class="bash"><code>export DEBUG_LEVEL=0
+export USE_FATES=true</code></pre>
+<p>Set paths:</p>
+<ul>
+<li><code>WORK_PATH</code>: The main working path (typically <code>&lt;host_model&gt;/cime/scripts</code>)</li>
+<li><code>CASE_ROOT</code>: The main path where to create the directory for this case.</li>
+<li><code>SIMUL_ROOT</code>: The main path where to create the directory for the simulation output.</li>
+</ul>
+<p><em>Note</em>. In all cases, use <code>XXXX</code> in the part you want to be replaced with either E3SM or CTSM.</p>
+<pre class="bash"><code>export WORK_PATH=&quot;${HOME}/Models/XXXX/cime/scripts&quot;
+export CASE_ROOT=&quot;${HOME}/Documents/LocalData/FATES/Cases&quot;
+export SIMUL_ROOT=&quot;${HOME}/Documents/LocalData/FATES/Simulations&quot;</code></pre>
+<p>Set the cases. These variables will control compilation settings and the case name for this simulation.<br />
+It is fine to leave these blank, in which case the script will use default settings.</p>
+<pre class="bash"><code>export COMP=&quot;&quot;
+export CASE_NAME=&quot;D0005_ParacouTest&quot;</code></pre>
+<p>Set variable <code>APPEND_GIT_HASH</code> to decide whether (<code>true</code>) or not (<code>false</code>) to append the current git commit hash to the case names. Appending the hash can be useful for reproducibility and is encouraged for scientific work. If just testing or debugging the code, setting it to false makes the case name shorter and more friendly.</p>
+<pre class="bash"><code>export APPEND_GIT_HASH=false</code></pre>
+<p>Set the grid resolution (variable <code>RESOL</code>). This must be a standard ELM/CLM grid resolution. In case you want to use the site information, set <code>RESOL=YYY_USRDAT</code>. The host model will be replaced later in the script.</p>
+<pre class="bash"><code>export RESOL=&quot;YYY_USRDAT&quot; # Grid resolution</code></pre>
+<p>Set the site information, in case <code>RESOL=YYY_USRDAT</code> (otherwise these variables will be ignored). To keep things in a somewhat standardised format, we recommend creating a base directory (<code>SITE_BASE_PATH</code>) where each set of site data (<code>SITE_NAME</code>) will be stored. (The full path for the sets of a certain file being <code>${SITE_BASE_PATH}/${SITE_NAME}</code>).</p>
+<p>The site-specific path should contain:</p>
+<ol style="list-style-type: decimal">
+<li>A sub-directory <code>CLM1PT</code> containing the meteorological drivers. Check documentation for script <a href="make_fates_met_driver.html">make_fates_met_driver.Rmd</a> for more details.</li>
+<li>The domain and surface data specific for this site. Check documentation for script <a href="make_fates_domain+surface.html">make_fates_domain+surface.Rmd</a> for further information.</li>
+<li><em>Optional</em>. A FATES parameter file. This file is assumed to be in the <code>be in the</code>SITE_NAME<code>sub-directory.  In case none is provided (i.e.,</code>FATES_PARAMS_BASE=""`), the case will use the default parameter file. Beware that the default is not optimised and may yield bad results.</li>
+<li><em>Optional</em>. The forest structure control data, which should contain the full paths to ED2-style pss (patch) and css (cohort) files. Check the <a href="https://github.com/EDmodel/ED2/wiki/Initial-conditions">ED2 Wiki</a> for details on how to generate the files.</li>
+</ol>
+<p>The actual scripts are available on <a href="https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing">GitHub</a>.</p>
+<pre class="bash"><code># Path containing all the data sets.
+export SITE_BASE_PATH=&quot;${HOME}/Data/FATES_DataSets&quot;
+# Sub-directory with data sets specific to this site.
+export SITE_NAME=&quot;1x1pt-paracouGUF_v1.5_c20210713&quot;
+# Domain file (it must be in the SITE_NAME sub-directory).
+export HLM_USRDAT_DOMAIN=&quot;domain.lnd.${SITE_NAME}_navy.nc&quot;
+# Surface data file (it must be in the SITE_NAME sub-directory).
+export HLM_USRDAT_SURDAT=&quot;surfdata_${SITE_NAME}.nc&quot;
+# Calendar type for the meteorological drivers (&#39;NO_LEAP&#39; or &#39;GREGORIAN&#39;)
+export METD_CALENDAR=&quot;GREGORIAN&quot;
+# CDL file containing FATES parameters (it must be in the SITE_NAME sub-directory).
+
+#    Parameter file, in case a site-specific file exists. Leave it blank for using the
+# default parameter file. 
+export FATES_PARAMS_BASE=&quot;fates_params_1trop_opt224_vm6_hivmphos.c210529.cdl&quot;
+
+#    Control file with information on which patch (pss) and cohort (css) file to use. Leave
+# it blank for no inventory initialisation.
+export INVENTORY_BASE=&quot;${SITE_NAME}_nounder_info.txt&quot;
+</code></pre>
+<p>The variable below lists all variables to be updated using the <code>xmlchange</code> functionality of CIME.</p>
+<ul>
+<li>In case you do not want to change any settings, set the variable as an empty vector (i.e., <code>xml_settings=()</code>).</li>
+<li>Otherwise, create an vector with multi-word strings separated by space. Within each string, the first word should be the variable name, the second argument is the value. For string values, make sure to enclose it in single quotes when needed. If you want, you can use the generic wildcard YYY for variables that may be either CLM or ELM (lower case yyy will replace with the lower-case model name). The code will interpret it accordingly.</li>
+</ul>
+<pre class="bash"><code>xml_settings=(&quot;DEBUG                             FALSE&quot;
+              &quot;RUN_STARTDATE                     2004-01-01&quot;
+              &quot;STOP_N                            16&quot;
+              &quot;STOP_OPTION                       nyears&quot;
+              &quot;REST_N                            1&quot;
+              &quot;YYY_FORCE_COLDSTART               on&quot;
+              &quot;DATM_CLMNCEP_YR_START             2004&quot;
+              &quot;DATM_CLMNCEP_YR_END               2019&quot;)</code></pre>
+<pre class="bash"><code>pft_settings=(&quot;fates_wood_density 1      0.65&quot;
+              &quot;fates_smpsc        1 -200000.0&quot;)</code></pre>
+<p>Additional settings for the host land model namelist.</p>
+<ul>
+<li>In case you do not want to change any settings, set the variable as an empty vector (i.e., <code>hlm_settings=()</code>).</li>
+<li>Otherwise, create an vector with multi-word strings separated by space. The first word is the namelist variable name, and remaining word are the values.</li>
+</ul>
+<p><strong>Important</strong>.</p>
+<ol style="list-style-type: decimal">
+<li>For variable names, you can use hlm or HLM as a wildcard for the host land model.</li>
+<li>If the values are supposed to be strings, enclose each string part in quotes. If multiple values are to be passed, the comma shall not be enclosed in quotes. If the string is too long (common when setting <code>hist_fincl1</code>), you can break them into multiple lines using backslash (<code>\</code>). The backslash will not be printed.</li>
+<li>Note that the names of specific variables to be included in the <code>hist_fincl1</code> are not always the same for ELM and CLM. The script will always build the case, but runs will fail if the list of output variables includes any variable that is not recognised by the host model.</li>
+</ol>
+<pre class="bash"><code>if ${USE_FATES}
+then
+   hlm_settings=(&quot;hist_empty_htapes .true.&quot;
+                 &quot;hist_fincl1       &#39;AGB&#39;,&#39;AGB_SCPF&#39;,&#39;AR&#39;,&#39;EFLX_LH_TOT&#39;,\
+                                    &#39;FSH&#39;,&#39;ELAI&#39;,&#39;FIRE&#39;,&#39;FLDS&#39;,&#39;FSDS&#39;,&#39;FSR&#39;,&#39;GPP&#39;,&#39;HR&#39;,\
+                                    &#39;NEP&#39;,&#39;GPP_BY_AGE&#39;,&#39;PATCH_AREA_BY_AGE&#39;,&#39;BA_SCPF&#39;,\
+                                    &#39;CANOPY_AREA_BY_AGE&#39;,&#39;NPLANT_CANOPY_SCPF&#39;,\
+                                    &#39;NPLANT_UNDERSTORY_SCPF&#39;,&#39;DDBH_CANOPY_SCPF&#39;,\
+                                    &#39;DDBH_UNDERSTORY_SCPF&#39;,&#39;MORTALITY_CANOPY_SCPF&#39;,\
+                                    &#39;MORTALITY_UNDERSTORY_SCPF&#39;,&#39;GPP_SCPF&#39;,&#39;AR_SCPF&#39;,\
+                                    &#39;NPP_SCPF&#39;,&#39;ELAI&#39;,&#39;ESAI&#39;,&#39;TLAI&#39;,&#39;TSAI&#39;,&#39;LAI_BY_AGE&#39;,\
+                                    &#39;LAI_CANOPY_SCLS&#39;,&#39;LAI_UNDERSTORY_SCLS&#39;,\
+                                    &#39;PATCH_AREA_BY_AGE&#39;,&#39;DEMOTION_RATE_SCLS&#39;,\
+                                    &#39;PROMOTION_RATE_SCLS&#39;,&#39;M1_SCPF&#39;,&#39;M2_SCPF&#39;,&#39;M3_SCPF&#39;,\
+                                    &#39;M4_SCPF&#39;,&#39;M5_SCPF&#39;,&#39;M6_SCPF&#39;,&#39;M7_SCPF&#39;,&#39;M8_SCPF&#39;,\
+                                    &#39;M9_SCPF&#39;,&#39;M10_SCPF&#39;,&#39;CARBON_BALANCE_CANOPY_SCLS&#39;,\
+                                    &#39;CARBON_BALANCE_UNDERSTORY_SCLS&#39;,\
+                                    &#39;TRIMMING_CANOPY_SCLS&#39;,&#39;TRIMMING_UNDERSTORY_SCLS&#39;,\
+                                    &#39;TBOT&#39;,&#39;QBOT&#39;,&#39;PBOT&#39;,&#39;QVEGE&#39;,&#39;QVEGT&#39;,&#39;QSOIL&#39;,\
+                                    &#39;FSH_V&#39;,&#39;FSH_G&#39;,&#39;FGR&#39;,&#39;BTRAN&#39;,&#39;ZWT&#39;,&#39;ZWT_PERCH&#39;,&#39;SMP&#39;,\
+                                    &#39;TSA&#39;,&#39;TV&#39;,&#39;TREFMNAV&#39;,&#39;TREFMXAV&#39;,&#39;TG&#39;,&#39;TAF&#39;,&#39;QAF&#39;,\
+                                    &#39;UAF&#39;,&#39;Q2M&#39;,&#39;RAIN&#39;,&#39;QDIRECT_THROUGHFALL&#39;,&#39;QDRIP&#39;,\
+                                    &#39;QOVER&#39;,&#39;QDRAI&#39;,&#39;QINTR&#39;,&#39;USTAR&#39;,&#39;U10&#39;&quot;)
+else
+   hlm_settings=(&quot;hist_empty_htapes .true.&quot;
+                 &quot;hist_fincl1       &#39;AR&#39;,&#39;EFLX_LH_TOT&#39;,&#39;FSH&#39;,&#39;ELAI&#39;,&#39;FIRE&#39;,&#39;FLDS&#39;,\
+                                    &#39;FSDS&#39;,&#39;FSR&#39;,&#39;GPP&#39;,&#39;HR&#39;,&#39;NEP&#39;,&#39;ELAI&#39;,&#39;ESAI&#39;,&#39;TLAI&#39;,\
+                                    &#39;TSAI&#39;,&#39;TBOT&#39;,&#39;QBOT&#39;,&#39;PBOT&#39;,&#39;QVEGE&#39;,&#39;QVEGT&#39;,&#39;QSOIL&#39;,\
+                                    &#39;FSH_V&#39;,&#39;FSH_G&#39;,&#39;FGR&#39;,&#39;BTRAN&#39;,&#39;Qtau&#39;,&#39;ZWT&#39;,&#39;ZWT_PERCH&#39;,\
+                                    &#39;SMP&#39;,&#39;TSA&#39;,&#39;TV&#39;,&#39;TREFMNAV&#39;,&#39;TREFMXAV&#39;,&#39;TG&#39;,&#39;Q2M&#39;,\
+                                    &#39;RAIN&#39;,&#39;QDIRECT_THROUGHFALL&#39;,&#39;QDRIP&#39;,&#39;QOVER&#39;,\
+                                    &#39;QDRAI&#39;,&#39;QINTR&#39;,&#39;USTAR&#39;,&#39;U10&#39;&quot;)
+fi</code></pre>
+</div>
+<div id="script-execution." class="section level1">
+<h1>Script execution.</h1>
+<p><em>Important</em>. Changes beyond this point are needed only for script development.</p>
+<div id="initial-settings." class="section level2">
+<h2>Initial settings.</h2>
+<p>Here the script defines some useful variables, and replace host Earth System Model wildcards with the current host Earth System Model.</p>
+<pre class="bash"><code># Define the host Earth System Model from upper-case CIME_MODEL.
+export HESM=$(echo ${HESM} | tr &#39;[:lower:]&#39; &#39;[:upper:]&#39;)
+
+# Update cade and simulation paths, in case a generic name was provided.
+export WORK_PATH=$(echo ${WORK_PATH}           | sed s@&quot;XXXX&quot;@&quot;${HESM}&quot;@g)
+export CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@&quot;XXXX&quot;@&quot;${HESM}&quot;@g)
+export SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@&quot;XXXX&quot;@&quot;${HESM}&quot;@g)
+
+# Current date.
+export TODAY=$(date +&quot;%Y-%m-%d&quot;)
+
+# Current path.
+export HERE_PATH=$(pwd)
+
+# Site path.
+export SITE_PATH=&quot;${SITE_BASE_PATH}/${SITE_NAME}&quot;</code></pre>
+<p>Define variables that depend on which host Earth System Model we are using.</p>
+<pre class="bash"><code>#---~---
+#   Make changes to some of the settings based on the host model.
+#---~---
+case &quot;${HESM}&quot; in
+E3SM)
+   #---~---
+   # E3SM-FATES
+   #---~---
+
+   #--- Set CIME model.
+   export CIME_MODEL=&quot;e3sm&quot;
+   #---~---
+
+   #--- Set host land model. Set both upper case and lower case for when needed.
+   export hlm=&quot;elm&quot;
+   export HLM=&quot;ELM&quot;
+   #---~---
+
+   #--- Main path for host model
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   #---~---
+
+   #--- Main path for FATES
+   export FATESMODEL_PATH=&quot;${HOSTMODEL_PATH}/components/elm/src/external_models/fates&quot;
+   #---~---
+
+   #--- Additional options for &quot;create_newcase&quot;
+   export NEWCASE_OPTS=&quot;&quot;
+   #---~---
+
+   #--- Main source path for FATES.
+   export FATES_SRC_PATH=&quot;${HOSTMODEL_PATH}/components/elm/src/external_models/fates&quot;
+   #---~---
+
+   #--- In case compilates settings is not defined, use the default settings.
+   if ${USE_FATES} &amp;&amp; [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;IELMFATES&quot;
+   elif [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;IELMBGC&quot;
+   fi
+   #---~---
+
+   ;;
+CTSM|CESM)
+   #---~---
+   # CESM-FATES or CTSM-FATES
+   #---~---
+
+   #--- Set CIME model.
+   export CIME_MODEL=&quot;cesm&quot;
+   #---~---
+
+   #--- Set host land model. Set both upper case and lower case for when needed.
+   export hlm=&quot;clm&quot;
+   export HLM=&quot;CLM&quot;
+   #---~---
+
+
+   #--- Main path for host model
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   #---~---
+
+   #--- Main path for FATES
+   export FATESMODEL_PATH=&quot;${HOSTMODEL_PATH}/src/fates&quot;
+   #---~---
+
+   #--- Additional options for &quot;create_newcase&quot;
+   export NEWCASE_OPTS=&quot;--run-unsupported&quot;
+   #---~---
+
+   #--- Main source path for FATES.
+   export FATES_SRC_PATH=&quot;${HOSTMODEL_PATH}/src/fates&quot;
+   #---~---
+
+
+   #--- In case compilates settings is not defined, use the default settings.
+   if ${USE_FATES} &amp;&amp; [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;I2000Clm51Fates&quot;
+   elif [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;I2000Clm51Bgc&quot;
+   fi
+   #---~---
+
+   ;;
+esac
+#---~---</code></pre>
+<p>Set the host model + FATES Git commit hashes.</p>
+<pre class="bash"><code>export HLM_HASH=&quot;${HLM}-$(cd ${HOSTMODEL_PATH};   git log -n 1 --pretty=%h)&quot;
+export FATES_HASH=&quot;FATES-$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)&quot;</code></pre>
+<p>Replace host land model wildcards</p>
+<pre class="bash"><code>
+# Define setting for single-point
+export V_HLM_USRDAT_NAME=&quot;${HLM}_USRDAT_NAME&quot;
+
+# Substitute wildcards in the resolution with the actual model
+export RESOL=$(echo &quot;${RESOL}&quot; | sed s@&quot;YYY&quot;@&quot;${HLM}&quot;@g | sed s@&quot;yyy&quot;@&quot;${hlm}&quot;@g)</code></pre>
+<p>Set default case name prefix in case none was provided.</p>
+<pre class="bash"><code>if [[ &quot;${CASE_NAME}&quot; == &quot;&quot; ]]
+then
+   export CASE_NAME=&quot;SX_${COMP}_${MACH}_${TODAY}&quot;
+fi
+
+# Append github commit hash, or a simple host-model / FATES tag.
+if ${USE_FATES} &amp;&amp; ${APPEND_GIT_HASH}
+then
+   export CASE_NAME=&quot;${CASE_NAME}_${HLM_HASH}_${FATES_HASH}&quot;
+elif ${APPEND_GIT_HASH}
+then
+   export CASE_NAME=&quot;${CASE_NAME}_${HLM_HASH}_BigLeaf&quot;
+elif ${USE_FATES}
+then
+   export CASE_NAME=&quot;${CASE_NAME}_${HLM}_FATES&quot;
+else
+   export CASE_NAME=&quot;${CASE_NAME}_${HLM}_BigLeaf&quot;
+fi
+
+# Set paths for case and simulation.
+export CASE_PATH=&quot;${CASE_ROOT}/${CASE_NAME}&quot;
+export SIMUL_PATH=&quot;${SIMUL_ROOT}/${CASE_NAME}&quot;
+
+# Set namelist for the host land model.
+export USER_NL_HLM=&quot;${CASE_PATH}/user_nl_${hlm}&quot;</code></pre>
+<p>To avoid overwriting simulations, we always ask before if it is fine to delete a previous case setting.</p>
+<pre class="bash"><code>if [[ -s ${CASE_PATH} ]] || [[ -s ${SIMUL_PATH} ]]
+then
+   #---~---
+   #    Check with user if it&#39;s fine to delete existing case.
+   #---~---
+   echo    &quot; Case directories (${CASE_NAME}) already exist, proceeding will delete them.&quot;
+   echo -n &quot; Proceed (y|N)?   &quot;
+   read proceed
+   proceed=$(echo ${proceed} | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+   #---~---
+
+
+   #---~---
+   #    We give one last chance for users to cancel before deleting the files.
+   #---~---
+   case &quot;${proceed}&quot; in
+   y|yes)
+      echo &quot;---------------------------------------------------------------------&quot;
+      echo &quot; FINAL WARNING!&quot;
+      echo &quot; I will start deleting files in 5 seconds.&quot;
+      echo &quot; In case you change your mind, press Ctrl+C before the time is over.&quot;
+      echo &quot;---------------------------------------------------------------------&quot;
+      when=6
+      echo -n &quot; - &quot;
+      while [[ ${when} -gt 1 ]]
+      do
+         let when=${when}-1
+         echo -n &quot; ${when}...&quot;
+         sleep 1
+      done
+      echo &quot; Time is over!&quot;
+
+      #--- Delete files.
+      /bin/rm -rvf ${CASE_PATH} ${SIMUL_PATH}
+      #---~---
+
+      ;;
+   *)
+      echo &quot; - Script interrupted, files were kept.&quot;
+      exit 0
+      ;;
+   esac
+   #---~---
+fi</code></pre>
+</div>
+<div id="create-case" class="section level2">
+<h2>Create case</h2>
+<p>Move to main CIME path, and create the new case.</p>
+<pre class="bash"><code>cd ${WORK_PATH}
+
+
+# Create the new case
+./create_newcase --case=${CASE_PATH} --res=${RESOL} --compset=${COMP} --mach=${MACH}       \
+   --project=${PROJECT} ${NEWCASE_OPTS}
+cd ${CASE_PATH}
+
+
+
+
+# Set the CIME output to the main CIME path.
+./xmlchange CIME_OUTPUT_ROOT=&quot;${SIMUL_ROOT}&quot;
+./xmlchange DOUT_S_ROOT=&quot;${SIMUL_PATH}&quot;
+./xmlchange PIO_DEBUG_LEVEL=&quot;${DEBUG_LEVEL}&quot;</code></pre>
+</div>
+<div id="modify-case" class="section level2">
+<h2>Modify case</h2>
+<p>In case this is a user-defined site simulation, set the user-specified paths. <strong>Important</strong>. Variable <code>DATM_MODE</code> must be set to <code>CLM1PT</code>, even when running E3SM-FATES.</p>
+<pre class="bash"><code>case &quot;${RESOL}&quot; in
+?LM_USRDAT)
+   ./xmlchange DATM_MODE=&quot;CLM1PT&quot;
+   ./xmlchange CALENDAR=&quot;${METD_CALENDAR}&quot;
+   ./xmlchange ${V_HLM_USRDAT_NAME}=&quot;${SITE_NAME}&quot;
+   ./xmlchange ATM_DOMAIN_PATH=&quot;${SITE_PATH}&quot;
+   ./xmlchange LND_DOMAIN_PATH=&quot;${SITE_PATH}&quot;
+   ./xmlchange ATM_DOMAIN_FILE=&quot;${HLM_USRDAT_DOMAIN}&quot;
+   ./xmlchange LND_DOMAIN_FILE=&quot;${HLM_USRDAT_DOMAIN}&quot;
+   ./xmlchange DIN_LOC_ROOT_CLMFORC=&quot;${SITE_BASE_PATH}&quot;
+
+   ;;
+esac</code></pre>
+<p>Set the PE layout for a single-site run (unlikely that users would change this).</p>
+<pre class="bash"><code>./xmlchange NTASKS_ATM=1
+./xmlchange NTASKS_LND=1
+./xmlchange NTASKS_ROF=1
+./xmlchange NTASKS_ICE=1
+./xmlchange NTASKS_OCN=1
+./xmlchange NTASKS_CPL=1
+./xmlchange NTASKS_GLC=1
+./xmlchange NTASKS_WAV=1
+./xmlchange NTASKS_ESP=1
+
+./xmlchange NTHRDS_ATM=1
+./xmlchange NTHRDS_LND=1
+./xmlchange NTHRDS_ROF=1
+./xmlchange NTHRDS_ICE=1
+./xmlchange NTHRDS_OCN=1
+./xmlchange NTHRDS_CPL=1
+./xmlchange NTHRDS_GLC=1
+./xmlchange NTHRDS_WAV=1
+./xmlchange NTHRDS_ESP=1
+
+./xmlchange ROOTPE_ATM=0
+./xmlchange ROOTPE_LND=0
+./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
+./xmlchange ROOTPE_GLC=0
+./xmlchange ROOTPE_WAV=0
+./xmlchange ROOTPE_ESP=0</code></pre>
+<p>Apply the user-specified XML configurations.</p>
+<pre class="bash"><code>if [[ ${#xml_settings[*]} -gt 0 ]]
+then
+   #--- Loop through the options to update.
+   echo &quot; + Update XML settings.&quot;
+   for x in ${!xml_settings[*]}
+   do
+      #--- Retrieve settings.
+      xml_id=$(echo ${xml_settings[x]}  | awk &#39;{print $1}&#39;)
+      xml_id=$(echo ${xml_id}           | sed s@&quot;YYY&quot;@${HLM}@g | sed s@&quot;yyy&quot;@${hlm}@g)
+      xml_val=$(echo ${xml_settings[x]} | awk &#39;{print $2}&#39;)
+      echo &quot; ID = ${xml_id}; VAL = ${xml_val}&quot;
+      #---~---
+
+      #--- Update settings.
+      ./xmlchange ${xml_id}=&quot;${xml_val}&quot;
+      #---~---
+
+   done
+   #---~---
+else
+   #--- No changes needed.
+   echo &quot; + No XML changes required.&quot;
+   #---~---
+fi</code></pre>
+<p>This part modifies the DATM namelist. <strong>Important!</strong>. Do <strong>NOT</strong> change this unless you know exactly what you are doing.</p>
+<pre class="bash"><code>USER_NL_DATM=&quot;${CASE_PATH}/user_nl_datm&quot;
+touch ${USER_NL_DATM}
+echo &quot;taxmode = &#39;cycle&#39;,&#39;cycle&#39;,&#39;cycle&#39;&quot; &gt;&gt; ${USER_NL_DATM}
+`#---~---</code></pre>
+</div>
+</div>
+<div id="set-up-the-case" class="section level1">
+<h1>Set up the case</h1>
+<p>Initial case set up.</p>
+<pre class="bash"><code>./case.setup
+./preview_namelists
+`#---~---</code></pre>
+<p>Some meteorological drivers lack incoming longwave irradiance. If this is the case, we ought to delete it from the list of expected variables. <strong>WARNING</strong>. This is all done automatically, and it’s unlikely that users would ever need to change this part.</p>
+<pre class="bash"><code>case &quot;${RESOL}&quot; in
+?LM_USRDAT)
+   #--- Define files with meteorological driver settings.
+   HLM_USRDAT_ORIG=&quot;${SIMUL_PATH}/run/datm.streams.txt.CLM1PT.${RESOL}&quot;
+   HLM_USRDAT_USER=&quot;${SIMUL_PATH}/user_datm.streams.txt.CLM1PT.${RESOL}&quot;
+   #---~---
+
+
+   ANY_METD_NC=$(/bin/ls -1 ${SITE_PATH}/${DATM_MODE}/????-??.nc 2&gt; /dev/null | wc -l)
+   if [[ ${ANY_METD_NC} ]]
+   then
+      #--- Load one netCDF file.
+      METD_NC_1ST=$(/bin/ls -1 ${SITE_PATH}/${DATM_MODE}/????-??.nc 2&gt; /dev/null | head -1)
+      ANY_FLDS=$(ncdump -h ${METD_NC_1ST} 2&gt; /dev/null | grep FLDS | wc -l)
+      if [[ ${ANY_FLDS} -eq 0 ]]
+      then
+         #--- Incoming long wave radiation is absent.  Modify the stream file
+         /bin/cp ${HLM_USRDAT_ORIG} ${HLM_USRDAT_USER}
+         $(sed -i &#39;@FLDS@d&#39; ${HLM_USRDAT_USER})
+         #---~---
+      fi
+      #---~---
+   else
+      #--- Report error.
+      echo &quot; Meteorological drivers not found in ${SITE_PATH}/${DATM_MODE}&quot;.
+      echo &quot; Make sure all the met driver files are named as yyyy-mm.nc&quot;
+      exit 91
+      #---~---
+   fi
+   #---~---
+   ;;
+esac</code></pre>
+<p>Append the site-specific surface data information to the namelist, in case we are using a single-site simulation.</p>
+<pre class="bash"><code>case &quot;${RESOL}&quot; in
+?LM_USRDAT)
+   # Append surface data file to the namelist.
+   HLM_SURDAT_FILE=&quot;${SITE_PATH}/${HLM_USRDAT_SURDAT}&quot;
+   echo &quot;fsurdat = &#39;${HLM_SURDAT_FILE}&#39;&quot; &gt;&gt; ${USER_NL_HLM}
+   ;;
+esac</code></pre>
+<p>Include settings for the inventory initialisation, in case the user provided a file.</p>
+<pre class="bash"><code>if ${USE_FATES} &amp;&amp; [[ &quot;${INVENTORY_BASE}&quot; != &quot;&quot; ]]
+then
+
+   #--- Set inventory file with full path.
+   INVENTORY_FILE=&quot;${SITE_PATH}/${INVENTORY_BASE}&quot;
+   #---~---
+
+
+   #--- Instruct the host land model to use the modified parameter set. 
+   touch ${USER_NL_HLM}
+   echo &quot;use_fates_inventory_init = .true.&quot;                   &gt;&gt; ${USER_NL_HLM}
+   echo &quot;fates_inventory_ctrl_filename = &#39;${INVENTORY_FILE}&#39;&quot; &gt;&gt; ${USER_NL_HLM}
+   #---~---
+
+fi</code></pre>
+<p>Change PFT parameters if needed.</p>
+<pre class="bash"><code>if ${USE_FATES} &amp;&amp; [[ ${#pft_settings[*]} -gt 0 ]]
+then
+
+   #--- Identify original parameter file
+   if [[ &quot;${FATES_PARAMS_BASE}&quot; == &quot;&quot; ]]
+   then
+      FATES_PARAMS_ORIG=&quot;${FATES_SRC_PATH}/parameter_files/fates_params_default.cdl&quot;
+   else
+      FATES_PARAMS_ORIG=&quot;${SITE_PATH}/${FATES_PARAMS_BASE}&quot;
+   fi
+   #---~---
+
+
+   #--- Create a local parameter file.
+   echo &quot; + Create local parameter file from $(basename ${FATES_PARAMS_ORIG}).&quot;
+   FATES_PARAMS_CASE=&quot;${CASE_PATH}/fates_params_${CASE_NAME}.nc&quot;
+   ncgen -o ${FATES_PARAMS_CASE} ${FATES_PARAMS_ORIG}
+   #---~---
+
+
+   #--- Set python script for updating parameters.
+   MODIFY_PARAMS_PY=&quot;${FATES_SRC_PATH}/tools/modify_fates_paramfile.py&quot;
+   #---~---
+
+
+   #--- Loop through the parameters to update.
+   echo &quot; + Create local parameter file.&quot;
+   for p in ${!pft_settings[*]}
+   do
+      #--- Retrieve settings.
+      pft_var=$(echo ${pft_settings[p]} | awk &#39;{print $1}&#39;)
+      pft_num=$(echo ${pft_settings[p]} | awk &#39;{print $2}&#39;)
+      pft_val=$(echo ${pft_settings[p]} | awk &#39;{print $3}&#39;)
+      #---~---
+
+      #--- Update parameters.
+      ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
+         --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+      #---~---
+   done
+   #---~---
+
+
+   #--- Instruct the host land model to use the modified parameter set. 
+   touch ${USER_NL_HLM}
+   echo &quot;fates_paramfile = &#39;${FATES_PARAMS_CASE}&#39;&quot; &gt;&gt; ${USER_NL_HLM}
+   #---~---
+else
+   #--- No changes needed.
+   echo &quot; + No PFT parameter settings required.&quot;
+   #---~---
+fi</code></pre>
+<p>Add other variables to the namelist of the host land model.</p>
+<pre class="bash"><code>if  [[ ${#hlm_settings[*]} -gt 0 ]]
+then
+   #--- Loop through the options to update.
+   echo &quot; + Update host land model settings.&quot;
+   for h in ${!hlm_settings[*]}
+   do
+      #--- Retrieve settings.
+      hlm_id=$(echo ${hlm_settings[h]}  | awk &#39;{print $1}&#39;)
+      hlm_id=$(echo ${hlm_id}           | sed s@&quot;YYY&quot;@${HLM}@g | sed s@&quot;yyy&quot;@${hlm}@g)
+      hlm_val=$(echo ${hlm_settings[h]} | awk &#39;{for(i=2;i&lt;=NF;++i)printf $i&quot;&quot;FS ; print &quot;&quot;}&#39;)
+      #---~---
+
+      #--- Check whether or not this is a FATES variable.
+      is_fates_var=$(echo ${hml_id} | grep -i fates | wc -l)
+      #---~---
+
+      #---~---
+      #   Check whether this is a FATES variable.  In case it is and USE_FATES is false,
+      # we ignore the variable.
+      #---~---
+      if ${USE_FATES} || [[ ${is_fates_var} -eq 0 ]]
+      then
+         #--- Update namelist
+         echo &quot; ID = ${hlm_id}; VAL = ${hlm_val}&quot;
+         touch ${USER_NL_HLM}
+         echo &quot;${hlm_id} = ${hlm_val}&quot; &gt;&gt; ${USER_NL_HLM}
+         #---~---
+      else
+         #--- Do not update.  Instead, warn the user.
+         echo &quot; Ignoring ${hlm_id} as this a FATES variable, and USE_FATES=false.&quot;
+         #---~---
+      fi
+      #---~---
+   done
+   #---~---
+else
+   #--- No changes needed.
+   echo &quot; + No PFT parameter settings required.&quot;
+   #---~---
+fi</code></pre>
+<p>Build the case (and delete previous case run in case it exists).</p>
+<pre class="bash"><code>#--- Build case.
+./case.build --clean
+./case.build</code></pre>
+<p>Return to the original path.</p>
+<pre class="bash"><code>cd ${HERE_PATH}</code></pre>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

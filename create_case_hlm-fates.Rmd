@@ -1,0 +1,708 @@
+---
+title: "Create case for ELM-FATES or CLM-FATES"
+author: "Marcos Longo"
+date: "14-Jul-2021"
+---
+
+
+# Introduction
+
+
+The [create_case_hlm-fates.sh](https://github.com/mpaiao/FATES_Utils/blob/master/create_case_hlm-fates.sh) script generates a case for a single-point simulation for a user-defined site.  It assumes all the site-specific data files (`SITE_NAME`) are located in the  `SITE_BASE_PATH` folder.
+
+This script does not take any arguments. Instead, the beginning of the script has many variables to control the simulation settings.
+
+*Important*. Use the actual script for setting up the case. The R Markdown file is for documentation only. Once I figure out how to write shell scripts (as opposed to shell chunks) within R Markdown, this message will be removed.
+
+
+# Main setings.
+
+First we define which model to run and where to run:
+```{bash, engine.opts='-l', eval = FALSE, label='first-settings'}
+#--- Main settings.
+export HESM="CTSM"              # Host "Earth System Model". (E3SM, CESM, CTSM)
+export PROJECT=ngeet            # Project (may not be needed)
+export MACH="eschweilera"       # Machine used for preparing the case
+#---~---
+```
+
+The settings below are useful for debugging the code:
+
+- `DEBUG_LEVEL`. The higher the number, the more information will be provided (at the expense of running slower).  0 means no debugging (typical setting for scientific analysis), 6 means very strict debugging (useful when developing the code).
+- `USE_FATES`. Logical flag (`true` or `false`).  This option allows running the native  host land model (CLM or ELM) without FATES, which may be useful for some debugging.
+
+```{bash, engine.opts='-l', eval = FALSE, label='debug-settings'}
+export DEBUG_LEVEL=0
+export USE_FATES=true
+```
+
+Set paths:
+
+- `WORK_PATH`: The main working path (typically `<host_model>/cime/scripts`)
+- `CASE_ROOT`: The main path where to create the directory for this case.
+- `SIMUL_ROOT`: The main path where to create the directory for the simulation output.
+
+*Note*. In all cases, use `XXXX` in the part you want to be replaced with either E3SM or CTSM.
+```{bash, engine.opts='-l', eval = FALSE, label='path-settings'}
+export WORK_PATH="${HOME}/Models/XXXX/cime/scripts"
+export CASE_ROOT="${HOME}/Documents/LocalData/FATES/Cases"
+export SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
+```
+
+Set the cases. These variables will control compilation settings and the case name for this simulation.  
+It is fine to leave these blank, in which case the script will use default settings.
+```{bash, engine.opts='-l', eval = FALSE, label='case-settings'}
+export COMP=""
+export CASE_NAME="D0005_ParacouTest"
+```
+
+Set variable `APPEND_GIT_HASH` to decide whether (`true`) or not (`false`) to append the current git commit hash to the case names. Appending the hash can be useful for reproducibility and is encouraged for scientific work.  If just testing or debugging the code, setting it to false makes the case name shorter and more friendly.
+```{bash, engine.opts='-l', eval = FALSE, label='git-hash-settings'}
+export APPEND_GIT_HASH=false
+```
+
+
+Set the grid resolution (variable `RESOL`). This must be a standard ELM/CLM grid resolution. In case you want to use the site information, set `RESOL=YYY_USRDAT`.  The host model will be replaced later in the script.
+```{bash, engine.opts='-l', eval = FALSE, label='set-grid-resol'}
+export RESOL="YYY_USRDAT" # Grid resolution
+```
+
+
+Set the site information, in case `RESOL=YYY_USRDAT` (otherwise these variables will be ignored). To keep things in a somewhat standardised format, we recommend creating a base directory (`SITE_BASE_PATH`) where each set of site data (`SITE_NAME`) will be stored. (The full path for the sets of a certain file being `${SITE_BASE_PATH}/${SITE_NAME}`).
+
+The site-specific path should contain:
+
+1. A sub-directory `CLM1PT` containing the meteorological drivers.  Check documentation for script [make_fates_met_driver.Rmd](make_fates_met_driver.html) for more details.
+2. The domain and surface data specific for this site. Check documentation for script [make_fates_domain+surface.Rmd](make_fates_domain+surface.html) for further information.
+3. _Optional_. A FATES parameter file. This file is assumed to be in the ` be in the `SITE_NAME` sub-directory.  In case none is provided (i.e., `FATES_PARAMS_BASE=""`), the case will use the default parameter file. Beware that the default is not optimised and may yield bad results.
+4. _Optional_. The forest structure control data, which should contain the full paths to ED2-style  pss (patch) and css (cohort) files.  Check the [ED2 Wiki](https://github.com/EDmodel/ED2/wiki/Initial-conditions) for details on how to generate the files.
+
+The actual scripts are available on [GitHub](https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing).
+
+```{bash, engine.opts='-l', eval = FALSE, label='site-settings'}
+# Path containing all the data sets.
+export SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
+# Sub-directory with data sets specific to this site.
+export SITE_NAME="1x1pt-paracouGUF_v1.5_c20210713"
+# Domain file (it must be in the SITE_NAME sub-directory).
+export HLM_USRDAT_DOMAIN="domain.lnd.${SITE_NAME}_navy.nc"
+# Surface data file (it must be in the SITE_NAME sub-directory).
+export HLM_USRDAT_SURDAT="surfdata_${SITE_NAME}.nc"
+# Calendar type for the meteorological drivers ('NO_LEAP' or 'GREGORIAN')
+export METD_CALENDAR="GREGORIAN"
+# CDL file containing FATES parameters (it must be in the SITE_NAME sub-directory).
+
+#    Parameter file, in case a site-specific file exists. Leave it blank for using the
+# default parameter file. 
+export FATES_PARAMS_BASE="fates_params_1trop_opt224_vm6_hivmphos.c210529.cdl"
+
+#    Control file with information on which patch (pss) and cohort (css) file to use. Leave
+# it blank for no inventory initialisation.
+export INVENTORY_BASE="${SITE_NAME}_nounder_info.txt"
+
+```
+
+The variable below lists all variables to be updated using the `xmlchange` functionality of CIME.
+
+- In case you do not want to change any settings, set the variable as an empty vector (i.e., `xml_settings=()`).
+- Otherwise, create an vector with multi-word strings separated by space. Within each string, the first word should be the variable name, the second argument is the value.  For string values, make sure to enclose it in single quotes when needed.  If you want, you can use the generic wildcard YYY for variables that may be either CLM or ELM (lower case yyy will replace with the lower-case model name).  The code will interpret it accordingly.
+
+```{bash, engine.opts='-l', eval = FALSE, label='xml-settings'}
+xml_settings=("DEBUG                             FALSE"
+              "RUN_STARTDATE                     2004-01-01"
+              "STOP_N                            16"
+              "STOP_OPTION                       nyears"
+              "REST_N                            1"
+              "YYY_FORCE_COLDSTART               on"
+              "DATM_CLMNCEP_YR_START             2004"
+              "DATM_CLMNCEP_YR_END               2019")
+```
+
+
+```{bash, engine.opts='-l', eval = FALSE, label='pft-settings'}
+pft_settings=("fates_wood_density 1      0.65"
+              "fates_smpsc        1 -200000.0")
+```
+
+
+Additional settings for the host land model namelist.  
+
+- In case you do not want to change any settings, set the variable as an empty vector (i.e., `hlm_settings=()`).
+- Otherwise, create an vector with multi-word strings separated by space. The first word is the namelist variable name, and remaining word are the values.  
+
+**Important**. 
+
+1. For variable names, you can use hlm or HLM as a wildcard for the host land model. 
+2. If the values are supposed to be strings, enclose each string part in quotes.  If multiple values are to be passed, the comma shall not be enclosed in quotes.  If the string is too long (common when setting `hist_fincl1`), you can break them into multiple lines using backslash (`\`). The backslash will not be printed.
+3. Note that the names of specific variables to be included in the `hist_fincl1` are not always the same for ELM and CLM.  The script will always build the case, but runs will fail if the list of output variables includes any variable that is not recognised by the host model.
+
+```{bash, engine.opts='-l', eval = FALSE, label='hlm-settings'}
+if ${USE_FATES}
+then
+   hlm_settings=("hist_empty_htapes .true."
+                 "hist_fincl1       'AGB','AGB_SCPF','AR','EFLX_LH_TOT',\
+                                    'FSH','ELAI','FIRE','FLDS','FSDS','FSR','GPP','HR',\
+                                    'NEP','GPP_BY_AGE','PATCH_AREA_BY_AGE','BA_SCPF',\
+                                    'CANOPY_AREA_BY_AGE','NPLANT_CANOPY_SCPF',\
+                                    'NPLANT_UNDERSTORY_SCPF','DDBH_CANOPY_SCPF',\
+                                    'DDBH_UNDERSTORY_SCPF','MORTALITY_CANOPY_SCPF',\
+                                    'MORTALITY_UNDERSTORY_SCPF','GPP_SCPF','AR_SCPF',\
+                                    'NPP_SCPF','ELAI','ESAI','TLAI','TSAI','LAI_BY_AGE',\
+                                    'LAI_CANOPY_SCLS','LAI_UNDERSTORY_SCLS',\
+                                    'PATCH_AREA_BY_AGE','DEMOTION_RATE_SCLS',\
+                                    'PROMOTION_RATE_SCLS','M1_SCPF','M2_SCPF','M3_SCPF',\
+                                    'M4_SCPF','M5_SCPF','M6_SCPF','M7_SCPF','M8_SCPF',\
+                                    'M9_SCPF','M10_SCPF','CARBON_BALANCE_CANOPY_SCLS',\
+                                    'CARBON_BALANCE_UNDERSTORY_SCLS',\
+                                    'TRIMMING_CANOPY_SCLS','TRIMMING_UNDERSTORY_SCLS',\
+                                    'TBOT','QBOT','PBOT','QVEGE','QVEGT','QSOIL',\
+                                    'FSH_V','FSH_G','FGR','BTRAN','ZWT','ZWT_PERCH','SMP',\
+                                    'TSA','TV','TREFMNAV','TREFMXAV','TG','TAF','QAF',\
+                                    'UAF','Q2M','RAIN','QDIRECT_THROUGHFALL','QDRIP',\
+                                    'QOVER','QDRAI','QINTR','USTAR','U10'")
+else
+   hlm_settings=("hist_empty_htapes .true."
+                 "hist_fincl1       'AR','EFLX_LH_TOT','FSH','ELAI','FIRE','FLDS',\
+                                    'FSDS','FSR','GPP','HR','NEP','ELAI','ESAI','TLAI',\
+                                    'TSAI','TBOT','QBOT','PBOT','QVEGE','QVEGT','QSOIL',\
+                                    'FSH_V','FSH_G','FGR','BTRAN','Qtau','ZWT','ZWT_PERCH',\
+                                    'SMP','TSA','TV','TREFMNAV','TREFMXAV','TG','Q2M',\
+                                    'RAIN','QDIRECT_THROUGHFALL','QDRIP','QOVER',\
+                                    'QDRAI','QINTR','USTAR','U10'")
+fi
+```
+
+
+
+
+# Script execution.
+
+*Important*. Changes beyond this point are needed only for script development.
+
+
+## Initial settings.
+
+Here the script defines some useful variables, and replace host Earth System Model wildcards with the current host Earth System Model.
+
+```{bash, engine.opts='-l', eval = FALSE, label='set-hesm'}
+# Define the host Earth System Model from upper-case CIME_MODEL.
+export HESM=$(echo ${HESM} | tr '[:lower:]' '[:upper:]')
+
+# Update cade and simulation paths, in case a generic name was provided.
+export WORK_PATH=$(echo ${WORK_PATH}           | sed s@"XXXX"@"${HESM}"@g)
+export CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@"XXXX"@"${HESM}"@g)
+export SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@"XXXX"@"${HESM}"@g)
+
+# Current date.
+export TODAY=$(date +"%Y-%m-%d")
+
+# Current path.
+export HERE_PATH=$(pwd)
+
+# Site path.
+export SITE_PATH="${SITE_BASE_PATH}/${SITE_NAME}"
+```
+
+
+Define variables that depend on which host Earth System Model we are using.
+```{bash, engine.opts='-l', eval = FALSE, label='set-hesm-variables'}
+#---~---
+#   Make changes to some of the settings based on the host model.
+#---~---
+case "${HESM}" in
+E3SM)
+   #---~---
+   # E3SM-FATES
+   #---~---
+
+   #--- Set CIME model.
+   export CIME_MODEL="e3sm"
+   #---~---
+
+   #--- Set host land model. Set both upper case and lower case for when needed.
+   export hlm="elm"
+   export HLM="ELM"
+   #---~---
+
+   #--- Main path for host model
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   #---~---
+
+   #--- Main path for FATES
+   export FATESMODEL_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
+   #---~---
+
+   #--- Additional options for "create_newcase"
+   export NEWCASE_OPTS=""
+   #---~---
+
+   #--- Main source path for FATES.
+   export FATES_SRC_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
+   #---~---
+
+   #--- In case compilates settings is not defined, use the default settings.
+   if ${USE_FATES} && [[ "${COMP}" == "" ]]
+   then
+      export COMP="IELMFATES"
+   elif [[ "${COMP}" == "" ]]
+   then
+      export COMP="IELMBGC"
+   fi
+   #---~---
+
+   ;;
+CTSM|CESM)
+   #---~---
+   # CESM-FATES or CTSM-FATES
+   #---~---
+
+   #--- Set CIME model.
+   export CIME_MODEL="cesm"
+   #---~---
+
+   #--- Set host land model. Set both upper case and lower case for when needed.
+   export hlm="clm"
+   export HLM="CLM"
+   #---~---
+
+
+   #--- Main path for host model
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   #---~---
+
+   #--- Main path for FATES
+   export FATESMODEL_PATH="${HOSTMODEL_PATH}/src/fates"
+   #---~---
+
+   #--- Additional options for "create_newcase"
+   export NEWCASE_OPTS="--run-unsupported"
+   #---~---
+
+   #--- Main source path for FATES.
+   export FATES_SRC_PATH="${HOSTMODEL_PATH}/src/fates"
+   #---~---
+
+
+   #--- In case compilates settings is not defined, use the default settings.
+   if ${USE_FATES} && [[ "${COMP}" == "" ]]
+   then
+      export COMP="I2000Clm51Fates"
+   elif [[ "${COMP}" == "" ]]
+   then
+      export COMP="I2000Clm51Bgc"
+   fi
+   #---~---
+
+   ;;
+esac
+#---~---
+```
+
+
+Set the host model + FATES Git commit hashes. 
+```{bash, engine.opts='-l', eval = FALSE, label='set-git-hash'}
+export HLM_HASH="${HLM}-$(cd ${HOSTMODEL_PATH};   git log -n 1 --pretty=%h)"
+export FATES_HASH="FATES-$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)"
+```
+
+
+Replace host land model wildcards
+```{bash, engine.opts='-l', eval = FALSE, label='set-hlm'}
+
+# Define setting for single-point
+export V_HLM_USRDAT_NAME="${HLM}_USRDAT_NAME"
+
+# Substitute wildcards in the resolution with the actual model
+export RESOL=$(echo "${RESOL}" | sed s@"YYY"@"${HLM}"@g | sed s@"yyy"@"${hlm}"@g)
+```
+
+
+Set default case name prefix in case none was provided.
+```{bash, engine.opts='-l', eval = FALSE, label='set-case-name'}
+if [[ "${CASE_NAME}" == "" ]]
+then
+   export CASE_NAME="SX_${COMP}_${MACH}_${TODAY}"
+fi
+
+# Append github commit hash, or a simple host-model / FATES tag.
+if ${USE_FATES} && ${APPEND_GIT_HASH}
+then
+   export CASE_NAME="${CASE_NAME}_${HLM_HASH}_${FATES_HASH}"
+elif ${APPEND_GIT_HASH}
+then
+   export CASE_NAME="${CASE_NAME}_${HLM_HASH}_BigLeaf"
+elif ${USE_FATES}
+then
+   export CASE_NAME="${CASE_NAME}_${HLM}_FATES"
+else
+   export CASE_NAME="${CASE_NAME}_${HLM}_BigLeaf"
+fi
+
+# Set paths for case and simulation.
+export CASE_PATH="${CASE_ROOT}/${CASE_NAME}"
+export SIMUL_PATH="${SIMUL_ROOT}/${CASE_NAME}"
+
+# Set namelist for the host land model.
+export USER_NL_HLM="${CASE_PATH}/user_nl_${hlm}"
+```
+
+
+
+To avoid overwriting simulations, we always ask before if it is fine to delete a previous case setting. 
+```{bash, engine.opts='-l', eval = FALSE, label='check-owrite-case'}
+if [[ -s ${CASE_PATH} ]] || [[ -s ${SIMUL_PATH} ]]
+then
+   #---~---
+   #    Check with user if it's fine to delete existing case.
+   #---~---
+   echo    " Case directories (${CASE_NAME}) already exist, proceeding will delete them."
+   echo -n " Proceed (y|N)?   "
+   read proceed
+   proceed=$(echo ${proceed} | tr '[:upper:]' '[:lower:]')
+   #---~---
+
+
+   #---~---
+   #    We give one last chance for users to cancel before deleting the files.
+   #---~---
+   case "${proceed}" in
+   y|yes)
+      echo "---------------------------------------------------------------------"
+      echo " FINAL WARNING!"
+      echo " I will start deleting files in 5 seconds."
+      echo " In case you change your mind, press Ctrl+C before the time is over."
+      echo "---------------------------------------------------------------------"
+      when=6
+      echo -n " - "
+      while [[ ${when} -gt 1 ]]
+      do
+         let when=${when}-1
+         echo -n " ${when}..."
+         sleep 1
+      done
+      echo " Time is over!"
+
+
+
+      #--- Delete files.
+      /bin/rm -rvf ${CASE_PATH} ${SIMUL_PATH}
+      #---~---
+
+      ;;
+   *)
+      echo " - Script interrupted, files were kept."
+      exit 0
+      ;;
+   esac
+   #---~---
+fi
+```
+
+
+## Create case
+
+Move to main CIME path, and create the new case.
+```{bash, engine.opts='-l', eval = FALSE, label='create-case'}
+cd ${WORK_PATH}
+
+
+# Create the new case
+./create_newcase --case=${CASE_PATH} --res=${RESOL} --compset=${COMP} --mach=${MACH}       \
+   --project=${PROJECT} ${NEWCASE_OPTS}
+cd ${CASE_PATH}
+
+
+
+
+# Set the CIME output to the main CIME path.
+./xmlchange CIME_OUTPUT_ROOT="${SIMUL_ROOT}"
+./xmlchange DOUT_S_ROOT="${SIMUL_PATH}"
+./xmlchange PIO_DEBUG_LEVEL="${DEBUG_LEVEL}"
+```
+
+
+## Modify case
+
+In case this is a user-defined site simulation, set the user-specified paths. 
+**Important**. Variable `DATM_MODE` must be set to `CLM1PT`, even when running E3SM-FATES.
+
+```{bash, engine.opts='-l', eval = FALSE, label='set-xml-usrdat'}
+case "${RESOL}" in
+?LM_USRDAT)
+   ./xmlchange DATM_MODE="CLM1PT"
+   ./xmlchange CALENDAR="${METD_CALENDAR}"
+   ./xmlchange ${V_HLM_USRDAT_NAME}="${SITE_NAME}"
+   ./xmlchange ATM_DOMAIN_PATH="${SITE_PATH}"
+   ./xmlchange LND_DOMAIN_PATH="${SITE_PATH}"
+   ./xmlchange ATM_DOMAIN_FILE="${HLM_USRDAT_DOMAIN}"
+   ./xmlchange LND_DOMAIN_FILE="${HLM_USRDAT_DOMAIN}"
+   ./xmlchange DIN_LOC_ROOT_CLMFORC="${SITE_BASE_PATH}"
+
+   ;;
+esac
+```
+
+
+Set the PE layout for a single-site run (unlikely that users would change this).
+```{bash, engine.opts='-l', eval = FALSE, label='set-pe-layout'}
+./xmlchange NTASKS_ATM=1
+./xmlchange NTASKS_LND=1
+./xmlchange NTASKS_ROF=1
+./xmlchange NTASKS_ICE=1
+./xmlchange NTASKS_OCN=1
+./xmlchange NTASKS_CPL=1
+./xmlchange NTASKS_GLC=1
+./xmlchange NTASKS_WAV=1
+./xmlchange NTASKS_ESP=1
+
+./xmlchange NTHRDS_ATM=1
+./xmlchange NTHRDS_LND=1
+./xmlchange NTHRDS_ROF=1
+./xmlchange NTHRDS_ICE=1
+./xmlchange NTHRDS_OCN=1
+./xmlchange NTHRDS_CPL=1
+./xmlchange NTHRDS_GLC=1
+./xmlchange NTHRDS_WAV=1
+./xmlchange NTHRDS_ESP=1
+
+./xmlchange ROOTPE_ATM=0
+./xmlchange ROOTPE_LND=0
+./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
+./xmlchange ROOTPE_GLC=0
+./xmlchange ROOTPE_WAV=0
+./xmlchange ROOTPE_ESP=0
+```
+
+Apply the user-specified XML configurations.
+```{bash, engine.opts='-l', eval = FALSE, label='set-xlm-user'}
+if [[ ${#xml_settings[*]} -gt 0 ]]
+then
+   #--- Loop through the options to update.
+   echo " + Update XML settings."
+   for x in ${!xml_settings[*]}
+   do
+      #--- Retrieve settings.
+      xml_id=$(echo ${xml_settings[x]}  | awk '{print $1}')
+      xml_id=$(echo ${xml_id}           | sed s@"YYY"@${HLM}@g | sed s@"yyy"@${hlm}@g)
+      xml_val=$(echo ${xml_settings[x]} | awk '{print $2}')
+      echo " ID = ${xml_id}; VAL = ${xml_val}"
+      #---~---
+
+      #--- Update settings.
+      ./xmlchange ${xml_id}="${xml_val}"
+      #---~---
+
+   done
+   #---~---
+else
+   #--- No changes needed.
+   echo " + No XML changes required."
+   #---~---
+fi
+```
+
+This part modifies the DATM namelist. **Important!**.  Do **NOT** change this unless you know exactly what you are doing.
+```{bash, engine.opts='-l', eval = FALSE, label='update-nl-datm'}
+USER_NL_DATM="${CASE_PATH}/user_nl_datm"
+touch ${USER_NL_DATM}
+echo "taxmode = 'cycle','cycle','cycle'" >> ${USER_NL_DATM}
+`#---~---
+```
+
+
+# Set up the case
+
+Initial case set up.
+```{bash, engine.opts='-l', eval = FALSE, label='case-set-up'}
+./case.setup
+./preview_namelists
+`#---~---
+```
+
+Some meteorological drivers lack incoming longwave irradiance.  If this is the case, we ought to delete it from the list of expected variables. **WARNING**. This is all done automatically, and it's unlikely that users would ever need to change this part.
+```{bash, engine.opts='-l', eval = FALSE, label='check-rlong-inp'}
+case "${RESOL}" in
+?LM_USRDAT)
+   #--- Define files with meteorological driver settings.
+   HLM_USRDAT_ORIG="${SIMUL_PATH}/run/datm.streams.txt.CLM1PT.${RESOL}"
+   HLM_USRDAT_USER="${SIMUL_PATH}/user_datm.streams.txt.CLM1PT.${RESOL}"
+   #---~---
+
+
+   ANY_METD_NC=$(/bin/ls -1 ${SITE_PATH}/${DATM_MODE}/????-??.nc 2> /dev/null | wc -l)
+   if [[ ${ANY_METD_NC} ]]
+   then
+      #--- Load one netCDF file.
+      METD_NC_1ST=$(/bin/ls -1 ${SITE_PATH}/${DATM_MODE}/????-??.nc 2> /dev/null | head -1)
+      ANY_FLDS=$(ncdump -h ${METD_NC_1ST} 2> /dev/null | grep FLDS | wc -l)
+      if [[ ${ANY_FLDS} -eq 0 ]]
+      then
+         #--- Incoming long wave radiation is absent.  Modify the stream file
+         /bin/cp ${HLM_USRDAT_ORIG} ${HLM_USRDAT_USER}
+         $(sed -i '@FLDS@d' ${HLM_USRDAT_USER})
+         #---~---
+      fi
+      #---~---
+   else
+      #--- Report error.
+      echo " Meteorological drivers not found in ${SITE_PATH}/${DATM_MODE}".
+      echo " Make sure all the met driver files are named as yyyy-mm.nc"
+      exit 91
+      #---~---
+   fi
+   #---~---
+   ;;
+esac
+```
+
+
+Append the site-specific surface data information to the namelist, in case we are using a single-site simulation.
+```{bash, engine.opts='-l', eval = FALSE, label='update-sfc-file'}
+case "${RESOL}" in
+?LM_USRDAT)
+   # Append surface data file to the namelist.
+   HLM_SURDAT_FILE="${SITE_PATH}/${HLM_USRDAT_SURDAT}"
+   echo "fsurdat = '${HLM_SURDAT_FILE}'" >> ${USER_NL_HLM}
+   ;;
+esac
+```
+
+
+Include settings for the inventory initialisation, in case the user provided a file.
+```{bash, engine.opts='-l', eval = FALSE, label='set-finv-init'}
+if ${USE_FATES} && [[ "${INVENTORY_BASE}" != "" ]]
+then
+
+   #--- Set inventory file with full path.
+   INVENTORY_FILE="${SITE_PATH}/${INVENTORY_BASE}"
+   #---~---
+
+
+   #--- Instruct the host land model to use the modified parameter set. 
+   touch ${USER_NL_HLM}
+   echo "use_fates_inventory_init = .true."                   >> ${USER_NL_HLM}
+   echo "fates_inventory_ctrl_filename = '${INVENTORY_FILE}'" >> ${USER_NL_HLM}
+   #---~---
+
+fi
+```
+
+
+Change PFT parameters if needed.
+```{bash, engine.opts='-l', eval = FALSE, label='update-pft-params'}
+if ${USE_FATES} && [[ ${#pft_settings[*]} -gt 0 ]]
+then
+
+   #--- Identify original parameter file
+   if [[ "${FATES_PARAMS_BASE}" == "" ]]
+   then
+      FATES_PARAMS_ORIG="${FATES_SRC_PATH}/parameter_files/fates_params_default.cdl"
+   else
+      FATES_PARAMS_ORIG="${SITE_PATH}/${FATES_PARAMS_BASE}"
+   fi
+   #---~---
+
+
+   #--- Create a local parameter file.
+   echo " + Create local parameter file from $(basename ${FATES_PARAMS_ORIG})."
+   FATES_PARAMS_CASE="${CASE_PATH}/fates_params_${CASE_NAME}.nc"
+   ncgen -o ${FATES_PARAMS_CASE} ${FATES_PARAMS_ORIG}
+   #---~---
+
+
+   #--- Set python script for updating parameters.
+   MODIFY_PARAMS_PY="${FATES_SRC_PATH}/tools/modify_fates_paramfile.py"
+   #---~---
+
+
+   #--- Loop through the parameters to update.
+   echo " + Create local parameter file."
+   for p in ${!pft_settings[*]}
+   do
+      #--- Retrieve settings.
+      pft_var=$(echo ${pft_settings[p]} | awk '{print $1}')
+      pft_num=$(echo ${pft_settings[p]} | awk '{print $2}')
+      pft_val=$(echo ${pft_settings[p]} | awk '{print $3}')
+      #---~---
+
+      #--- Update parameters.
+      ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
+         --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+      #---~---
+   done
+   #---~---
+
+
+   #--- Instruct the host land model to use the modified parameter set. 
+   touch ${USER_NL_HLM}
+   echo "fates_paramfile = '${FATES_PARAMS_CASE}'" >> ${USER_NL_HLM}
+   #---~---
+else
+   #--- No changes needed.
+   echo " + No PFT parameter settings required."
+   #---~---
+fi
+```
+
+
+Add other variables to the namelist of the host land model.
+```{bash, engine.opts='-l', eval = FALSE, label='update-hlm-settings'}
+if  [[ ${#hlm_settings[*]} -gt 0 ]]
+then
+   #--- Loop through the options to update.
+   echo " + Update host land model settings."
+   for h in ${!hlm_settings[*]}
+   do
+      #--- Retrieve settings.
+      hlm_id=$(echo ${hlm_settings[h]}  | awk '{print $1}')
+      hlm_id=$(echo ${hlm_id}           | sed s@"YYY"@${HLM}@g | sed s@"yyy"@${hlm}@g)
+      hlm_val=$(echo ${hlm_settings[h]} | awk '{for(i=2;i<=NF;++i)printf $i""FS ; print ""}')
+      #---~---
+
+      #--- Check whether or not this is a FATES variable.
+      is_fates_var=$(echo ${hml_id} | grep -i fates | wc -l)
+      #---~---
+
+
+      #---~---
+      #   Check whether this is a FATES variable.  In case it is and USE_FATES is false,
+      # we ignore the variable.
+      #---~---
+      if ${USE_FATES} || [[ ${is_fates_var} -eq 0 ]]
+      then
+         #--- Update namelist
+         echo " ID = ${hlm_id}; VAL = ${hlm_val}"
+         touch ${USER_NL_HLM}
+         echo "${hlm_id} = ${hlm_val}" >> ${USER_NL_HLM}
+         #---~---
+      else
+         #--- Do not update.  Instead, warn the user.
+         echo " Ignoring ${hlm_id} as this a FATES variable, and USE_FATES=false."
+         #---~---
+      fi
+      #---~---
+   done
+   #---~---
+else
+   #--- No changes needed.
+   echo " + No PFT parameter settings required."
+   #---~---
+fi
+```
+
+
+Build the case (and delete previous case run in case it exists).
+```{bash, engine.opts='-l', eval = FALSE, label='case-build'}
+#--- Build case.
+./case.build --clean
+./case.build
+```
+
+
+Return to the original path.
+```{bash, engine.opts='-l', eval = FALSE, label='back-home'}
+cd ${HERE_PATH}
+```

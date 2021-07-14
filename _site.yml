@@ -1,0 +1,20 @@
+name: "FATES_Utils"
+output_dir: "docs"
+navbar:
+  title: "FATES Utilities"
+  left:
+  - text: "Home"
+    href: index.html
+  - text: "Meteorological driver"
+    href: make_fates_met_driver.html
+  - text: "Surface/Domain files"
+    href: make_fates_domain+surface.html
+  - text: "Set up single-site runs"
+    href: create_case_hlm-fates.html
+  - text: "Single-site visualisation with R"
+    href: fates_plot_monthly.html
+output:
+  html_document:
+    theme: darkly
+    highlight: textmate
+    css: styles.css

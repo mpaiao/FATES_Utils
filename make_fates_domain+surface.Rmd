@@ -1,0 +1,757 @@
+---
+title: "Generating ELM/CLM domain and surface files for a single point"
+author: "Marcos Longo"
+date: "16-Jun-2021"
+---
+
+# Introduction
+
+This document shows how to generate domain and surface files for a single point of interest.
+This is needed for when setting a new site. Currently this script simply uses existing domain 
+and surface files, extracts information from the nearest grid cell, and complements with 
+site-specific information you might have.
+
+# Reset session
+
+Use this chunk to fully reset R.
+```{r, label = 'reset-R',message=FALSE, results='hide'}
+# Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) > 0){
+   dummy = sapply(X=paste0("package:",plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) > 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())
+```
+
+# Main settings
+
+## Required packages
+
+Load some packages. By default, we skip the warning messages, but it may be a good idea to
+visualise them if it is the first time running.
+```{r, label='load-packages', message=FALSE, results='hide'}
+
+isfine = c( data.table = require(data.table,quietly=TRUE,warn.conflicts=FALSE)
+          , fields     = require(fields    ,quietly=TRUE,warn.conflicts=FALSE)
+          , lubridate  = require(lubridate ,quietly=TRUE,warn.conflicts=FALSE)
+          , ncdf4      = require(ncdf4     ,quietly=TRUE,warn.conflicts=FALSE)
+          , purrr      = require(purrr     ,quietly=TRUE,warn.conflicts=FALSE)
+          , reshape2   = require(reshape2  ,quietly=TRUE,warn.conflicts=FALSE)
+          , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
+          )#end c
+if (! all(isfine)){
+   cat0(" List of required packages, and the success status loading them:\n")
+   print(isfine)
+   stop(" Some packages are missing and must be installed.")
+}
+```
+
+
+## Path and file location
+
+Set paths and files for input and output.
+
+* **main_path**. The main path for processing data. The output path will be generated here.
+* **input_path**. The location where existing surface and domain netcdf files are located
+* **output_path**. The main output path for the data. A sub-directory for this site will be created.
+
+```{r, label='path-settings'}
+main_path   = file.path(path.expand("~"),"Documents","LocalData","TowerData","Paracou","make_single_site")
+input_path  = file.path(main_path,"input_netcdf")
+output_path = file.path(path.expand("~"),"Data","FATES_DataSets")
+```
+
+Set the URL for the input surface data.  _This is normally a gridded data file_, not a single-site one.
+We will only download the data in case we cannot locate these files at `input_netcdf`.
+If you have your own set of input data, set a dummy URL with the actual file name.  For example, if you have the domain file `my_surface_grid_file.nc`,
+ set `url.surfgrid="https://localhost/my_surface_grid_file.nc"`.
+```{r, label='input-url'}
+url_surfgrid = "https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.24/surfdata_0.125x0.125_hist_16pfts_Irrig_CMIP6_simyr2005_c190613.nc"
+```
+
+
+## Author information
+Provide information about yourself. This will be included in the netCDF headers. 
+In case you do not want to specify any of them, set them to `NA_character_`
+
+* **author_name**. Person who is generating these files (typically it's you).
+* **author_email**. Contact email (so people can reach out to you if problems arise).
+```{r }
+author_name  = "This Is You"
+author_email = "yourself@somewhere.gov"
+```
+
+## Site information
+
+Provide some basic information about the site:
+
+* **xid**. Unique site ID.
+* **site_desc**. Site description (to be added to the NetCDF files headers).
+* **site_lon**. Longitude (degrees east).
+* **site_lat**. Latitude (degrees north).
+* **site_alt**. Altitude (metres above sea level).
+* **dxy**. Intended grid size.
+* **site_pcsand**; **site_pcclay**. Percentage of sand and clay, respectively.  They should be both be limited between 0 and 100., and their sum shall not exceed 100.  Silt fraction will be derived from these fractions.  If these fractions are not known, set them to `NA`.  If texture information is provided, we assume that all layers have
+the same texture (this should be revisited once I figure out the soil layers).
+* **site_organic**. Soil organic content $\left[\mathrm{kg\,m^{-3}}\right]$.  For now we use this value to rescale the gridded organic content of all input layers.
+* **site_bedrock**. Soil depth to bedrock $\left[\mathrm{m}\right]$. In case depth is unknown, leave it as `NA_real_`.
+* **undef**. A number to denote missing values. This is needed by NetCDF, but the data should not have any.
+* **force_natural**. Should we overwrite the fraction cover of global gridded data set, so natural vegetation becomes 100%?
+
+```{r, label='site-settings'}
+xid           = "paracouGUF"
+site_desc     = "Guyaflux tower at Paracou, French Guiana"
+dat_version   = "1.5"
+site_lon      = -52.912222
+site_lat      =   5.281667
+site_alt      =  30.000000
+dxy           =  1.0
+site_xsand    = NA_real_ # 56.2
+site_xclay    = NA_real_ # 37.2
+site_organic  = NA_real_ # 31.1
+site_bedrock  = NA_real_
+undef         = -9999.99
+force_natural = TRUE
+```
+
+
+Additional settings for retrieving the surface gridded data
+
+* **pcveg_min**. Minimum percentage of natural vegetation to consider when loading surface grid. This can be useful to avoid selecting a grid cell over non-natural vegetation  when using a site in heavily degraded areas.
+* **landfrac_min**. Minimum fraction of land to consider when loading surface grid. This can be useful to avoid selecting a grid cell over the ocean when using a coastal site.
+```{r, label='surf-data-settings'}
+pcveg_min    = 8.00
+landfrac_min = 0.50
+```
+
+This concludes the initial settings.  From this point on, you may not need to change anything,
+unless you are debugging or adding new features.
+
+
+# Data processing
+
+## Check inputs
+
+Ensure the input and output paths
+```{r, label='path-checks', message=FALSE, results='hide'}
+dummy = dir.create(input_path ,showWarnings=FALSE,recursive=TRUE)
+```
+
+First, we check whether the input surface data file is already available at the input path. In case it is not, we download it.  Because some of the files may be very large, we temporarily expand R's default timeout for the operation to one day.
+```{r, label='load-inputs'}
+
+# Find base name
+input_surfgrid = file.path(input_path,basename(url_surfgrid))
+
+# Download data in case they are not found.  Often these files are huge, so we tempo
+if (! file.exists(input_surfgrid)){
+  orig.timeout = getOption("timeout")
+  dummy = options(timeout=86400)
+  dummy = download.file(url=url_surfgrid,destfile=input_surfgrid)
+  dummy = options(timeout=orig.timeout)
+}#end if (! file.exists(input_surfgrid))
+
+```
+
+
+## Output names
+
+Build the output file names, following the ELM/CLM convention.
+```{r, label='set-output-names'}
+# Labels for describing the data set.
+ymd_now = today(tzone = "UTC")
+ymd_lab = sprintf("%4.4i%2.2i%2.2i",year(ymd_now),month(ymd_now),day(ymd_now))
+
+# Tag specific for this site, grid, and version (used for file and path names).
+site_tag  = paste0("1x1pt-",xid,"_v",dat_version,"_c",ymd_lab)
+
+#    Set output path to be the same as the site tag.
+site_path   = file.path(output_path,site_tag)
+dummy       = dir.create(site_path  ,recursive=TRUE,showWarnings=FALSE)
+
+# Domain file.  In case the file exists, remove it.
+output_domain   = file.path(site_path,paste0("domain.lnd.",site_tag,"_navy.nc"))
+if (file.exists(output_domain)) file.remove(output_domain)
+
+# Surface data file
+output_surfdata = file.path(site_path,paste0("surfdata_",site_tag,".nc"))
+if (file.exists(output_surfdata)) file.remove(output_surfdata)
+```
+
+## Domain file
+
+The domain file is written entirely from the information provided at the beginning of this document.
+
+First, we set the centre and edge of the grid cells. Make sure longitude is always set from $0^\circ$ to $360^\circ$, and that the centre of the latitude points are not too close to the poles.
+```{r, label='set-coords'}
+
+# Find precision for the coordinates (typically 1% of the grid size).
+cprec = -floor(log10(dxy*0.01))
+
+# Standardise coordinates (and make sure latitude cannot exceed the poles).
+clon  = round(site_lon,cprec) %% 360.
+clat  = max(-90,min(90-0.5*dxy,round(site_lat,cprec)))
+
+# Find edges
+wlon = (clon - 0.5 * dxy) %% 360.
+elon = (clon + 0.5 * dxy) %% 360.
+slat = max(-90.,clat - 0.5 * dxy)
+nlat = min(+90.,clat + 0.5 * dxy)
+```
+
+
+Find the area of this grid cell, in steradians, using the definition of solid angle $\omega$:
+$$\begin{align}
+& \omega = \left[\sin{\left(\varphi_{N}\right)} - \sin{\left(\varphi_{S}\right)} \right] \, \left[ \left(\lambda_{E} - \lambda_{W} \right) \mod{2\,\pi{}} \right]
+\end{align}$$
+where $\varphi_{S}$ and $\varphi_{N}$ are the latitudes of the southern and northern edges [$\mathrm{rad}$], and $\lambda_{W}$ and $\lambda_{E}$ are the longitude of the western and eastern edges [$\mathrm{rad}$]. The modulo operator ensures that the results are correct when the centre of the grid cell crosses the Greenwich meridian.
+```{r, label='solid-angle'}
+# Turn angles to radians.
+wlonr = wlon * pi / 180.
+elonr = elon * pi / 180.
+slatr = slat * pi / 180.
+nlatr = nlat * pi / 180.
+
+# Find solid angle area (assuming radius=1 so results are in steradians).
+solid_angle = (sin(nlatr)-sin(slatr)) * ((elonr-wlonr) %% (2*pi))
+```
+
+Define the dimensions for the new file. It should be always a single point:
+```{r, label='domain-dims'}
+# Dimensions are unitless
+ni = ncdim_def( name="ni",units="",vals=sequence(1L),create_dimvar=FALSE)
+nj = ncdim_def( name="nj",units="",vals=sequence(1L),create_dimvar=FALSE)
+nv = ncdim_def( name="nv",units="",vals=sequence(4L),create_dimvar=FALSE)
+
+# List of dimensions
+ij  = list(ni,nj)
+vij = list(nv,ni,nj)
+```
+
+Create a list with the variables to be added to the single-point domain file.  Each list element 
+contains the following variables.
+
+* **vals**. The values to be included in the variables.
+* **long**. The variable long (and descriptive) name.
+* **unit**. The variable units. In case the variable does not have units, leave it blank (`""`).
+* **dims**. The variable dimensions (a list with the dimensions defined above).
+* **attx**. Other relevant information to be added as attributes. In case no additional attribute is needed, set this to `list()`
+```{r, label='set-domain'}
+# List of data to write.
+nco_dat      = list()
+nco_dat$xc   = list( vals = array(data = clon                  , dim =   c(1,1))
+                   , long = "longitude of the grid cell centre"
+                   , unit = "degrees_east"
+                   , dims = ij
+                   , prec = "double"
+                   , attx = list( bounds = "xv")
+                   )#end list
+nco_dat$yc   = list( vals = array(data = clat                  , dim =   c(1,1))
+                   , long = "latitude of the grid cell centre"
+                   , unit = "degrees_north"
+                   , dims = ij
+                   , prec = "double"
+                   , attx = list( bounds = "yv")
+                   )#end list
+nco_dat$xv   = list( vals = array(data = c(wlon,elon,elon,wlon), dim = c(4,1,1))
+                   , long = "longitude of grid cell vertices"
+                   , unit = "degrees_east"
+                   , dims = vij
+                   , prec = "double"
+                   , attx = list(note = "Vertex order: 1 - SW; 2 - SE; 3 - NE; 4 - NW")
+                   )#end list
+nco_dat$yv   = list( vals = array(data = c(slat,slat,nlat,nlat), dim = c(4,1,1))
+                   , long = "latitude of grid cell vertices"
+                   , unit = "degrees_north"
+                   , dims = vij
+                   , prec = "double"
+                   , attx = list(note = "Vertex order: 1 - SW; 2 - SE; 3 - NE; 4 - NW")
+                   )#end list
+nco_dat$mask = list( vals = array(data =          1L           , dim =   c(1,1))
+                   , long = "land domain mask"
+                   , unit = ""
+                   , dims = ij
+                   , prec = "integer"
+                   , attx = list( note        = "Unitless."
+                                , coordinates = "xc yc"
+                                , classes     = "0 - water (not active); 1 - land (active)"
+                                )#end list
+                   )#end list
+nco_dat$frac = list( vals = array(data =          1.           , dim =   c(1,1))
+                   , long = "fraction of grid cell that is active"
+                   , unit = ""
+                   , dims = ij
+                   , prec = "double"
+                   , attx = list( note        = "Unitless."
+                                , coordinates = "xc yc"
+                                , filter1     = paste0( "error if frac> 1.0+eps or "
+                                                      , "frac < 0.0-eps; eps = 0.1000000E-11"
+                                                      )#end paste0
+                                , filter2     = paste0( "limit frac to [fminval,fmaxval];"
+                                                      , "fminval= 0.1000000E-02 fmaxval=  1.000000"
+                                                      )#end paste0
+                                )#end list
+                   )#end list
+nco_dat$area = list( vals = array(data = solid_angle           , dim =   c(1,1))
+                   , long = "area (solid angle) of grid cell, in steradian"
+                   , unit = "sr"
+                   , dims = ij
+                   , prec = "double"
+                   , attx = list( coordinates = "xc yc")
+                   )#end list
+```
+
+
+Define the netCDF variables for the output variables.  
+```{r, label='def-domain-vars'}
+nco_vlist = list()
+for (v in seq_along(nco_dat)){
+   # Load information for this variable.
+   v_vnow   = names(nco_dat)[v]       # Variable name
+   v_long   = nco_dat[[v_vnow]]$long  # Variable description ("long name")
+   v_unit   = nco_dat[[v_vnow]]$unit  # Units
+   v_dims   = nco_dat[[v_vnow]]$dims  # Variable dimensions
+   v_prec   = nco_dat[[v_vnow]]$prec  # Variable type
+
+   # Define netCDF variable
+   nco_vlist[[v_vnow]] = ncvar_def( name     = v_vnow
+                                  , units    = v_unit
+                                  , dim      = v_dims
+                                  , longname = v_long
+                                  , prec     = v_prec
+                                  )#end ncvar_def
+}#end for (v in seq_along(nci_vlist))
+```
+
+
+Create the output netCDF file.
+```{r, label='gen-nc4-domain'}
+
+# Create the netCDF connection
+if ("nc_domaout" %in% ls()){ dummy=nc_close(nc_domaout); file.remove(output_domain); rm(nc_domaout)}
+nc_domaout = nc_create(filename=output_domain,vars=nco_vlist)
+
+# Define the code developer information (indirect way so the email is not visible).
+developer_name  = c( 111L, 103L, 110L, 111L,  76L,  32L, 115L, 111L,  99L, 114L,  97L,  77L)
+developer_email = c( 118L, 111L, 103L,  46L, 108L,  98L, 108L,  64L, 111L, 103L, 110L, 111L
+                   , 108L, 109L)
+
+# Generate information about this file.
+glob_att = list( title           = paste0( "Domain file for ",site_desc,".")
+               , version         = dat_version
+               , date_created    = paste0(as.character(now(tzone="UTC"))," UTC")
+               , source_code     = "make_fates_domain+surface.Rmd"
+               , code_notes      = "Domain file compatible with ELM-FATES and CLM-FATES"
+               , code_developer  = paste0( intToUtf8(rev(developer_name))
+                                         ," <"
+                                         , intToUtf8(rev(developer_email))
+                                         ,">"
+                                         )#end paste0
+               , file_author     = paste0(author_name," <",author_email,">")
+               )#end list
+
+# Add information to the global attribute list
+for (l in seq_along(glob_att)){
+   # Current attribute information
+   att_name  = names(glob_att)[l]
+   att_value = glob_att[[l]]
+
+   # Add attribute 
+   dummy = ncatt_put(nc=nc_domaout,varid=0,attname=att_name,attval=att_value)
+}#end for (l in seq_along(global_att))
+```
+
+Populate the netCDF with the domain variables, and include the attributes for each variable.
+```{r, label='add-var-domain'}
+for (v in seq_along(nco_dat)){
+   # Retrieve variable information
+   v_vnow  = names(nco_dat)[v]
+   nco_now = nco_dat[[v_vnow]]
+
+   # Add variable values
+   dummy = ncvar_put(nc = nc_domaout,varid=v_vnow,vals=nco_now$vals)
+
+   # Add extra attributes
+   for (a in seq_along(nco_now$attx)){
+      # Retrieve attribute information
+      a_name  = names(nco_now$attx)[a]
+      a_value = nco_now$attx[[a]] 
+      
+      dummy = ncatt_put(nc = nc_domaout, varid=v_vnow,attname=a_name,attval=a_value)
+   }#end for (a in seq_along(v_attx))
+}#end for (v in seq_along(nco_vlist))
+```
+
+
+Save new netCDF, and close the output file. We remove the connection from memory.
+```{r, label='end-var-domain'}
+   dummy = nc_close(nc_domaout)
+   rm(nc_domaout)
+```
+
+# Surface data file
+
+To generate the grid surface data file, we will load an existing surface data file, locate the grid cell
+that is the closest to the point of interest, abd extract the data.  For some of the variables, such as 
+soil texture and soil organic carbon, there may be local observations.  If this is the case, we replace the gridded information with the local observations.
+
+## Load the gridded surface data
+
+Open the surface data file, and retrieve the grid dimensions.
+```{r, label='load-surfdata-gridded'}
+# Open gridded surface data
+if ("nc_gridin" %in% ls()){dummy=nc_close(nc_gridin);rm(nc_gridin)}
+nc_gridin = nc_open(filename=input_surfgrid)
+```
+
+
+Retrieve global attributes from the input file, and add information about this processing.
+```{r, label='set-surfdata-glob-att'}
+
+# Retrieve original attributes. We only make minor edits.
+glob_att = ncatt_get(nc = nc_gridin, varid = 0)
+
+
+# Define the code developer information (indirect way so the email is not visible).
+developer_name  = c( 111L, 103L, 110L, 111L,  76L,  32L, 115L, 111L,  99L, 114L,  97L,  77L)
+developer_email = c( 118L, 111L, 103L,  46L, 108L,  98L, 108L,  64L, 111L, 103L, 110L, 111L
+                   , 108L, 109L)
+
+# Get current time for the log
+create_time = paste0(as.character(now(tzone="UTC"))," UTC")
+
+# Generate information about this file.
+glob_new = list( title           = paste0( "Domain file for ",site_desc,".")
+               , Version         = dat_version
+               , Revision_Id     = paste0( "$Id: make_fates_domain+surface.Rmd"
+                                         , " 0 ",create_time,Sys.info()["user"],"$"
+                                         )#end paste0
+               , History_Log     = paste0( "created on: ", create_time)
+               , Logname         = paste0( "code originally developed by "
+                                         , intToUtf8(rev(developer_name))
+                                         ," <"
+                                         , intToUtf8(rev(developer_email))
+                                         ,">"
+                                         )#end paste0
+               , Host            = Sys.info()["nodename"]
+               , File_Author     = paste0(author_name," <",author_email,">")
+               )#end list
+
+# Update attribute list
+glob_att = modifyList( glob_att, glob_new)
+```
+
+
+
+Load coordinates, and identify the nearest grid point. 
+```{r label='find-near-neighbour'}
+# Retrieve longitude and latitude
+in_lon   = melt(ncvar_get(nc=nc_gridin,"LONGXY"      )); names(in_lon)  = c("x","y","lon"   )
+in_lat   = melt(ncvar_get(nc=nc_gridin,"LATIXY"      )); names(in_lat)  = c("x","y","lat"   )
+in_veg   = melt(ncvar_get(nc=nc_gridin,"PCT_NATVEG"  )); names(in_veg)  = c("x","y","pcveg" )
+in_land  = melt(ncvar_get(nc=nc_gridin,"LANDFRAC_PFT")); names(in_land) = c("x","y","fland" )
+
+# Create a tibble with coordinates
+in_coord = tibble(merge(merge(merge(in_lon,in_lat),in_veg),in_land)) 
+
+
+# Define function that takes longitude/latitude and find distances.
+rdist_wrap = function(lon,lat,lon0,lat0){
+   ans = c(fields::rdist.earth(x1=cbind(lon0,lat0),x2=cbind(lon,lat),miles=FALSE))
+   return(ans)
+}#end function
+
+# Find the distances.
+in_coord = in_coord %>%
+           mutate( dist = rdist_wrap(lon=lon,lat=lat,lon0=clon,lat0=clat))
+
+
+# Select the nearest neighbour
+in_near = in_coord %>% 
+          filter((pcveg > pcveg_min) & (fland > landfrac_min)) %>% 
+          slice(which.min(dist))
+in_xy   = in_near %>% select(c(x,y)) %>% unlist(); names(in_xy) = NULL
+```
+
+Load all the dimensions from the input netCDF file, and create dimensions for the output
+file that are essentially copies of the input. The only exceptions are the longitude and
+latitude, which will be always one (single site).
+```{r label='set-surf-dimensions'}
+
+# List of dimension names
+nc_dnames = names(nc_gridin$dim)
+
+# Loop through all the dimensions
+nc_dims = list()
+for (d in seq_along(nc_dnames)){
+   # Retrieve dimensions
+   d_dname   = nc_dnames[d]
+   nc_dimnow = nc_gridin$dim[[d_dname]]
+
+   # Fix dimensions and values for longitude and latitude.
+   if (d_dname %in% c("lsmlon","lsmlat")){
+      # Longitude or latitude, make data a single point
+      nc_dimnow = modifyList( x   = nc_dimnow
+                            , val = list( len = 1L, vals = sequence(1L))
+                            )#end modifyList
+   # }else if (d_dname %in% "time"){
+   #    # Time is not properly set in some nc maps.
+   #    nc_dimnow = modifyList( x   = nc_dimnow
+   #                          , val = list(vals=seq_along(nc_dimnow$vals))
+   #                          )#end modifyList
+   }#end if (nc_dimnow)
+
+   # Decide whether to append calendar information
+   if (nc_dimnow$unlim && (! is.null(nc_dimnow$calendar))){
+      nc_calendar = nc_dimnow$calendar
+   }else{
+      nc_calendar = NA_character_
+   }#end if (nc_dimnow$unlim && (! is.null(nc_dimnow$calendar)))
+
+      
+   # Create dimensions. Distinguish unlimited and limited dimensions (if needed).
+   nc_dims[[d_dname]] = ncdim_def( name          = d_dname
+                                 , units         = nc_dimnow$units
+                                 , vals          = nc_dimnow$vals
+                                 , unlim         = nc_dimnow$unlim
+                                 , create_dimvar = nc_dimnow$create_dimvar
+                                 , calendar      = nc_calendar
+                                 )#end ncdim_def
+}#end for (d in seq_along(nc_dnames))
+```
+
+
+Define variables that should feature in the output. Every variable in the input should be in the output too.
+```{r, label='set-surf-variables'}
+
+# List of variable names
+nc_vnames = names(nc_gridin$var)
+
+# This will contain variables that were actually used. We will create dummy variables for 
+# those not used, to ensure they exist in the output.
+nc_dimused = character(0)
+
+# Loop through all the variables, retrieve data and settings
+nc_vars    = list()
+nc_values  = list()
+for (v in seq_along(nc_vnames)){
+   # Retrieve variable information
+   v_vname = nc_vnames[v]
+   v_vinfo = nc_gridin$var [[v_vname]]
+   v_vlong = v_vinfo$longname
+   v_vunit = v_vinfo$unit
+   v_vprec = if( v_vinfo$prec %in% "int"){"integer"}else{v_vinfo$prec}
+   v_vmiss = if( v_vinfo$prec %in% c("float","double")){v_vinfo$missval}else{NULL}
+
+   # Switch the longitude and latitude dimensions with point
+   if (is.null(v_vinfo$varsize)){
+      # Dummy dimensions
+      v_count = NA
+      v_start = NA
+      v_vdims = list()
+   }else{
+      # Load count, and assume initially that all dimensions start at 1.
+      v_count = v_vinfo$varsize
+      v_start = rep(1L,times=length(v_count))
+
+      # Find dimensions 
+      v_dname = c(unlist(do.call(rbind,v_vinfo$dim)[,"name"]))
+      v_vdims = nc_dims[v_dname]
+      
+      # Find longitude and latitude dimensions
+      ixy  = match(c("lsmlon","lsmlat"),v_dname)
+      sel  = ! is.na(ixy)
+
+      # Make sure we only read the data from the nearest neighbour
+      v_count[ixy[sel]]   = c(1,1)[sel]
+      v_start[ixy[sel]]   = in_xy [sel]
+      names(v_start) = NULL
+   }#end if (length(v_start) == 0)
+
+   # Load information to define the data set.
+   nc_vars[[v_vname]] = ncvar_def( name     = v_vname
+                                 , units    = v_vunit
+                                 , dim      = v_vdims
+                                 , missval  = v_vmiss
+                                 , longname = v_vlong
+                                 , prec     = v_vprec
+                                 )#end ncvar_def
+
+   # Load the data 
+   nc_values[[v_vname]] = ncvar_get( nc             = nc_gridin
+                                   , varid          = v_vname
+                                   , start          = v_start
+                                   , count          = v_count
+                                   , collapse_degen = FALSE
+                                   )#end ncvar_get
+
+   # Update the list of dimensions used.
+   nc_dimused = sort(unique(c(nc_dimused,names(v_vdims))))
+}#end for (v in seq_along(nc_vnames))
+```
+
+
+Create dummy variables for unused dimensions. It may not be necessary, but this ensures every variable is included.
+```{r, label='make_var-unused-dims'}
+# Make data set
+is_unused = which(! (names(nc_dims) %in% nc_dimused))
+for (u in is_unused){
+   # Retrieve dimension information
+   u_dname = names(nc_dims)[u]
+   un_dims = nc_dims[[u_dname]]
+   u_dlong = paste0("Dummy variable to retain dimension ",un_dims$longname)
+   u_dunit = un_dims$units
+   u_dvals = un_dims$vals
+   u_dprec = typeof(u_dvals)
+
+   # Load information to define the data set.
+   nc_vars[[u_dname]] = ncvar_def( name     = u_dname
+                                 , units    = u_dunit
+                                 , dim      = un_dims
+                                 , longname = u_dlong
+                                 , prec     = u_dprec
+                                 )#end ncvar_def
+
+   # Load the data 
+   nc_values[[u_dname]] = u_dvals
+   
+}#end for (u in is_unused)
+```
+
+
+In case texture and soil organic content were provided, we use the site-specific information instead. Currently the site-specific soil texture will be assumed constant, and the site-specific soil organic contant will be used to re-scale all the layers.  We also replace the longitude and latitude information with the site-specific information. Finally, in case `force_natural` is true, we impose percentage of natural vegetation to 100%.
+```{r, label='set-site-specific'}
+# Re-set coordinates
+nc_values$LONGXY = 0. * nc_values$LONGXY + clon
+nc_values$LATIXY = 0. * nc_values$LATIXY + clat
+
+# Re-define percentage of natural vegetation to 100%, and other classes to 0%
+if (force_natural){
+   nc_values$PCT_NATVEG  = 0. * nc_values$PCT_NATVEG + 100.
+   nc_values$PCT_URBAN   = 0. * nc_values$PCT_URBAN
+   nc_values$PCT_CROP    = 0. * nc_values$PCT_CROP
+   nc_values$PCT_WETLAND = 0. * nc_values$PCT_WETLAND
+   nc_values$PCT_LAKE    = 0. * nc_values$PCT_LAKE
+   nc_values$PCT_GLACIER = 0. * nc_values$PCT_GLACIER
+}#end if (force_natural)
+
+
+# In case texture was defined, set the values.
+if (! ( is.na(site_xsand) || is.na(site_xclay) )){
+   # Find silt fraction
+   site_xsilt = 100. - site_xsand - site_xclay
+
+   # Set a vector with textures to test whether or not to use site-specific data
+   site_xtext = c(site_xsand,site_xsilt,site_xclay)
+
+   # Make sure the texture provided is valid.
+   if (all( (site_xtext >= 0.) & (site_xtext <= 100.) ) ){
+      # Replace sand and clay with the site-specific data
+      nc_values$PCT_SAND = 0. * nc_values$PCT_SAND + site_xsand
+      nc_values$PCT_CLAY = 0. * nc_values$PCT_CLAY + site_xclay
+
+      # Update global attribute list to inform that the data are site-specific
+      map_soil_texture_file = "site-specific information"
+      glob_att = modifyList( x   = glob_att
+                           , val = list( map_soil_texture_file = map_soil_texture_file )
+                           )#end modifyList
+   }#end if (all( (site_xtext => 0.) & (site_xtext <= 100.) ))
+}#end if (! ( is.na(site_xsand) || is.na(site_xclay) ))
+
+# In case site-specific organic content was defined, rescale the gridded values.
+is_site_organic = ! is.na(site_organic)
+if (is_site_organic){
+   f_scal = site_organic / max(c(nc_values$ORGANIC))
+   nc_values$ORGANIC = f_scal * nc_values$ORGANIC   
+
+   # Update global attribute list to inform that the data are site-specific
+   map_soil_organic_file = paste0( glob_att$map_soil_texture_file
+                                 ," scaled with site-specific information.")
+   glob_att = modifyList( x   = glob_att
+                        , val = list( map_soil_texture_file = "site-specific information" )
+                        )#end modifyList
+}#end if (! is.na(site_organic))
+```
+
+
+In case depth to bedrock in known, include it in the list of variables.
+```{r, label='set-bedrock'}
+if (! is.na(site_bedrock)){
+   # Append depth to bedrock to surface data.
+   nc_vars$zbedrock = ncvar_def( name     = "zbedrock"
+                               , units    = "m"
+                               , dim      = nc_dims[c("lsmlon","lsmlat")]
+                               , missval  = nc_gridin$var$PCT_SAND$missval
+                               , longname = "soil depth"
+                               )#end ncvar_def 
+
+   # Append value to the list of values
+   nc_values$zbedrock = array(data=site_bedrock,dim=c(1,1))
+}#end if (! is.na(site_bedrock))
+```
+
+
+Variable `T_BUILDING_MAX` used to be part of every surface data.  Apparently CLM dropped this variable, but ELM continues to require it.  If the reference surface data set is a recent one, this variable will be missing and the surface data file will not work with ELM.  To address this, we use `T_BUILDING_MIN` to re-generate `T_BUILDING_MAX`, by applying an offset compatible with older surface data files.
+```{r, label='set-t-building-max'}
+if (! ("T_BUILDING_MAX" %in% names(nc_vars))){
+   # Create maximum interior building temperature
+   nc_vars$T_BUILDING_MAX = ncvar_def( name     = "T_BUILDING_MAX"
+                                     , units    = "K"
+                                     , dim      = nc_dims[c("lsmlon","lsmlat","numurbl")]
+                                     , missval  = nc_gridin$var$T_BUILDING_MIN$missval
+                                     , longname = "maximum interior building temperature"
+                                     )#end ncvar_def 
+
+   # Append value to the list of values
+   dT_building              = c(15,rep(39,times=nc_dims$numurbl$len-1))
+   nc_values$T_BUILDING_MAX = nc_values$T_BUILDING_MIN + dT_building
+}# end if (! ("T_BUILDING_MAX" %in% names(nc_vars)))
+
+```
+
+
+
+
+Create the output files.
+```{r, label='gen-output'}
+
+# Create output netCDF
+nc_surfout = nc_create(filename = output_surfdata,vars=nc_vars)
+
+# Add global attributes
+for (a in seq_along(glob_att)){
+   # Retrieve attribute information
+   a_name  = names(glob_att)[a]
+   a_value = glob_att[[a_name]] 
+
+   # Include global attribute      
+   dummy = ncatt_put(nc = nc_surfout, varid=0,attname=a_name,attval=a_value)
+}#end for (a in seq_along(glob_att))
+
+# Add variables
+for (v in seq_along(nc_values)){
+   # Retrieve variable information
+   v_name  = names(nc_values)[v]
+   v_value = nc_values[[v_name]] 
+
+   # Add variable values
+   dummy = ncvar_put(nc = nc_surfout,varid=v_name,vals=v_value)
+}#end for (v in seq_along(nc_values))
+
+# Close input and output files
+dummy = nc_close(nc = nc_gridin )
+dummy = nc_close(nc = nc_surfout)
+```
+
