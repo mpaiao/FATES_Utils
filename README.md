@@ -15,4 +15,4 @@ Multiple FATES utilities for running ELM-FATES or CLM-FATES for single sites. Th
 **Important notes**.
 
 * These scripts are (permanently?) under development.  Contributions, suggestions, and bug fixes are always welcome!
-* For **fates_plot_monthly.Rmd** and **fates_tower_compare_monthly.Rmd**, you will also need all the scripts in directory [Rutils](Rutils). It is a good idea to keep the scripts in a separate directory and set `util_path` in both scripts to the saved location.
+* For **fates_plot_monthly.Rmd** and **fates_tower_compare_monthly.Rmd**, you will also need all the scripts in directory [RUtils](RUtils). It is a good idea to keep the scripts in a separate directory and set `util_path` in both scripts to the saved location.
