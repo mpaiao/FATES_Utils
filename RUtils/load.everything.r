@@ -99,27 +99,17 @@ discreet.require <<- function(...){
 #     Load all packages needed.                                                            #
 #------------------------------------------------------------------------------------------#
 loaded.package = list()
-loaded.package[["abind"       ]] = discreet.require(abind       )
-loaded.package[["akima"       ]] = discreet.require(akima       )
-loaded.package[["boot"        ]] = discreet.require(boot        )
-loaded.package[["chron"       ]] = discreet.require(chron       )
 loaded.package[["data.table"  ]] = discreet.require(data.table  )
-loaded.package[["gdalUtils"   ]] = discreet.require(gdalUtils   )
-loaded.package[["ggplot2"     ]] = discreet.require(ggplot2     )
-loaded.package[["MASS"        ]] = discreet.require(MASS        )
-loaded.package[["pls"         ]] = discreet.require(pls         )
-loaded.package[["randomForest"]] = discreet.require(randomForest)
-loaded.package[["raster"      ]] = discreet.require(raster      )
+loaded.package[["lubridate"   ]] = discreet.require(lubridate   )
+loaded.package[["ncdf4"       ]] = discreet.require(ncdf4       )
+loaded.package[["openair"     ]] = discreet.require(openair     )
+loaded.package[["patchwork"   ]] = discreet.require(patchwork   )
+loaded.package[["purrr"       ]] = discreet.require(purrr       )
 loaded.package[["RColorBrewer"]] = discreet.require(RColorBrewer)
 loaded.package[["reshape2"    ]] = discreet.require(reshape2    )
-loaded.package[["rgdal"       ]] = discreet.require(rgdal       )
-loaded.package[["rgeos"       ]] = discreet.require(rgeos       )
-loaded.package[["rlas"        ]] = discreet.require(rlas        )
-loaded.package[["R.utils"     ]] = discreet.require(R.utils     )
-loaded.package[["sn"          ]] = discreet.require(sn          )
-loaded.package[["sp"          ]] = discreet.require(sp          )
+loaded.package[["scales"      ]] = discreet.require(scales      )
+loaded.package[["tidyverse"   ]] = discreet.require(tidyverse   )
 loaded.package[["viridis"     ]] = discreet.require(viridis     )
-loaded.package[["zoo"         ]] = discreet.require(zoo         )
 #---- Packages that must be loaded at the end. --------------------------------------------#
 loaded.package[["forecast"    ]] = discreet.require(forecast    )
 #------------------------------------------------------------------------------------------#
@@ -135,16 +125,6 @@ if (! all(loaded.package)){
    risky = tolower(risky)
    if (! risky %in% c("y","yes")) stop("Missing packages!!!")
 }#end if
-#------------------------------------------------------------------------------------------#
-
-
-
-#------------------------------------------------------------------------------------------#
-#  SHADY BUSINESS...  We must unlock grav from package boot and replace by our good        #
-#                     old value from rconstants.r.                                         #
-#------------------------------------------------------------------------------------------#
-envir = as.environment("package:boot")
-try(unlockBinding("grav",envir),silent=TRUE)
 #------------------------------------------------------------------------------------------#
 
 

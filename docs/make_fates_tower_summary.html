@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Marcos Longo" />
+
+
+<title>Monthly eddy covariance generator</title>
+
+<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+<style type="text/css">
+/* for pandoc --citeproc since 2.11 */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
+
+<link rel="stylesheet" href="styles.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">FATES Utilities</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="make_fates_met_driver.html">Meteorological driver</a>
+</li>
+<li>
+  <a href="make_fates_domain+surface.html">Surface/Domain files</a>
+</li>
+<li>
+  <a href="create_case_hlm-fates.html">Set up single-site runs</a>
+</li>
+<li>
+  <a href="fates_plot_monthly.html">Single-site visualisation with R</a>
+</li>
+<li>
+  <a href="make_fates_tower_summary.html">Make tower-based benchmark file</a>
+</li>
+<li>
+  <a href="fates_tower_compare_monthly.html">Evaluate FATES against tower</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Monthly eddy covariance generator</h1>
+<h4 class="author">Marcos Longo</h4>
+<h4 class="date">14-Jul-2021</h4>
+
+</div>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This script reads in hourly meteorological drivers and eddy covariance data from towers and generates averages by month and year that can be used to assess ELM and CLM. Currently, the script takes only “1-D” variables (i.e., no soil data), but this will be revisited in the future. Except for time information, all other variables are optional, but typically include the following:</p>
+<ul>
+<li>Time. Either multiple vectors defining the time, or one column with full time information, which should contain the following variables (any order).
+<ul>
+<li>year</li>
+<li>month</li>
+<li>day</li>
+<li>hour</li>
+<li>minute</li>
+</ul></li>
+<li>Atmospheric pressure</li>
+<li>Air temperature</li>
+<li>Humidity. One or multiple of them may be provided; output will always the humidity variables provided, and will attempt to include specific humidity (which may require pressure and/or temperature as well).
+<ul>
+<li>Specific humidity</li>
+<li>Vapour pressure</li>
+<li>Mixing ratio</li>
+<li>Relative humidity</li>
+</ul></li>
+<li>Wind speed</li>
+<li>Incident solar irradiance</li>
+<li>Precipitation</li>
+<li>Outgoing shortwave (solar) irradiance</li>
+<li>Outgoing longwave (thermal) irradiance</li>
+<li>Net irradiance (solar + thermal)</li>
+<li>Sensible heat flux (eddy covariance)</li>
+<li>Heat flux into ground</li>
+<li>Water vapour flux (eddy covariance)</li>
+<li>CO[2] flux (eddy covariance)</li>
+<li>Change in CO[2] storage in the canopy air space</li>
+<li>Friction velocity</li>
+<li>Gross Primary Productivity (GPP)</li>
+<li>Ecosystem respiration</li>
+<li>Net Ecosystem Productivity (NEP, positive means net carbon accumulation in ecosystem)</li>
+</ul>
+<p>The example below shows how the data should look like (first 10 lines):</p>
+<pre><code>year,month,day,hour,min,atm.prss,atm.tmp,atm.shv,atm.vels,atm.vdir,rshort.in,rshort.out,rlong.in,rlong.out,rnet,rain,sens,fh2o,fco2,storco2,ustar,gep,reco,nee,atm.rhv
+2004,1,1,0,0,999.5,24.41,18.42,2.9,58.8,0,0,443.76,444.82,-1.68,0,-30,0.01,9.92,NaN,0.32,0,9.26,9.26,97.87
+2004,1,1,1,0,999.5,24.63,18.5,2.55,65.1,0,0,444.67,445.85,-1.77,0,NaN,0.02,12.95,NaN,0.32,0,9.26,9.26,96.97
+2004,1,1,2,0,999.5,24.77,18.64,2.15,59.5,0,0,445.67,446.48,NaN,0,NaN,NaN,-3.32,8.57,0.18,0,5.25,5.25,96.9
+2004,1,1,3,0,998.5,24.94,18.78,2.45,55.4,0,0,446.41,447.56,-2.3,0,NaN,0.04,9.63,6.59,0.28,0,16.22,16.22,96.56
+2004,1,1,4,0,998.5,24.21,17.88,4.4,92.8,0,0,438.98,443.38,-4.4,4.2,NaN,NaN,NaN,-24.92,0.56,0,9.56,9.56,95.99
+2004,1,1,5,0,998.5,23.73,17.76,3.5,101.8,0,0,437.42,440.86,-3.63,0.2,NaN,NaN,NaN,-1.06,0.47,0,9.56,9.56,98.16
+2004,1,1,6,0,998.5,24.03,18.08,4.05,76.9,0,0,440.88,442.3,-1.44,2.6,NaN,NaN,NaN,-0.3,0.65,0,9.56,9.56,98.16
+2004,1,1,7,0,999.5,23.44,17.5,4.65,64.9,1.09,NaN,436.54,438.12,-0.53,2.8,NaN,NaN,NaN,-2.17,0.76,0,9.56,9.56,98.5
+2004,1,1,8,0,1000.5,23.54,17.63,1.95,96.9,33.97,3.72,433.63,438.75,25.13,0,-16.46,0.04,-1.42,3.71,0.22,7.26,9.56,2.3,98.73
+2004,1,1,9,0,1001.5,23.93,18.06,0.75,211.2,93.71,9.58,432.94,440.62,76.44,0,NaN,NaN,-1.71,-1.31,0.15,9.27,9.56,0.29,98.9
+2004,1,1,10,0,1002,24.67,18.73,0.3,206.8,239.25,21.8,419.64,442.04,195.05,0,16.87,0.11,-5.15,-5.04,0.13,18.62,9.56,-9.06,98.28</code></pre>
+<p>The data does not need to be gap-filled. We will use the average diurnal cycle with available data to build summaries at the monthly scale.</p>
+</div>
+<div id="reset-session" class="section level1">
+<h1>Reset session</h1>
+<p>Use this chunk to fully reset R.</p>
+<pre class="r"><code># Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) &gt; 0){
+   dummy = sapply(X=paste0(&quot;package:&quot;,plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) &gt; 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())</code></pre>
+</div>
+<div id="main-settings" class="section level1">
+<h1>Main settings</h1>
+<div id="required-packages" class="section level2">
+<h2>Required packages</h2>
+<p>Load some packages. By default, we skip the warning messages, but it may be a good idea to visualise them if it is the first time running.</p>
+<pre class="r"><code>isfine = c( data.table = require(data.table,quietly=TRUE,warn.conflicts=FALSE)
+          , lubridate  = require(lubridate ,quietly=TRUE,warn.conflicts=FALSE)
+          , ncdf4      = require(ncdf4     ,quietly=TRUE,warn.conflicts=FALSE)
+          , purrr      = require(purrr     ,quietly=TRUE,warn.conflicts=FALSE)
+          , reshape2   = require(reshape2  ,quietly=TRUE,warn.conflicts=FALSE)
+          , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
+          )#end c
+if (! all(isfine)){
+   cat0(&quot; List of required packages, and the success status loading them:\n&quot;)
+   print(isfine)
+   stop(&quot; Some packages are missing and must be installed.&quot;)
+}</code></pre>
+</div>
+<div id="paths" class="section level2">
+<h2>Paths</h2>
+<p>Set paths and files for input and output.</p>
+<ul>
+<li><strong>main_path</strong>. The main path for processing data. The output path will be generated here.</li>
+<li><strong>input_file</strong>. The csv file containing the gap-filled tower/AWS data (full path).</li>
+<li><strong>output_path</strong>. The main output path for the site.</li>
+</ul>
+<pre class="r"><code>main_path   = file.path(path.expand(&quot;~&quot;),&quot;Documents&quot;,&quot;LocalData&quot;,&quot;TowerData&quot;,&quot;Paracou&quot;,&quot;make_single_site&quot;)
+input_file  = file.path(main_path,&quot;input_csv&quot;,&quot;gyf_eddy-data_2004-2019.csv&quot;)
+output_path = file.path(path.expand(&quot;~&quot;),&quot;Data&quot;,&quot;FATES_DataSets&quot;)</code></pre>
+</div>
+<div id="author-information" class="section level2">
+<h2>Author information</h2>
+<p>Provide information about yourself. This will be included in the netCDF headers. In case you do not want to specify any of them, set them to <code>NA_character_</code></p>
+<ul>
+<li><strong>author_name</strong>. Person who is generating these files (typically it’s you).</li>
+<li><strong>author_email</strong>. Contact email (so people can reach out to you if problems arise).</li>
+<li><strong>datprov_name</strong>. Data provider name (who shared the met drivers with you).</li>
+<li><strong>datprov_email</strong>. Data provider email.</li>
+<li><strong>data_usage_notes</strong>. Brief data usage note message.</li>
+</ul>
+<pre class="r"><code>author_name  = &quot;Marcos Longo&quot;
+author_email = &quot;mlongo@lbl.gov&quot;
+datprov_name = &quot;Damien Bonal&quot;
+datprov_email = &quot;damien.bonal@inrae.fr&quot;
+data_usage_notes = paste0( &quot; If you plan to use these data for any scientific analysis,&quot;
+                         , &quot; you should contact the data provider first and ask for permission&quot;
+                         , &quot; to use the data and check with them how to acknowledge their&quot;
+                         , &quot; contribution (including, but not limited to offer co-authorship).&quot;
+                         )#end paste0</code></pre>
+</div>
+<div id="tower-information" class="section level2">
+<h2>Tower information</h2>
+<p>Provide some basic information about the tower:</p>
+<ul>
+<li><strong>xid</strong>. Unique Tower ID.</li>
+<li><strong>site_desc</strong>. Site description (to be appended to the netCDF headers)</li>
+<li><strong>dat_version</strong>. Version of this data set.</li>
+<li><strong>site_lon</strong>. Site longitude (degrees east).</li>
+<li><strong>site_lat</strong>. Site latitude (degrees north).</li>
+<li><strong>site_alt</strong>. Site altitude (metres above sea level).</li>
+<li><strong>site_refhgt</strong>. Height reference for observations (e.g., the tower height above ground).</li>
+<li><strong>dxy</strong>. Intended grid size (we will generate a 1x1 pseudo-grid for FATES).</li>
+<li><strong>undef_in</strong>. A string to denote missing values in the input (csv) file. In case multiple flags exist, use the vector concatenation format (e.g., <code>c("NA","NaN","-999.9")</code>)</li>
+<li><strong>undef_out</strong>. A number to denote missing values in the output (NetCDF) file. This is needed by NetCDF.</li>
+</ul>
+<pre class="r"><code>xid         = &quot;paracouGUF&quot;
+site_desc   = &quot;Guyaflux tower at Paracou, French Guiana&quot;
+dat_version = &quot;1.5&quot;
+site_lon    = -52.912222
+site_lat    =   5.281667
+site_alt    =  30.000000
+site_refhgt =   58.0
+dxy         =   1.0
+undef_in    = &quot;NaN&quot;
+undef_out   = -9999.99</code></pre>
+<p>Useful variables for time conversion: * <strong>UTC offset</strong>, if data are provided in local time. For example, if the location is in the Western Hemisphere and the time zone is UTC-3, then utc_off should be -3 (<strong>Important</strong>. If the input data are already in UTC, then set <code>utc_off</code> to zero). * <strong>Year offset</strong>, if year is provided with two digits. For example, if the data are for 2003-2016 but the years are in 03-16 format, set <code>year_off</code> to 2000. If the year is already provided in four digits, set it to zero.</p>
+<pre class="r"><code>utc_off  = -3
+year_off = 0</code></pre>
+<p>Next, we identify how time information is provided, by setting variable <code>date_colname</code>.<br />
+* If <code>date_colname=NA_character_</code>, then variable <code>dateinfo</code> must contain the names of the columns corresponding to year (<code>year</code>), month (<code>month</code>), day (<code>day</code>), hour (<code>hour</code>), and minute (<code>min</code>), respectively. If minute is absent, set it to <code>NA_character_</code>. * Otherwise, <code>date_colname</code> indicates the name of the column in the input data that has the time information (<em>case sensitive</em>). In this case, variable <code>dateinfo</code> should indicate the position of each piece of the time information, following the examples below. If minute is absent, set it to <code>NA_integer_</code></p>
+<table>
+<thead>
+<tr class="header">
+<th><strong>Example of time string</strong></th>
+<th><strong>year</strong></th>
+<th><strong>month</strong></th>
+<th><strong>day</strong></th>
+<th><strong>hour</strong></th>
+<th><strong>min</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>06/29/2021 14:30:22</td>
+<td>3</td>
+<td>1</td>
+<td>2</td>
+<td>4</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td>06/29/2021 14:30</td>
+<td>3</td>
+<td>1</td>
+<td>2</td>
+<td>4</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td>29/06/2021 14:30</td>
+<td>3</td>
+<td>2</td>
+<td>1</td>
+<td>4</td>
+<td>5</td>
+</tr>
+<tr class="even">
+<td>2021-06-29 14:30</td>
+<td>1</td>
+<td>2</td>
+<td>3</td>
+<td>4</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td>06/29/2021 14</td>
+<td>3</td>
+<td>1</td>
+<td>2</td>
+<td>4</td>
+<td>NA</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># Is date provided as multi-column (TRUE) or single string (FALSE)?
+date_colname = NA_character_
+
+# Time information.  
+dateinfo = c( year = &quot;year&quot;, month = &quot;month&quot;, day = &quot;day&quot;, hour = &quot;hour&quot;, min = &quot;min&quot;)
+
+# Examples of time information:
+# - If date_colname is NA_character_
+# dateinfo = c( year = &quot;Year&quot;, month = &quot;Month&quot;, day = &quot;Date&quot;, hour = &quot;Hour&quot;, min = &quot;Minute&quot;)
+#
+# - If date_colname is a column in the input data.
+# dateinfo = c( year = 3, month = 1, day = 2, hour = 4, min = 5)</code></pre>
+<p>How to interpret the time stamp. Currently there are three options, as described below. To help illustrating the cases, we give examples of the beginning and end of average period of an example time stamp (2021-06-11 08:00) for an hourly average data where the high-frequency data were collected at 1-minute resolution.</p>
+<table>
+<thead>
+<tr class="header">
+<th><strong>imetavg</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>Beginning</strong></th>
+<th><strong>End</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>End of averaging period</td>
+<td>2021-06-11 07:01</td>
+<td>2021-06-11 07:00</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Beginning of averaging period</td>
+<td>2021-06-11 08:00</td>
+<td>2021-06-11 08:59</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Middle of averaging period</td>
+<td>2021-06-11 07:31</td>
+<td>2021-06-11 08:30</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>imetavg = 1</code></pre>
+</div>
+<div id="input-variables" class="section level2">
+<h2>Input variables</h2>
+<p>Here we will provide information about the eddy covariance variables. Our goal is to have the variables names and units as defined in the table below, to be consistent with ELM/CLM units:</p>
+<table>
+<thead>
+<tr class="header">
+<th><strong>FATES variable</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>Units</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>PBOT</strong></td>
+<td>Atmospheric pressure</td>
+<td>Pa</td>
+</tr>
+<tr class="even">
+<td><strong>TBOT</strong></td>
+<td>Air temperature</td>
+<td>K</td>
+</tr>
+<tr class="odd">
+<td><strong>QBOT</strong><sup>1</sup></td>
+<td>Specific humidity</td>
+<td>kg kg<sup>-1</sup></td>
+</tr>
+<tr class="even">
+<td><strong>RBOT</strong><sup>1</sup></td>
+<td>Vapour mixing ratio</td>
+<td>kg kg<sup>-1</sup></td>
+</tr>
+<tr class="odd">
+<td><strong>EBOT</strong><sup>1</sup></td>
+<td>Vapour pressure</td>
+<td>Pa</td>
+</tr>
+<tr class="even">
+<td><strong>RH</strong><sup>1</sup></td>
+<td>Relative humidity</td>
+<td>%</td>
+</tr>
+<tr class="odd">
+<td><strong>WIND</strong></td>
+<td>Wind speed</td>
+<td>m s<sup>-1</sup></td>
+</tr>
+<tr class="even">
+<td><strong>FSDS</strong></td>
+<td>Incident solar irradiance</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="odd">
+<td><strong>FLDS</strong></td>
+<td>Incident longwave irradiance</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="even">
+<td><strong>RAIN</strong></td>
+<td>Precipitation rate</td>
+<td>kg m<sup>-2</sup> s<sup>-1</sup> (mm s<sup>-1</sup>)</td>
+</tr>
+<tr class="odd">
+<td><strong>FSR</strong></td>
+<td>Outgoing short wave (solar) irradiance</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="even">
+<td><strong>FIRE</strong></td>
+<td>Outgoing long wave (thermal) irradiance</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="odd">
+<td><strong>Rnet</strong></td>
+<td>Net irradiance (solar + thermal)</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="even">
+<td><strong>FSH</strong></td>
+<td>Sensible heat flux (eddy covariance)</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="odd">
+<td><strong>FGR</strong></td>
+<td>Heat flux into ground</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="even">
+<td><strong>QEVTR</strong><sup>2</sup></td>
+<td>Water vapour flux (eddy covariance)</td>
+<td>kg m<sup>-2</sup> s<sup>-1</sup> (mm s<sup>-1</sup>)</td>
+</tr>
+<tr class="odd">
+<td><strong>USTAR</strong></td>
+<td>Friction velocity</td>
+<td>W m<sup>-2</sup></td>
+</tr>
+<tr class="even">
+<td><strong>GPP</strong></td>
+<td>Gross Primary Productivity (GPP)</td>
+<td>gC m<sup>-2</sup> s<sup>-1</sup></td>
+</tr>
+<tr class="odd">
+<td><strong>ER</strong><sup>3</sup></td>
+<td>Ecosystem respiration</td>
+<td>gC m<sup>-2</sup> s<sup>-1</sup></td>
+</tr>
+<tr class="even">
+<td><strong>NEP</strong></td>
+<td>Net Ecosystem Productivity (NEP, + is sink)</td>
+<td>gC m<sup>-2</sup> s<sup>-1</sup></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notes</strong></p>
+<ol style="list-style-type: decimal">
+<li>Only one of the humidity variables needs be provided, but we recommend QBOT and RH as these variables are also output variables in ELM and CLM. The output file will always have the one humidity variable provided, and will attempt to compute specific humidity (QBOT), as long as other potentially dependent variables (pressure and/or temperature) are also provided.</li>
+<li>Total water flux is not available as a variable in ELM or CLM. Instead, this can be calculated from the total evaporation from ground (QSOIL), evaporation from canopy surface (QVEGE), and transpiration (QVEGT). Make sure that your ELM and CLM output has these variables.</li>
+<li>Ecosystem respiration is only available under some configurations in ELM or CLM. More often, it will be calculated from the total autotrophic respiration (AR) and total heterotrophic respiration (HR). Make sure that your ELM and CLM output has these variables.</li>
+</ol>
+<p>First, we define some unit conversion constants for the chunk below</p>
+<pre class="r"><code>Pa_2_hPa  = 0.01      ; hPa_2_Pa  = 1. / Pa_2_hPa
+K_2_degC  = -273.15   ; degC_2_K  =    - K_2_degC
+kg_2_g    = 1000.     ; g_2_kg    = 1. / kg_2_g
+sec_2_hr  = 1./3600.  ; hr_2_sec  = 1. / sec_2_hr
+sec_2_day = 1./86400. ; day_2_sec = 1. / sec_2_day
+frac_2_pc = 100.      ; pc_2_frac = 1. / frac_2_pc
+umol_2_gC = 1.20107e-5; gC_2_umol = 1. / umol_2_gC</code></pre>
+<p>Then use the <code>varinfo</code> list to standardise the output. Each list element contains the following elements:</p>
+<ul>
+<li><em>vfates</em>. Variable name from the table above (don’t change this value).</li>
+<li><em>vlname</em>. Long name for variable (don’t change this value).</li>
+<li><em>vunits</em>. Units for the variable (same as the table above, don’t change this value).</li>
+<li><em>vinput</em>. Variable name in the input file.</li>
+<li><em>add0</em>. Value to be added to the original input</li>
+<li><em>mult</em>. Value to be multiplied to the original input</li>
+</ul>
+<p>For <code>add0</code> and <code>mult</code>, except for trivial factors (<code>add0=0.</code> or <code>mult=1</code>), refrain from typing “magic numbers” here. Instead, use the unit conversion parameters described in the chunk above. In case the sought unit conversion is not available in the previous chunk, feel free to add more factors.</p>
+<pre class="r"><code>n       = 0
+varinfo = list()
+n       = 0
+varinfo = list()
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;PBOT&quot;
+                   , vlname = &quot;surface pressure at the tower&quot;
+                   , vunits = &quot;Pa&quot;
+                   , vinput = &quot;atm.prss&quot;
+                   , add0   = 0.
+                   , mult   = hPa_2_Pa
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;TBOT&quot;
+                   , vlname = &quot;temperature at the tower&quot;
+                   , vunits = &quot;K&quot;
+                   , vinput = &quot;atm.tmp&quot;
+                   , add0   = degC_2_K
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;QBOT&quot;
+                   , vlname = &quot;specific humidity at the tower&quot;
+                   , vunits = &quot;kg/kg&quot;
+                   , vinput = &quot;atm.shv&quot;
+                   , add0   = 0.
+                   , mult   = g_2_kg
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;WIND&quot;
+                   , vlname = &quot;wind at the tower&quot;
+                   , vunits = &quot;m/s&quot;
+                   , vinput = &quot;atm.vels&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;FSDS&quot;
+                   , vlname = &quot;incident solar radiation at the tower&quot;
+                   , vunits = &quot;W/m2&quot;
+                   , vinput = &quot;rshort.in&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;FLDS&quot;
+                   , vlname = &quot;incident thermal radiation at the tower&quot;
+                   , vunits = &quot;W/m2&quot;
+                   , vinput = &quot;rlong.in&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;PRECTmms&quot;
+                   , vlname = &quot;precipitation rate at the tower&quot;
+                   , vunits = &quot;mm/s&quot;
+                   , vinput = &quot;rain&quot;
+                   , add0   = 0.
+                   , mult   = sec_2_hr
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;FSR&quot;
+                   , vlname = &quot;outgoing shortwave (solar) irradiance&quot;
+                   , vunits = &quot;W/m2&quot;
+                   , vinput = &quot;rshort.out&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;FIRE&quot;
+                   , vlname = &quot;outgoing long wave (thermal) irradiance&quot;
+                   , vunits = &quot;W/m2&quot;
+                   , vinput = &quot;rlong.out&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;Rnet&quot;
+                   , vlname = &quot;Net irradiance (solar + thermal)&quot;
+                   , vunits = &quot;W/m2&quot;
+                   , vinput = &quot;rnet&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;FSH&quot;
+                   , vlname = &quot;Sensible heat flux&quot;
+                   , vunits = &quot;W/m2&quot;
+                   , vinput = &quot;sens&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;QEVTR&quot;
+                   , vlname = &quot;Total water vapour flux&quot;
+                   , vunits = &quot;mm/s&quot;
+                   , vinput = &quot;fh2o&quot;
+                   , add0   = 0.
+                   , mult   = sec_2_hr
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;USTAR&quot;
+                   , vlname = &quot;Friction velocity&quot;
+                   , vunits = &quot;m/s&quot;
+                   , vinput = &quot;ustar&quot;
+                   , add0   = 0.
+                   , mult   = 1.
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;GPP&quot;
+                   , vlname = &quot;Gross primary productivity&quot;
+                   , vunits = &quot;gC/m2/s&quot;
+                   , vinput = &quot;gep&quot;
+                   , add0   = 0.
+                   , mult   = umol_2_gC
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;ER&quot;
+                   , vlname = &quot;Ecosystem respiration&quot;
+                   , vunits = &quot;gC/m2/s&quot;
+                   , vinput = &quot;reco&quot;
+                   , add0   = 0.
+                   , mult   = umol_2_gC
+                   )#end list
+n       = n + 1
+varinfo[[n]] = list( vfates = &quot;NEP&quot;
+                   , vlname = &quot;Net Ecosystem productivity (+ is sink)&quot;
+                   , vunits = &quot;gC/m2/s&quot;
+                   , vinput = &quot;nee&quot;
+                   , add0   = 0.
+                   , mult   = -umol_2_gC
+                   )#end list
+
+# Convert varinfo to a &quot;tibble&quot; object
+varinfo  = do.call(what=rbind,args=lapply(X=varinfo,FUN=as_tibble,stringsAsFactors=FALSE))</code></pre>
+<p>This concludes the initial settings. From this point on, you may not need to change anything, unless you are debugging or adding new features.</p>
+</div>
+</div>
+<div id="data-processing" class="section level1">
+<h1>Data processing</h1>
+<div id="met-driver-loading" class="section level2">
+<h2>Met driver loading</h2>
+<p>Read in the csv file.</p>
+<pre class="r"><code>eddy_orig = read.csv( file             = input_file
+                    , header           = TRUE
+                    , comment.char     = &quot;&quot;
+                    , na.strings       = undef_in 
+                    , stringsAsFactors = FALSE
+                    )#end read.csv
+eddy_orig = tibble(eddy_orig)</code></pre>
+<p>Standardise time. It must be a vector of type <code>lubritime</code>.</p>
+<pre class="r"><code>if (is.na(date_colname)){
+   # Create minute column in case it is missing.
+   if (is.na(dateinfo[[&quot;min&quot;]])){
+      dateinfo[[&quot;min&quot;]] = &quot;Minute&quot;
+      eddy_orig$Minute  = rep(x=0,times=nrow(eddy_orig))
+   }#end if (is.na(dateinfo[[&quot;min&quot;]]))
+   
+   # Find date variables and rename them.
+   idx                   = match(dateinfo,names(eddy_orig))
+   names(eddy_orig)[idx] = names(dateinfo)
+
+}else{
+   # Split the time label
+   decomp_time = lapply( X   = tstrsplit( eddy_orig[[date_colname]],&quot;[^0-9]&quot;)
+                       , FUN = as.numeric
+                       )#end lapply
+
+   # In case minute is missing, append a vector with zeroes.
+   if (is.na(dateinfo[[&quot;min&quot;]])){
+      decomp_time       = c(decomp_time,list(0*decomp_time[[1]]))
+      dateinfo[[&quot;min&quot;]] = length(decomp_time)
+   }#end if (is.na(dateinfo[[&quot;min&quot;]]))
+
+   # Select list elements that are useful for time.
+   decomp_time        = decomp_time[dateinfo]
+   names(decomp_time) = names(dateinfo)
+   decomp_time        = as.data.table(decomp_time)
+
+   # Merge time information to the main tibble.
+   eddy_orig = as_tibble(cbind(eddy_orig,decomp_time))
+   
+   
+}#end if (is.na(date_colname) &amp;&amp; is.na(dateinfo[[&quot;min&quot;]]))
+
+
+# Create lubridate-friendly time stamp
+eddy_orig = eddy_orig %&gt;%
+            mutate( year   = year + year_off
+                  , tstamp = make_datetime( year   = year
+                                          , month  = month
+                                          , day    = day
+                                          , hour   = hour
+                                          , min    = min
+                                          , tz     = &quot;UTC&quot;
+                                          )#end make_datetime
+                  )#end mutate</code></pre>
+</div>
+<div id="time-standardisation" class="section level2">
+<h2>Time standardisation</h2>
+<p>Find the time difference, and assess the first and last year with full data.</p>
+<pre class="r"><code>#---- Time interval between observations.
+dtstamp = mean(diff(eddy_orig$tstamp))
+
+#---- Number of observations per day.
+nperday = time_length(make_difftime(day=1),unit=&quot;hour&quot;) / time_length(x=dtstamp,unit=&quot;hour&quot;)
+
+#---- Find which years have complete data
+datsumm = group_by (.data=eddy_orig,year,month)                                             %&gt;% 
+          summarise( count  = n())                                                          %&gt;%
+          ungroup  ()                                                                       %&gt;%
+          mutate   (expect = days_in_month(make_datetime(year=year,month=month)) * nperday) %&gt;%
+          group_by (year)                                                                   %&gt;%
+          summarise(fine = all(count == expect))                                            %&gt;%
+          ungroup  ()</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;year&#39;. You can override using the `.groups` argument.</code></pre>
+<pre class="r"><code>#---- Find first and last complete years
+allfine = all(datsumm$fine)
+yeara   = min(datsumm$year[datsumm$fine])
+yearz   = max(datsumm$year[datsumm$fine])
+
+#---- Find and last expected time
+tstampa = make_datetime( year=yeara  ,month=1,day=1)
+tstampz = make_datetime( year=yearz+1,month=1,day=1)</code></pre>
+<p>Correct data to be in UTC whilst accounting for the time stamp. For FATES, the time stamp should always correspond to the middle of the averaging window.</p>
+<pre class="r"><code>if (imetavg == 1){
+  dt.utc = make_difftime(hour=-utc_off) - 0.5 * dtstamp
+}else if (imetavg == 2){
+  dt.utc = make_difftime(hour=-utc_off) + 0.5 * dtstamp
+}else if (imetavg == 3){
+  dt.utc = make_difftime(hour=-utc_off)
+}#end if (imetavg)
+
+eddy_data = eddy_orig %&gt;% 
+            mutate(tstamp = tstamp + dt.utc) %&gt;%
+            select(!c(year,month,day,hour,min))</code></pre>
+<p>With the time zone shift, we may have a few data points off at the beginning or at the end.<br />
+As a simple solution, we just shift these hours to the beginning or the end of the simulation, just so every year/month has all the data.</p>
+<pre class="r"><code>eddy_data = eddy_data %&gt;% 
+            mutate( tstamp  = case_when( tstamp &lt; tstampa ~ tstampz + difftime(tstamp,tstampa)
+                                       , tstamp &gt; tstampz ~ tstampa + difftime(tstamp,tstampz)
+                                       , TRUE             ~ tstamp
+                                       )#end when
+                  ) %&gt;% arrange(tstamp)</code></pre>
+</div>
+<div id="unit-standardisation-for-output" class="section level2">
+<h2>Unit standardisation for output</h2>
+<p>Simplify output so variables are in the correct units, and only variables needed for the output remain in the output.</p>
+<pre class="r"><code>eddy_fates = eddy_data                        %&gt;% 
+             select(c(tstamp,varinfo$vinput)) %&gt;%
+             rename_at(vars(c(&quot;tstamp&quot;,varinfo$vinput)), ~ c(&quot;time&quot;,varinfo$vfates))</code></pre>
+<p>Fix units for all variables:</p>
+<pre class="r"><code># Create a simple addition tibble
+add0 = varinfo %&gt;% mutate(id=1) %&gt;% select(c(id,vfates,add0)) %&gt;% 
+       spread(vfates,add0) %&gt;% select(-id) %&gt;% relocate(varinfo$vfates)             
+
+# Create a simple multiplication tibble
+mult = varinfo %&gt;% mutate(id=1) %&gt;% select(c(id,vfates,mult)) %&gt;% 
+       spread(vfates,mult) %&gt;% select (! id) %&gt;% relocate(varinfo$vfates)          
+
+# Fix units. We temporarily remove time from the tibble, so we can add and multiply.
+tstamp     = eddy_fates$time
+eddy_fates = eddy_fates %&gt;% select(! time)
+eddy_fates = as_tibble(map2(eddy_fates,add0,function(x,y) if (is.numeric(x)){x+y}else{x}))
+eddy_fates = as_tibble(map2(eddy_fates,mult,function(x,y) if (is.numeric(x)){x*y}else{x}))
+eddy_fates = eddy_fates %&gt;% mutate( time = tstamp) %&gt;% relocate(c(&quot;time&quot;,varinfo$vfates))</code></pre>
+</div>
+</div>
+<div id="derive-humidity" class="section level1">
+<h1>Derive humidity</h1>
+<p>This step is only needed if specific humidity was not provided. In this case, we derive specific humidity (<span class="math inline">\(q_{v}\)</span>) [ <span class="math inline">\(\mathrm{kg_{v}\,kg_{a}^{-1}}\)</span>] using one the following relationships (in this order of preference), using the fact that specific humidity is the ratio of mass (or partial density) of water vapour <span class="math inline">\(\rho_{v}\)</span> [<span class="math inline">\(\mathrm{kg_{v}\,m^{-3}}\)</span>] and total mass (or density) of air (<span class="math inline">\(\rho_{a}\)</span>) [<span class="math inline">\(\mathrm{kg_{a}\,m^{-3}}\)</span>].</p>
+<ul>
+<li><p><em>Mixing ratio</em> <span class="math inline">\(r_v\)</span> [ <span class="math inline">\(\mathrm{kg_{v}\,kg_{d}^{-1}}\)</span>] is defined as the ratio between partial density of water vapour <span class="math inline">\(\rho_{v}\)</span> and partial density of dry air (<span class="math inline">\(\rho_{d}\)</span>) [<span class="math inline">\(\mathrm{kg_{d}\,m^{-3}}\)</span>]. Assuming that <span class="math inline">\(\rho_{a} = \rho_{v} + \rho_{d}\)</span>, we can relate mixing ratio and specific humidity as: <span class="math display">\[\begin{align} &amp; q_{v} = \frac{r_{v}}{r_{v}+1} \end{align}.\]</span></p></li>
+<li><p>To convert from <em>water vapour pressure</em> <span class="math inline">\(e_{v}\)</span> [<span class="math inline">\(\mathrm{Pa}\)</span>] to <span class="math inline">\(q_v\)</span>, we use the ideal gas equation of a mixture of dry air and water vapour , and account for the difference in molar masses of water vapour (<span class="math inline">\(\mathcal{M}_v = 1.802 \times 10^{-2}\,\mathrm{kg\,mol^{-1}}\)</span>) and dry air (<span class="math inline">\(\mathcal{M}_d = 2.897 \times 10^{-2}\,\mathrm{kg\,mol^{-1}}\)</span>): <span class="math display">\[\begin{align}
+&amp; q_{v} = \frac{\varepsilon{}\,e_{v}}{p - \left(1 - \varepsilon{}\right)\,e_{v}}
+\end{align},\]</span> where <span class="math inline">\(p\)</span> [<span class="math inline">\(\mathrm{Pa}\)</span>] is the total air pressure and <span class="math inline">\(\varepsilon = \mathcal{M}_{v} / \mathcal{M}_{d}\)</span>.</p></li>
+<li><p><em>Relative humidity</em> (<span class="math inline">\(\mathrm{RH}\)</span>) [<span class="math inline">\(\%\)</span>] is defined as <span class="math inline">\(\mathrm{RH} = 100 \, e_{v}/e_{v}^{\star}\)</span>, where <span class="math inline">\(e_{v}^{\star}\)</span> is the vapour pressure at saturation, which depends on temperature <span class="math inline">\(T\)</span> [<span class="math inline">\(\mathrm{K}\)</span>]. To derive specific humidity, we use <span class="citation">(Bolton 1980)</span> empirical equation for <span class="math inline">\(e_{v}^{\star}\)</span> to derive <span class="math inline">\(e_{v}\)</span>: <span class="math display">\[\begin{align}
+&amp; e_{v} = 0.01 \, \mathrm{RH} \,e_{0}\,\exp{\left[ \frac{17.67\,\left( T - T_{0}\right)}{T - 29.65} \right]}
+\end{align},\]</span> where <span class="math inline">\(e_{0} = 611.66\,\mathrm{Pa}\)</span> is the vapour pressure of saturation at <span class="math inline">\(T_{0}=273.15\,\mathrm{K}\)</span>. We then convert <span class="math inline">\(e_{v}\)</span> to <span class="math inline">\(q_{v}\)</span> using the same equation described above.</p></li>
+</ul>
+<pre class="r"><code>#---~---
+# Define some thermodynamic constants.
+#---~---
+# Molar mass of water vapour [kg/mol]
+mm_h2o  = 0.01801505
+# Molar mass of dry air [kg/mol]
+mm_dry  = 0.02897
+# Molar mass ratio
+eps_mol = mm_h2o / mm_dry
+# Saturation vapour pressure at 273.15K [Pa]
+esat_0C = 611.65685464
+
+
+if (&quot;QBOT&quot; %in% names(eddy_fates)){
+   # Specific humidity already in the meteorological driver, find relative humidity.
+   cat(&quot; - Specific humidity included in the input data. No action needed.\n&quot;)
+   add_qbot = FALSE
+}else if(all(c(&quot;RH&quot;,&quot;PBOT&quot;,&quot;TBOT&quot;) %in% names(eddy_fates))){
+   # Find specific humidity from vapour pressure
+   eddy_fates = eddy_fates %&gt;%
+                mutate( ESAT = esat_0C * exp( 17.67 * (TBOT - degC_2_K) / (TBOT - 29.65))
+                      , EBOT = pc_2_frac * RH * ESAT
+                      , QBOT = eps_mol * EBOT / (PBOT - (1. - eps_mol) * EBOT)
+                      ) %&gt;% select(! c(ESAT,EBOT))
+   add_qbot   = TRUE
+}else if (all(c(&quot;EBOT&quot;,&quot;PBOT&quot;) %in% names(eddy_fates))){
+   # Find specific humidity from vapour pressure
+   eddy_fates = eddy_fates %&gt;%
+                mutate( QBOT = eps_mol * EBOT / (PBOT - (1. - eps_mol) * EBOT) )
+   add_qbot   = TRUE
+}else if (&quot;RBOT&quot; %in% names(eddy_fates)){
+   # Find specific humidity from mixing ratio
+   eddy_fates = eddy_fates %&gt;%
+               mutate( QBOT = RBOT / (1. + RBOT) )
+   add_qbot   = TRUE
+}else{
+   # It is not possible to get QBOT from the provided variables.
+   add_qbot   = FALSE
+}#end if (&quot;QBOT&quot; %in% names(eddy_fates))</code></pre>
+<pre><code>##  - Specific humidity included in the input data. No action needed.</code></pre>
+<pre class="r"><code># Update or insert specific humidity to the list of output variables.
+if (add_qbot){
+   varinfo = varinfo %&gt;%
+             rows_upsert( tibble( vfates = &quot;QBOT&quot;
+                                , vlname = &quot;specific humidity at the tower&quot;
+                                , vunits = &quot;kg/kg&quot;
+                                )#end tibble
+                        )#end rows_upsert
+}#end if (add_qbot)</code></pre>
+</div>
+<div id="data-output" class="section level1">
+<h1>Data output</h1>
+<p>Create paths for output, using FATES convention.</p>
+<pre class="r"><code># Labels for describing the data set.
+ymd_now = today(tzone = &quot;UTC&quot;)
+ymd_lab = sprintf(&quot;%4.4i%2.2i%2.2i&quot;,year(ymd_now),month(ymd_now),day(ymd_now))
+
+# Tag specific for this site, grid, and version (used for file and path names).
+site_tag  = paste0(&quot;1x1pt-&quot;,xid,&quot;_v&quot;,dat_version,&quot;_c&quot;,ymd_lab)
+
+
+# Path to where we will write the drivers.
+eddy_base = paste0(site_tag,&quot;_eddy-summ.nc&quot;)
+eddy_path = file.path(output_path,site_tag)
+eddy_file = file.path(eddy_path,eddy_base)
+
+# Create directory
+dummy = dir.create(path=eddy_path  ,showWarnings=FALSE,recursive=TRUE)</code></pre>
+<p>Group data by month and year. Because we may have missing data, we take first the mean diurnal cycle for each month and year, then find the monthly averages. This reduces the risk of biases in the monthly average estimate due to frequent missing data in one time of the day, for example.</p>
+<pre class="r"><code># Summarise data by hour month and year, then summary by month and year.
+eddy_emean = eddy_fates                                                      %&gt;% 
+             mutate( year = year(time), month=month(time), hour=hour(time))  %&gt;%
+             select(! c(time))                                               %&gt;%
+             group_by( year,month,hour)                                      %&gt;%
+             summarise_all( ~mean(.,na.rm=TRUE))                             %&gt;%
+             ungroup()                                                       %&gt;%
+             select(! c(hour))                                               %&gt;%
+             group_by( year,month)                                           %&gt;%
+             summarise_all( ~mean(.,na.rm=FALSE))                            %&gt;%
+             ungroup()                                                       %&gt;%
+             mutate( time = make_datetime(year=year,month=month,tz=&quot;UTC&quot;))   %&gt;%
+             select(! c(year,month))                                         %&gt;% 
+             select(c(&quot;time&quot;,varinfo$vfates))
+
+# Set the number of times to be written to the output
+nemean = nrow(eddy_emean)</code></pre>
+<p>Generate edge information for the single data point.</p>
+<pre class="r"><code># Find precision for the coordinates (typically 1% of the grid size).
+outprec = -floor(log10(dxy*0.01))
+
+# Standardise coordinates (and make sure latitude cannot exceed the poles).
+outlon  = round(site_lon,outprec) %% 360.
+outlat  = max(-90,min(90-0.5*dxy,round(site_lat,outprec)))
+
+# Find edges.
+edge_w = (outlon - 0.5 * dxy) %% 360.
+edge_e = (outlon + 0.5 * dxy) %% 360.
+edge_s = outlat - 0.5 * dxy
+edge_n = outlat + 0.5 * dxy</code></pre>
+<p>Define the template for the global attributes.</p>
+<pre class="r"><code># Define the code developer information (indirect way so the email is not visible).
+developer_name  = c( 111L, 103L, 110L, 111L,  76L,  32L, 115L, 111L,  99L, 114L,  97L,  77L)
+developer_email = c( 118L, 111L, 103L,  46L, 108L,  98L, 108L,  64L, 111L, 103L, 110L, 111L
+                   , 108L, 109L)
+
+
+# Define the template.  We will update the title in each time step.
+att_template = list( title          = &quot;To be replaced when looping through months&quot;
+                   , version        = dat_version
+                   , date_created   = paste0(as.character(now(tzone=&quot;UTC&quot;)), &quot;UTC&quot;)
+                   , source_code    = &quot;make_fates_tower_summary.Rmd&quot;
+                   , code_notes     = &quot;Eddy covariance summary for benchmarking ELM-FATES and CLM-FATES&quot;
+                   , code_developer = paste0( intToUtf8(rev(developer_name))
+                                            ,&quot; &lt;&quot;
+                                            , intToUtf8(rev(developer_email))
+                                            ,&quot;&gt;&quot;
+                                            )#end paste0
+                   , file_author    = paste0(author_name,&quot; &lt;&quot;,author_email,&quot;&gt;&quot;)
+                   , data_provider  = paste0(datprov_name,&quot; &lt;&quot;,datprov_email,&quot;&gt;&quot;)
+                   , usage_notes    = data_usage_notes
+                   )#end list</code></pre>
+<p>Create a single NetCDF file with all the averages by month and year. We do not save the monthly average across all years because simulations may or may not overlap with all the observation months and years.</p>
+<pre class="r"><code># Extract time, and turn it into a difference in months since the first time
+year_first  = year (eddy_emean$time[1])
+month_first = month(eddy_emean$time[1])
+time_first  = eddy_emean$time[1]
+
+# Extract time, and turn it into a difference in months
+tsince = as.numeric(difftime(eddy_emean$time,time_first,units=&quot;days&quot;))
+
+# In case file exists, it will be re-created.
+cat(&quot; + Write averages by month and year to &quot;,eddy_base,&quot;.\n&quot;,sep=&quot;&quot;)
+if (file.exists(eddy_file)) file.remove(eddy_file)
+
+# Add dimensions: longitude, latitude, and time. We do not automatically create the 
+# dimension variable for time because R would create it in double precision.  Instead,
+# we append variable time manually.
+xx  = ncdim_def( name=&quot;lon&quot;   ,units=&quot;&quot;,vals=1L               ,create_dimvar=FALSE)
+yy  = ncdim_def( name=&quot;lat&quot;   ,units=&quot;&quot;,vals=1L               ,create_dimvar=FALSE)
+tt  = ncdim_def( name=&quot;time&quot;  ,units=&quot;&quot;,vals=seq_along(tsince),create_dimvar=FALSE)
+ss  = ncdim_def( name=&quot;scalar&quot;,units=&quot;&quot;,vals=1L               ,create_dimvar=FALSE)
+
+# List of dimensions, useful for setting variables.   
+nc_xy  = list   (xx,yy)
+nc_xyt = list(xx,yy,tt)
+nc_t   = list      (tt)
+nc_s   = list(ss)
+xy     = c(1,1)
+xyt    = c(1,1,nemean)
+
+# Start list with variables. First we put the coordinates
+nc_vlist        = list()
+nc_vlist$LONGXY = ncvar_def( name     = &quot;LONGXY&quot;
+                           , units    = &quot;degrees_east&quot;
+                           , dim      = nc_xy
+                           , missval  = undef_out
+                           , longname = &quot;longitude&quot;
+                           )#end ncvar_def
+nc_vlist$LATIXY = ncvar_def( name     = &quot;LATIXY&quot;
+                           , units    = &quot;degrees_north&quot;
+                           , dim      = nc_xy
+                           , missval  = undef_out
+                           , longname = &quot;latitude&quot;
+                           )#end ncvar_def
+nc_vlist$EDGEW  = ncvar_def( name     = &quot;EDGEW&quot;
+                           , units    = &quot;degrees_east&quot;
+                           , dim      = nc_s
+                           , missval  = undef_out
+                           , longname = &quot;western edge in atmospheric data&quot;
+                           )#end ncvar_def
+nc_vlist$EDGEE  = ncvar_def( name     = &quot;EDGEE&quot;
+                           , units    = &quot;degrees_east&quot;
+                           , dim      = nc_s
+                           , missval  = undef_out
+                           , longname = &quot;eastern edge in atmospheric data&quot;
+                           )#end ncvar_def
+nc_vlist$EDGES  = ncvar_def( name     = &quot;EDGES&quot;
+                           , units    = &quot;degrees_north&quot;
+                           , dim      = nc_s
+                           , missval  = undef_out
+                           , longname = &quot;southern edge in atmospheric data&quot;
+                           )#end ncvar_def
+nc_vlist$EDGEN  = ncvar_def( name     = &quot;EDGEN&quot;
+                           , units    = &quot;degrees_north&quot;
+                           , dim      = nc_s
+                           , missval  = undef_out
+                           , longname = &quot;northern edge in atmospheric data&quot;
+                           )#end ncvar_def
+nc_vlist$time   = ncvar_def( name     = &quot;time&quot;
+                           , units    = paste0( &quot;days since &quot;,as.character(time_first)
+                                              , &quot; 00:00:00 UTC&quot;
+                                              )#end paste0
+                           , dim      = nc_t
+                           , missval  = undef_out
+                           , longname = &quot;observation time&quot;
+                           )#end ncvar_def
+
+# Loop through FATES met drivers, add them   
+for (v in seq_along(varinfo[[1]])){
+   # Handy shorter names
+   v_vfates = varinfo$vfates[v]
+   v_vlname = varinfo$vlname[v]
+   v_vunits = varinfo$vunits[v]
+
+   #Add variable information
+   nc_vlist[[v_vfates]] = ncvar_def( name     = v_vfates
+                                   , units    = v_vunits
+                                   , dim      = nc_xyt
+                                   , missval  = undef_out
+                                   , longname = v_vlname
+                                   )#end ncvar_def
+}#end for (v in seq_along(varinfo[[1]]))
+
+# Create file
+nc_conn = nc_create(filename=eddy_file,vars=nc_vlist,verbose=FALSE)
+
+#---~---
+# Put coordinates, tower height and attributes to the netcdf
+#---~---
+# Longitude, append time-invariant tag
+dummy = ncvar_put(nc=nc_conn,varid=&quot;LONGXY&quot;,vals=array(data=outlon     ,dim=xy))
+dummy = ncatt_put(nc=nc_conn,varid=&quot;LONGXY&quot;,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+# Latitude, append time-invariant tag
+dummy = ncvar_put(nc=nc_conn,varid=&quot;LATIXY&quot;,vals=array(data=outlat     ,dim=xy))
+dummy = ncatt_put(nc=nc_conn,varid=&quot;LATIXY&quot;,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+# Western edge, append time-invariant tag
+dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGEW&quot; ,vals=edge_w)
+dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEW&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+# Eastern edge, append time-invariant tag
+dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGEE&quot; ,vals=edge_e)
+dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEE&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+# Southern edge, append time-invariant tag
+dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGES&quot; ,vals=edge_s)
+dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGES&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+# Northern edge, append time-invariant tag
+dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGEN&quot; ,vals=edge_n)
+dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEN&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+# Time, append calendar type.
+dummy = ncvar_put(nc=nc_conn,varid=&quot;time&quot;  ,vals=tsince)
+dummy = ncatt_put(nc=nc_conn,varid=&quot;time&quot;  ,attname=&quot;calendar&quot;,attval=&quot;gregorian&quot;)
+#---~---
+
+# Put variables to the netcdf
+for (v in seq_along(varinfo[[1]])){
+   # Handy shorter names
+   v_vfates = varinfo$vfates[v]
+   v_vlname = varinfo$vlname[v]
+   v_vunits = varinfo$vunits[v]
+
+   #Add variable information
+   dummy = ncvar_put( nc    = nc_conn
+                    , varid = v_vfates
+                    , vals  = array(data=eddy_emean[[v_vfates]],dim=xyt)
+                    )#end ncvar_put
+
+   #Add attribute to highlight this is time-dependent
+   dummy = ncatt_put( nc      = nc_conn
+                    , varid   = v_vfates
+                    , attname = &quot;mode&quot;
+                    , attval  = &quot;time-dependent&quot;)
+}#end for (v in seq_along(varinfo[[1]]))
+
+# Add title specific for this month/year.
+nc_title   = paste0( &quot;Averages by month and year for &quot;,site_desc)
+att_global = modifyList( x = att_template, val = list( title = nc_title ))
+
+   
+# Loop through global attributes
+for (l in seq_along(att_global)){
+   # Current attribute information
+   att_name  = names(att_global)[l]
+   att_value = att_global[[l]]
+
+   # Add attribute 
+   dummy = ncatt_put(nc=nc_conn,varid=0,attname=att_name,attval=att_value)
+}#end for (l in seq_along(att_global))
+
+
+# Close the file
+dummy = nc_close(nc_conn)</code></pre>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-bolton1980mwr" class="csl-entry">
+Bolton, David. 1980. <span>“The Computation of Equivalent Potential Temperature.”</span> <em>Mon. Wea. Rev.</em> <a href="https://doi.org/10.1175/1520-0493(1980)108&lt;1046:TCOEPT&gt;2.0.CO;2">https://doi.org/10.1175/1520-0493(1980)108&lt;1046:TCOEPT&gt;2.0.CO;2</a>.
+</div>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

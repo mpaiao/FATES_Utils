@@ -389,8 +389,14 @@ almost.one  <<- 1.-almost.zero
 #------------------------------------------------------------------------------------------#
 #     Default NA for chron objects.                                                        #
 #------------------------------------------------------------------------------------------#
-NA_dates_   <<- chron(dates=NA)
-NA_times_   <<- chron(times=NA)
-NA_chron_   <<- chron(dates=NA,times=NA)
+if ("chron" %in% rownames(installed.packages())){
+   NA_dates_   <<- chron::chron(dates=NA)
+   NA_times_   <<- chron::chron(times=NA)
+   NA_chron_   <<- chron::chron(dates=NA,times=NA)
+}#end if ("chron" %in% rownames(installed.packages()))
+#------------------------------------------------------------------------------------------#
+
+
+#---- Default NA for logical objects. -----------------------------------------------------#
 NA_logical_ <<- as.logical(NA)
 #------------------------------------------------------------------------------------------#

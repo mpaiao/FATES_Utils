@@ -11,7 +11,9 @@ These documents and scripts are provided to support the set up of
 * [make_fates_domain+surface.Rmd](make_fates_domain+surface.html).  This R Markdown file creates single-point domain and surface files for ELM or CLM.
 * [create_case_hlm-fates.sh](create_case_hlm-fates.html).  This shell script creates a case for a single-point simulation using either ELM-FATES or CLM-FATES (it can be used for non-FATES simulations too).
 * [fates_plot_monthly.Rmd](fates_plot_monthly.html).  This script reads in ELM or CLM output (with or without FATES), and generates some time series of variables of interest.
+* [make_fates_tower_summary.Rmd](make_fates_tower_summary.html).  This script computes simple monthly averages of multiple tower-based fluxes and creates a netCDF file with units compatible with ELM or CLM.  This file can be used to assess the model behaviour for multiple variables.
+* [fates_tower_compare_monthly.Rmd](fates_tower_compare_monthly.html).  This script generates multiple figures to test ELM or CLM (with or without FATES) for a single tower.
 
 
 **Important**
-1. To run `fates_plot_monthly.Rmd`, make sure to download the directory "RUtils" available on [GitHub](https://github.com/mpaiao/FATES_Utils), and set variable `srcdir` with the local location.
+1. To run `fates_plot_monthly.Rmd` or `fates_tower_compare_monthly.Rmd`, make sure to download the directory "RUtils" available on [GitHub](https://github.com/mpaiao/FATES_Utils), and set variable `util_path` with the local location.

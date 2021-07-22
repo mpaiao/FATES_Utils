@@ -46,49 +46,47 @@ invisible(gc())
 
 # Initial settings
 
-First we set some useful paths and initial settings.
 
-* `home.path`. The main path. Typically the main home/scratch directory where sub-directories are located.
-* `hesm.path`. The main path to where the simulation outputs are written.
-* `simul`. Label for the simulation to be plotted (typically also a sub-directory in `hesm.path`).
-* `simul.desc`. Simulation description to be printed in plot titles. Not a path, but it is easier to forget setting this variable if it is not right next to `simul`.
-* `simul.root`. List of all possible locations for output netCDF files. Normally both ELM and CLM paths should be included, so the script works with both.
-* `srcdir`.  Directory with additional R scripts that have extra settings. **Important**. This must be downloaded from [GitHub](https://github.com/mpaiao/FATES_Utils).
-* `plot.root`. Directory to where plots will be written.
+In this part, we set a few useful global paths, files, and variables.
 
-```{r, label='path-settings',message=FALSE,results='hide'}
-home.path  = path.expand("~")
-hesm.root  = file.path(home.path,"Documents/LocalData/FATES/Simulations") # Current directory.
-simul      = "D0005_ParacouTest_CLM_FATES"                     # File label for current simulation.
-simul.desc = "D0005: Paracou test (CLM-FATES)"                 # Current simulation description.
-simul.root = c( file.path(hesm.root,simul,"run")               # Main simulation path, list all
-              , file.path(hesm.root,simul,"lnd","hist")        #   possibilities, the code will
-              )#end c                                          #   use the first valid one.
-srcdir     = file.path(home.path,"Util/RUtils")                # Path with additional scripts.
-plot.root  = file.path(hesm.root,"figures",simul)              # Directory for figures.
+First, we define the case:
 
-# Output path for time series
-tspoi.path    = file.path(plot.root,"tseries_poi"  )
-tstheme.path  = file.path(plot.root,"tseries_theme")
-tsage.path    = file.path(plot.root,"tseries_age"  )
-tsdbh.path    = file.path(plot.root,"tseries_dbh"  )
-tspft.path    = file.path(plot.root,"tseries_pft"  )
-
-# Create output paths
-dummy      = dir.create(tspoi.path  ,recursive = TRUE,showWarnings = FALSE)
-dummy      = dir.create(tstheme.path,recursive = TRUE,showWarnings = FALSE)
-dummy      = dir.create(tsage.path  ,recursive = TRUE,showWarnings = FALSE)
-dummy      = dir.create(tsdbh.path  ,recursive = TRUE,showWarnings = FALSE)
-dummy      = dir.create(tspft.path  ,recursive = TRUE,showWarnings = FALSE)
-
-
+* **case_name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
+* **case_desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
+```{r, label='case-settings'}
+case_name  = "D0005_ParacouTest_CLM_FATES"
+case_desc  = "D0005: Paracou test (CLM-FATES)"
 ```
 
 
+
+We then set some global paths:
+* **home_path**. Typically the user's home path.  Useful for building other paths. `path.expand("~")` typically works for all users.
+* **hesm_main**. The main directory to where all simulation results are written. The script will assume that the main path for this case simulation `case_path=file.path(hesm_main,case_name)`.
+* **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
+* **plot_main**. The main path to where to save figures. The following sub-directories will be created:
+ - *tstheme_path*. Time series of thematically linked variables aggregated to land unit.
+ - *tsage_path*. Time series of variables separated by patch age class.
+ - *tsdbh_path*. Time series of variables separated by size class.
+ - *tspft_path*. Time series of variables separated by plant functional type.
+
+```{r, label='path-settings'}
+home_path  = path.expand("~")
+hesm_main  = file.path(home_path,"Documents/LocalData/FATES/Simulations")
+site_main  = file.path(home_path,"Data/FATES_DataSets")
+util_path  = file.path(home_path,"Util/RUtils")
+plot_main  = file.path(hesm_main,"figures",case_name)
+```
+
+
+
+
+First we set some useful paths and initial settings.
+
 Set time range to be included in the plots.
 ```{r, label='set-times',message=FALSE,results='hide'}
-whena      = "01/01/2004" # First time (MM/DD/YYYY)
-whenz      = "12/01/2019" # Last time (MM/DD/YYYY)
+tstampa = "01/01/2004" # First time (MM/DD/YYYY)
+tstampz = "12/01/2019" # Last time (MM/DD/YYYY)
 ```
 
 
@@ -100,13 +98,13 @@ in variable `pftinfo`, which is a list.  Each list element contains the followin
 * **desc**. Long name to define PFTs, for general information.
 * **colour**. Colour associated with PFT.  Prefer to use R's hexadecimal format (e.g. `"#1F78B4"`).
 
-In some cases setting names and descriptions for PFTs will not be feasible (e.g., when many PFTs are included). In this case, set `user.pftinfo=FALSE`.
+In some cases setting names and descriptions for PFTs will not be feasible (e.g., when many PFTs are included). In this case, set `user_pftinfo=FALSE`.
 
 ```{r, label='set-pfts',message=FALSE,results='hide'}
 # Use the user-defined PFT settings?
-user.pftinfo = TRUE
+user_pftinfo = TRUE
 
-# List of PFTs, in case user.pftinfo is TRUE
+# List of PFTs, in case user_pftinfo is TRUE
 n            = 0
 pftinfo      = list()
 n            = n + 1
@@ -121,131 +119,156 @@ pftinfo[[n]] = list( id     = 1
 
 General plot options for `ggplot`
 ```{r, label='set-ggplot',message=FALSE,results='hide'}
-gg.device  = c("pdf") # Output devices to use (Check ggsave for acceptable formats)
-gg.depth   = 300      # Plot resolution (dpi)
-gg.ptsz    = 18       # Font size
-gg.width   = 8.5      # Plot width (units below)
-gg.height  = 8.5      # Plot height (units below)
-gg.units   = "in"     # Units for plot size
-gg.screen  = TRUE     # Show plots on screen as well?
-gg.tfmt    = "%Y"     # Format for time 
+gg_device  = c("pdf") # Output devices to use (Check ggsave for acceptable formats)
+gg_depth   = 300      # Plot resolution (dpi)
+gg_ptsz    = 18       # Font size
+gg_width   = 8.5      # Plot width (units below)
+gg_height  = 8.5      # Plot height (units below)
+gg_units   = "in"     # Units for plot size
+gg_screen  = TRUE     # Show plots on screen as well?
+gg_tfmt    = "%Y"     # Format for time strings in the time series
 
-ndevice = length(gg.device)
+ndevice = length(gg_device)
 ```
 
 # Main script
 
 __Note:__ Changes beyond this point are only needed if you are developing the notebook.
 
-Load packages and tools
+## Initial settings
+
+First, we load some useful packages and tools
 ```{r, label='load-everything'}
-source(file.path(srcdir,"load.everything.r"))
-isok = require(ncdf4)
-if (! isok) stop("This script requires package \"ncdf4\".")
+source(file.path(util_path,"load.everything.r"),chdir=TRUE)
 ```
+
+
+
+```{r, label='set-derived-paths'}
+# Case path.  Do not change this unless you used non-standard case output for ELM/CLM.
+case_path = file.path(hesm_main,case_name)
+
+#---~---
+#    Vector with all possible ELM/CLM paths containing NetCDF history files.  Do not change
+# this unless you know what you are doing.
+#---~---
+simul_path = c( file.path(case_path,"run"), file.path(case_path,"lnd","hist"))
+
+# Output path for time series
+tstheme_path  = file.path(plot_main,"tseries_theme")
+tsage_path    = file.path(plot_main,"tseries_age"  )
+tsdbh_path    = file.path(plot_main,"tseries_dbh"  )
+tspft_path    = file.path(plot_main,"tseries_pft"  )
+
+```
+
 
 
 Initial settings.
 ```{r, label='initial-settings',message=FALSE,results='hide'}
 
-#--- Convert strings to dates.
-whena  = chron(whena)
-whenz  = chron(whenz)
-montha = nummonths(whena)
-yeara  = numyears(whena)
-monthz = nummonths(whenz)
-yearz  = numyears(whenz)
-nyears = yearz-yeara
-#---~---
+# Extract date information from string
+if (is.character(tstampa)){
+   tstampa = as.integer(unlist(strsplit(tstampa,split="/")))
+   yeara   = tstampa[3]
+   montha  = tstampa[1]
+}#end if (is.character(tstampa))
+if (is.character(tstampz)){
+   tstampz = as.integer(unlist(strsplit(tstampz,split="/")))
+   yearz   = tstampz[3]
+   monthz  = tstampz[1]
+}#end if (is.character(tstampz))
 
+# Useful variables to build time stamps.
+nmontha   = 12 - montha + 1          # Number of months in yeara
+nmidyears = max(0,yearz - yeara - 1) # Number of years in between yeara and yearz
+nmonthz   = monthz                   # Number of months in yearz
 
-#--- Build time series.
+# Create lubridate object for initial and final time
+tstampa = make_datetime( year=yeara,month=montha,day=1L)
+tstampz = make_datetime( year=yearz,month=monthz,day=1L)
+
+# Create month and year vector
 if (yeara == yearz){
-  when = chron(paste(seq(from=montha,to=monthz,by=1)),1,yeara,sep="/")
+   # Simulation did not last more than one year
+   tmonth = seq(from=montha,to=monthz,by=1)
+   tyear  = rep(x=yeara,times=length(tmonth))
 }else{
-  when = c( chron(paste(seq(from=montha,to=12,by=1),1,yeara,sep="/"))
-          , chron(paste( rep(seq(from=1,to=12,by=1),times=nyears-1)
-                       , 1
-                       , rep(seq(from=yeara+1,to=yearz-1,by=1),each=12)
-                       , sep="/"
-                       )#end paste
-                 )#end chron
-          , chron(paste(seq(from=1,to=monthz,by=1),1,yearz,sep="/"))
-          )#end c  
+   # Simulation lasted longer than a year.
+   tmonth = c( seq(from=montha,to=12,by=1)
+             , rep(sequence(12),times=nmidyears)
+             , seq(from=1     ,to=monthz,by=1)
+             )#end c
+   tyear  = c( rep(yeara,each=nmontha)
+             , rep(yeara+sequence(nmidyears),each=12)
+             , rep(yearz,each=nmonthz)
+             )#end c
 }#end if (yeara == yearz)
-#---~---
 
-
-#--- Number of times
-nwhen = length(when)
-#---~---
+# Create time stamp and find how many times should be processed.
+tstamp = make_datetime(year=tyear,month=tmonth,day=1L)
+ntstamp = length(tstamp)
 
 ```
 
 
 Use the first time to load a few settings (dimensions, soil information).
 ```{r, label='first-set',message=FALSE,results='hide'}
-if ("nc.conn" %in% ls()){dummy = nc_close(nc.conn); rm(nc.conn)}
+if ("nc_conn" %in% ls()){dummy = nc_close(nc_conn); rm(nc_conn)}
 
-#--- Extract times and build all possible file names
-w.month    = nummonths(when[1])
-w.year     = numyears (when[1])
-w.ymlab    = sprintf("%4.4i-%2.2i",w.year,w.month)
-hlm.midfix = c("elm.h0","clm2.h0")
-nc.base    = paste0(simul,".",hlm.midfix,"." ,w.ymlab,".nc")
-nc.file    = file.path( rep(x = simul.root, times = length(nc.base   ))
-                      , rep(x = nc.base   , each  = length(simul.root))
+# Extract times and build all possible file names
+w_month    = month(tstamp[1])
+w_year     = year (tstamp[1])
+w_ymlab    = sprintf("%4.4i-%2.2i",w_year,w_month)
+hlm_midfix = c("elm.h0","clm2.h0")
+nc_base    = paste0(case_name,".",hlm_midfix,"." ,w_ymlab,".nc")
+nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
+                      , rep(x = nc_base   , each  = length(simul_path))
                       )#end file.path
-#---~---
-  
+
 
   
-#--- Identify which model and path to use.
-idx = which(file.exists(nc.file))
+# Identify which model and path to use.
+idx = which(file.exists(nc_file))
 if (length(idx) > 0){
-   #--- Load the correct file.
-   nc.file=(nc.file[idx])[1]
-   nc.base=basename(nc.file)
-   cat0(" + Read data from file ",nc.base,".")
-   #---~---
+   # Load the correct file.
+   nc_file = (nc_file[idx])[1]
+   nc_base = basename(nc_file)
+   cat0(" + Read data from file ",nc_base,".")
 
-   #--- Remember which path and model to use for other times
-   simul.root = dirname(nc.file)
-   sel.midfix = mapply(FUN=grepl,pattern=as.list(hlm.midfix),MoreArgs=list(x=nc.base))
-   hlm.midfix = hlm.midfix[sel.midfix]
-   #---~---
+   # Remember which path and model to use for other times
+   simul_path = dirname(nc_file)
+   sel_midfix = mapply(FUN=grepl,pattern=as.list(hlm_midfix),MoreArgs=list(x=nc_base))
+   hlm_midfix = hlm_midfix[sel_midfix]
 }else{
-   #--- No file was found. Stop the run
+   # No file was found. Stop the run
    cat0(" + Neither CLM nor ELM expected files found.")
-   cat0("   - Expected ELM file:    ",nc.file[1],".")
-   cat0("   - Expected CLM file:    ",nc.file[4],".")
-   cat0("   - Alternative ELM file: ",nc.file[2],".")
-   cat0("   - Alternative CLM file: ",nc.file[3],".")
+   cat0("   - Expected ELM file:    ",nc_file[1],".")
+   cat0("   - Expected CLM file:    ",nc_file[4],".")
+   cat0("   - Alternative ELM file: ",nc_file[2],".")
+   cat0("   - Alternative CLM file: ",nc_file[3],".")
    stop(" Invalid files, perhaps incorrect simulation?")
-   #---~---
 }#end if (length(idx) > 0)
-#---~---
+
   
-  
-#--- Open NetCDF connection and retrieve variable names
-nc.conn  = nc_open(filename=nc.file)
-nc.nvars = nc.conn$nvars
-nc.ndims = nc.conn$ndims
-nc.dlist = rep(NA_character_,times=nc.ndims)
-nc.vlist = rep(NA_character_,times=nc.nvars)
-for (d in sequence(nc.ndims)) nc.dlist[d] = nc.conn$dim[[d]]$name
-for (v in sequence(nc.nvars)) nc.vlist[v] = nc.conn$var[[v]]$name
-#---~---
+# Open NetCDF connection and retrieve variable names
+nc_conn  = nc_open(filename=nc_file)
+nc_nvars = nc_conn$nvars
+nc_ndims = nc_conn$ndims
+nc_dlist = rep(NA_character_,times=nc_ndims)
+nc_vlist = rep(NA_character_,times=nc_nvars)
+for (d in sequence(nc_ndims)) nc_dlist[d] = nc_conn$dim[[d]]$name
+for (v in sequence(nc_nvars)) nc_vlist[v] = nc_conn$var[[v]]$name
 
 #---~---
 # Gather dimension information, then initialise matrices
 #---~---
 
-#--- List of age classes
-idxage   = match("fates_levage",nc.dlist)
+# List of age classes
+idxage   = match("fates_levage",nc_dlist)
 if (is.finite(idxage)){
-   ages     = nc.conn$dim[[idxage]]$vals
-   nages    = nc.conn$dim[[idxage]]$len
+   ages     = nc_conn$dim[[idxage]]$vals
+   nages    = nc_conn$dim[[idxage]]$len
    agekeys  = sprintf("age.%3.3i",ages)
    agelabs  = c( paste0("paste(",ages[-nages],"-",ages[-1],")")
                , paste0("paste(",ages[nages],"-infinity)")
@@ -257,13 +280,13 @@ if (is.finite(idxage)){
    agekeys  = character(0L)
    agelabs  = character(0L)
 }#end if (is.na(idxage))
-#---~---
 
-#--- List of size classes
-idxdbh   = match("fates_levscls",nc.dlist)
+
+# List of size classes
+idxdbh   = match("fates_levscls",nc_dlist)
 if (is.finite(idxdbh)){
-   dbhs     = nc.conn$dim[[idxdbh]]$vals
-   ndbhs    = nc.conn$dim[[idxdbh]]$len
+   dbhs     = nc_conn$dim[[idxdbh]]$vals
+   ndbhs    = nc_conn$dim[[idxdbh]]$len
    dbhkeys  = sprintf("dbh.%3.3i",dbhs)
    dbhlabs  = c( paste0("paste(",dbhs[-ndbhs],"-",dbhs[-1],")")
                , paste0("paste(",dbhs[ndbhs],"-infinity)")
@@ -275,272 +298,264 @@ if (is.finite(idxdbh)){
    dbhkeys = character(0L)
    dbhlabs = character(0L)
 }#end if (is.finite(idxdbh))
-#---~---
- 
-#--- List of PFT classes (only if not using user-defined classes).
-idxpft   = match("fates_levpft",nc.dlist)
+
+# List of PFT classes (only if not using user-defined classes).
+idxpft   = match("fates_levpft",nc_dlist)
 if (! is.finite(idxpft)){
-   #--- PFT index not found. Skip PFTs altogether.
-   pftinfo = data.table( id               = numeric(0L)
-                       , key              = character(0L)
-                       , short            = character(0L)
-                       , desc             = character(0L)
-                       , colour           = character(0L)
-                       , stringsAsFactors = FALSE
-                       )#end data.table
-   #---~---
-}else if (! user.pftinfo){
-   #--- Select all PFTs available
-   pftids  = nc.conn$dim[[idxpft]]$vals
-   npftids = nc.conn$dim[[idxpft]]$len
-   #---~---
+   # PFT index not found. Skip PFTs altogether.
+   pftinfo = tibble( id               = numeric(0L)
+                   , key              = character(0L)
+                   , short            = character(0L)
+                   , desc             = character(0L)
+                   , colour           = character(0L)
+                   , stringsAsFactors = FALSE
+                   )#end data.table
+}else if (! user_pftinfo){
+   # Select all PFTs available
+   pftids  = nc_conn$dim[[idxpft]]$vals
+   npftids = nc_conn$dim[[idxpft]]$len
 
-   #--- Build data table with all the PFTs.
-   pftinfo = data.table( id               = pftids
-                       , key              = sprintf("pft%2.2i" ,pftids)
-                       , short            = sprintf("PFT%2.2i" ,pftids)
-                       , desc             = sprintf("PFT %2.2i",pftids)
-                       , colour           = brewer.pal(n=npftids,name="PuBuGn")
-                       , stringsAsFactors = FALSE
-                       )#end data.table
-   #---~---
-}else{
-   #--- Convert user-defined pftinfo to a "data table" object
-   pftinfo  = do.call(what=rbind,args=lapply(X=pftinfo,FUN=as.data.table,stringsAsFactors=FALSE))
+   # Build tibble with all the PFTs.
+   pftinfo = tibble( id               = pftids
+                   , key              = sprintf("pft%2.2i" ,pftids)
+                   , short            = sprintf("PFT%2.2i" ,pftids)
+                   , desc             = sprintf("PFT %2.2i",pftids)
+                   , colour           = brewer.pal(n=npftids,name="PuBuGn")
+                   , stringsAsFactors = FALSE
+                   )#end tibble
+}else if (! is_tibble(pftinfo)){
+   # Convert user-defined pftinfo to a "tibble" object
+   pftinfo  = do.call(what=rbind,args=lapply(X=pftinfo,FUN=as_tibble,stringsAsFactors=FALSE))
 }#end if (! is.finite(idxpft))
-#---~---
 
-#--- Set number of PFTs (active PFTs only) 
+# Set number of PFTs (active PFTs only) 
 npfts = nrow(pftinfo)
-#---~---
-   
-#--- Retrieve all variables by age class. We also test whether
-nc.byage = nc.vlist[grepl(pattern="_BY_AGE$",x=nc.vlist)]
-nc.pref  = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc.byage))
-nc.keep  = nc.pref %in% fatesvar$vnam
-no.byage = nc.byage[! nc.keep]
-nc.byage = nc.byage[  nc.keep]
-nbyage   = length(nc.byage)
-#---~---
+
+# Retrieve all variables by age class. We also test whether
+nc_byage = nc_vlist[grepl(pattern="_BY_AGE$",x=nc_vlist)]
+nc_pref  = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc_byage))
+nc_keep  = nc_pref %in% fatesvar$vnam
+no_byage = nc_byage[! nc_keep]
+nc_byage = nc_byage[  nc_keep]
+nbyage   = length(nc_byage)
 
 #---~---
 #    Retrieve all variables by size class. We also test whether total LAI can be
 # obtained from under storey and canopy.
 #---~---
-is.size   = grepl(pattern="_SCLS$",x=nc.vlist) | grepl(pattern="_SCPF$",x=nc.vlist)
-nc.bydbh  = nc.vlist[is.size]
-nc.pref   = gsub(pattern="_SCLS$",replacement="",x=nc.bydbh)
-nc.pref   = gsub(pattern="_SCPF$",replacement="",x=nc.pref )
-nc.pref   = tolower(nc.pref)
-nc.keep   = nc.pref %in% fatesvar$vnam
-no.bydbh  = nc.bydbh[! nc.keep]
-nc.bydbh  = unique(nc.bydbh[  nc.keep])
-if (  all(c("LAI_UNDERSTORY_SCLS","LAI_CANOPY_SCLS") %in% nc.bydbh)
-   && (! "LAI_SCLS" %in% nc.bydbh) ){
-   nc.bydbh    = unique(c(nc.bydbh,"LAI_SCLS"))
-   laidbh.last = TRUE
-}else if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc.bydbh)
-   && (! "LAI_SCPF" %in% nc.bydbh) ){
-   nc.bydbh    = unique(c(nc.bydbh,"LAI_SCPF"))
-   laidbh.last = TRUE
+is.size   = grepl(pattern="_SCLS$",x=nc_vlist) | grepl(pattern="_SCPF$",x=nc_vlist)
+nc_bydbh  = nc_vlist[is.size]
+nc_pref   = gsub(pattern="_SCLS$",replacement="",x=nc_bydbh)
+nc_pref   = gsub(pattern="_SCPF$",replacement="",x=nc_pref )
+nc_pref   = tolower(nc_pref)
+nc_keep   = nc_pref %in% fatesvar$vnam
+no_bydbh  = nc_bydbh[! nc_keep]
+nc_bydbh  = unique(nc_bydbh[  nc_keep])
+if (  all(c("LAI_UNDERSTORY_SCLS","LAI_CANOPY_SCLS") %in% nc_bydbh)
+   && (! "LAI_SCLS" %in% nc_bydbh) ){
+   nc_bydbh    = unique(c(nc_bydbh,"LAI_SCLS"))
+   laidbh_last = TRUE
+}else if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc_bydbh)
+   && (! "LAI_SCPF" %in% nc_bydbh) ){
+   nc_bydbh    = unique(c(nc_bydbh,"LAI_SCPF"))
+   laidbh_last = TRUE
 }else{
-   laidbh.last = FALSE
-}#end if (  all(c("LAI_UNDERSTORY_SCLS","LAI_CANOPY_SCLS") %in% nc.bydbh)
-nbydbh    = length(nc.bydbh)
-#---~---
+   laidbh_last = FALSE
+}#end if (  all(c("LAI_UNDERSTORY_SCLS","LAI_CANOPY_SCLS") %in% nc_bydbh)
+nbydbh    = length(nc_bydbh)
 
     
 #---~---
 #    Retrieve all variables by PFT. We also test whether total LAI can be
 # obtained from under storey and canopy.
 #---~---
-is.pft    = grepl(pattern="_SCPF$",x=nc.vlist)
-nc.bypft  = nc.vlist[is.pft]
-nc.pref   = tolower(gsub(pattern="_SCPF$",replacement="",x=nc.bypft ))
-nc.keep   = nc.pref %in% fatesvar$vnam
-no.bypft  = nc.bypft[! nc.keep]
-nc.bypft  = unique(nc.bypft[  nc.keep])
-if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc.bypft)
-   && (! "LAI_SCPF" %in% nc.bypft) ){
-   nc.bypft    = unique(c(nc.bypft,"LAI_SCPF"))
-   laipft.last = TRUE
+is.pft    = grepl(pattern="_SCPF$",x=nc_vlist)
+nc_bypft  = nc_vlist[is.pft]
+nc_pref   = tolower(gsub(pattern="_SCPF$",replacement="",x=nc_bypft ))
+nc_keep   = nc_pref %in% fatesvar$vnam
+no_bypft  = nc_bypft[! nc_keep]
+nc_bypft  = unique(nc_bypft[  nc_keep])
+if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc_bypft)
+   && (! "LAI_SCPF" %in% nc_bypft) ){
+   nc_bypft    = unique(c(nc_bypft,"LAI_SCPF"))
+   laipft_last = TRUE
 }else{
-   laipft.last = FALSE
-}#end if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc.bypft)
-nbypft    = length(nc.bypft)
-#---~---
+   laipft_last = FALSE
+}#end if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc_bypft)
+nbypft    = length(nc_bypft)
 
 
-#--- Retrieve all "1D" variables that are available at the host model.
-nc.pref   = tolower(x=nc.vlist)
-nc.keep   = nc.pref %in% hlm1dvar$vnam
-no.hlm1d  = nc.vlist[! nc.keep]
-nc.hlm1d  = nc.vlist[  nc.keep]
-if (  ( all(c("QSOIL","QVEGT","QVEGE") %in% nc.bydbh) )
-   && (! "QEVTR" %in% nc.bydbh) ){
-   nc.hlm1d = unique(c(nc.bydbh,"QEVTR"))
-   etr.last = TRUE
+
+# Retrieve all "1D" variables that are available at the host model.
+nc_pref   = tolower(x=nc_vlist)
+nc_keep   = nc_pref %in% hlm1dvar$vnam
+no_hlm1d  = nc_vlist[! nc_keep]
+nc_hlm1d  = nc_vlist[  nc_keep]
+
+# Check whether to append "evapotranspiration"
+if (  ( all(c("QSOIL","QVEGT","QVEGE") %in% nc_hlm1d) ) && (! "QEVTR" %in% nc_hlm1d) ){
+   nc_hlm1d = unique(c(nc_hlm1d,"QEVTR"))
+   etr_last = TRUE
 }else{
-   etr.last = FALSE
-}#end if (all(c("QSOIL","QVEGT","QVEGE") %in% nc.bydbh))
-nhlm1d    = length(nc.hlm1d)
-#---~---
+   etr_last = FALSE
+}#end if (  ( all(c("QSOIL","QVEGT","QVEGE") %in% nc_hlm1d) ) && (! "QEVTR" %in% nc_hlm1d) )
+
+# Check whether to append ecosystem respiration
+if (  ( all(c("AR","HR") %in% nc_hlm1d) ) && (! "ER" %in% nc_hlm1d) ){
+   nc_hlm1d = unique(c(nc_hlm1d,"ER"))
+   er_last  = TRUE
+}else{
+   er_last  = FALSE
+}#end if (  ( all(c("AR","HR") %in% nc_hlm1d) ) && (! "ER" %in% nc_hlm1d) )
+
+# Find number of host land model variables
+nhlm1d    = length(nc_hlm1d)
 
 
-#--- Initialise list of variables by age class.
+
+# Initialise list of variables by age class.
 byage  = list()
 for (a in sequence(nbyage)){
-   nc.nvnow        = nc.byage[a]
-   nc.pref         = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc.nvnow))
-   f               = match(nc.pref,fatesvar$vnam)
-   f.vnam          = fatesvar$vnam[f]
-   byage[[f.vnam]] = matrix(data=NA_real_,nrow=nwhen,ncol=nages,dimnames=list(NULL,agekeys))
+   nc_nvnow        = nc_byage[a]
+   nc_pref         = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc_nvnow))
+   f               = match(nc_pref,fatesvar$vnam)
+   f_vnam          = fatesvar$vnam[f]
+   byage[[f_vnam]] = matrix(data=NA_real_,nrow=ntstamp,ncol=nages,dimnames=list(NULL,agekeys))
 }#end for (a in sequence(nbyage))
-#---~---
 
-#--- Initialise list of variables by size class
+
+# Initialise list of variables by size class
 bydbh = list()
 for (d in sequence(nbydbh)){
-   nc.nvnow        = nc.bydbh[d]
-   nc.pref         = gsub(pattern="_SCLS$",replacement="",x=nc.nvnow)
-   nc.pref         = gsub(pattern="_SCPF$",replacement="",x=nc.pref )
-   nc.pref         = tolower(nc.pref)
-   f               = match(nc.pref,fatesvar$vnam)
-   f.vnam          = fatesvar$vnam[f]
-   bydbh[[f.vnam]] = matrix(data=NA_real_,nrow=nwhen,ncol=ndbhs,dimnames=list(NULL,dbhkeys))
+   nc_nvnow        = nc_bydbh[d]
+   nc_pref         = gsub(pattern="_SCLS$",replacement="",x=nc_nvnow)
+   nc_pref         = gsub(pattern="_SCPF$",replacement="",x=nc_pref )
+   nc_pref         = tolower(nc_pref)
+   f               = match(nc_pref,fatesvar$vnam)
+   f_vnam          = fatesvar$vnam[f]
+   bydbh[[f_vnam]] = matrix(data=NA_real_,nrow=ntstamp,ncol=ndbhs,dimnames=list(NULL,dbhkeys))
 }#end for (d in sequence(nbydbh))
-#---~---
 
-#--- Initialise list of variables by PFT class
+
+# Initialise list of variables by PFT class
 bypft = list()
 for (p in sequence(nbypft)){
-   nc.nvnow        = nc.bypft[p]
-   nc.pref         = tolower(gsub(pattern="_SCPF$",replacement="",x=nc.nvnow))
-   nc.pref         = tolower(nc.pref)
-   f               = match(nc.pref,fatesvar$vnam)
-   f.vnam          = fatesvar$vnam[f]
-   bypft[[f.vnam]] = matrix(data=NA_real_,nrow=nwhen,ncol=npfts,dimnames=list(NULL,pftinfo$key))
+   nc_nvnow        = nc_bypft[p]
+   nc_pref         = tolower(gsub(pattern="_SCPF$",replacement="",x=nc_nvnow))
+   nc_pref         = tolower(nc_pref)
+   f               = match(nc_pref,fatesvar$vnam)
+   f_vnam          = fatesvar$vnam[f]
+   bypft[[f_vnam]] = matrix(data=NA_real_,nrow=ntstamp,ncol=npfts,dimnames=list(NULL,pftinfo$key))
 }#end for (d in sequence(nbypft))
-#---~---
 
-#--- Initialise 1D variables available at the HLM
+
+# Initialise 1D variables available at the HLM
 hlm1d = as.data.table( matrix( data     = NA_real_
-                             , nrow     = nwhen
+                             , nrow     = ntstamp
                              , ncol     = nhlm1d
-                             , dimnames = list(NULL,tolower(nc.hlm1d))
+                             , dimnames = list(NULL,tolower(nc_hlm1d))
                              )#end matrix
                      )#end as.data.table
-#---~---
 
 
-#--- Load soil layers
-slayer = data.table( zsoi   = ncvar_get(nc=nc.conn,varid='ZSOI'  )
-                   , dzsoi  = ncvar_get(nc=nc.conn,varid='DZSOI' )
-                   , bsw    = ncvar_get(nc=nc.conn,varid='BSW'   )
-                   , hksat  = ncvar_get(nc=nc.conn,varid='HKSAT' )
-                   , sucsat = ncvar_get(nc=nc.conn,varid='SUCSAT')
-                   , watsat = ncvar_get(nc=nc.conn,varid='WATSAT')
+# Load soil layers
+slayer = tibble( zsoi   = c(unlist(ncvar_get(nc=nc_conn,varid='ZSOI'  )))
+               , dzsoi  = c(unlist(ncvar_get(nc=nc_conn,varid='DZSOI' )))
+               , bsw    = c(unlist(ncvar_get(nc=nc_conn,varid='BSW'   )))
+               , hksat  = c(unlist(ncvar_get(nc=nc_conn,varid='HKSAT' )))
+               , sucsat = c(unlist(ncvar_get(nc=nc_conn,varid='SUCSAT')))
+               , watsat = c(unlist(ncvar_get(nc=nc_conn,varid='WATSAT')))
+               )#end data.table
+
+
+# Load indices
+index_scpf = tibble( scls   = ncvar_get(nc=nc_conn,varid='fates_scmap_levscpf'  )
+                   , pft    = ncvar_get(nc=nc_conn,varid='fates_pftmap_levscpf' )
                    )#end data.table
-#---~---
-
-
-#--- Load indices
-index_scpf = data.table( scls   = ncvar_get(nc=nc.conn,varid='fates_scmap_levscpf'  )
-                       , pft    = ncvar_get(nc=nc.conn,varid='fates_pftmap_levscpf' )
-                       )#end data.table
-#---~---
 
 # Close connection
-dummy   = nc_close(nc.conn)
+dummy   = nc_close(nc_conn)
 
 ```
 
 
 Loop through the times, and load the data sets.
 ```{r, label='load-times', message=FALSE}
-if ("nc.conn" %in% ls()){dummy = nc_close(nc.conn); rm(nc.conn)}
-for (w in sequence(nwhen)){
-   #--- Extract times and build file name
-   w.month  = nummonths(when[w])
-   w.year   = numyears (when[w])
-   w.ymlab  = sprintf("%4.4i-%2.2i",w.year,w.month)
-   nc.base  = paste0(simul,".",hlm.midfix,"." ,w.ymlab,".nc")
-   nc.file  = file.path(simul.root,nc.base)
-   #---~---
+if ("nc_conn" %in% ls()){dummy = nc_close(nc_conn); rm(nc_conn)}
+for (w in sequence(ntstamp)){
+   # Extract times and build file name
+   w_month  = month(tstamp[w])
+   w_year   = year (tstamp[w])
+   w_ymlab  = sprintf("%4.4i-%2.2i",w_year,w_month)
+   nc_base  = paste0(case_name,".",hlm_midfix,"." ,w_ymlab,".nc")
+   nc_file  = file.path(simul_path,nc_base)
 
-   #-- Find conversion factors for monthly variables.
-   cmon.day = daymax(w.month,w.year)
+   
+   # Find conversion factors for monthly variables.
+   cmon.day = days_in_month(tstamp[w])
    cmon.hr  = day.hr  * cmon.day
    cmon.min = day.min * cmon.day
    cmon.sec = day.sec * cmon.day
-   #---~---
 
   
-   #--- Open NetCDF connection and retrieve variable names
-   nc.conn  = nc_open(filename=nc.file)
-   nc.nvars = nc.conn$nvars
-   nc.vlist = rep(NA_character_,times=nc.nvars)
-   for (v in sequence(nc.nvars)) nc.vlist[v] = nc.conn$var[[v]]$name
-   #---~---
+   # Open NetCDF connection and retrieve variable names
+   nc_conn  = nc_open(filename=nc_file)
+   nc_nvars = nc_conn$nvars
+   nc_vlist = rep(NA_character_,times=nc_nvars)
+   for (v in sequence(nc_nvars)) nc_vlist[v] = nc_conn$var[[v]]$name
 
 
     
 
-   #--- Read variables by age, and assign current values to the matrix.  
+   # Read variables by age, and assign current values to the matrix.  
    for (a in sequence(nbyage)){
-      nc.nvnow            = nc.byage[a]
-      nc.pref             = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc.nvnow))
-      f                   = match(nc.pref,fatesvar$vnam)
-      f.vnam              = fatesvar$vnam[f]
-      f.add0              = eval(parse(text=fatesvar$add0[f]))
-      f.mult              = eval(parse(text=fatesvar$mult[f]))
-      nc.dat              = ncvar_get(nc=nc.conn,varid=nc.nvnow)
-      byage[[f.vnam]][w,] = f.add0 + f.mult * nc.dat
+      nc_nvnow            = nc_byage[a]
+      nc_pref             = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc_nvnow))
+      f                   = match(nc_pref,fatesvar$vnam)
+      f_vnam              = fatesvar$vnam[f]
+      f_add0              = eval(parse(text=fatesvar$add0_ag[f]))
+      f_mult              = eval(parse(text=fatesvar$mult_ag[f]))
+      nc_dat              = ncvar_get(nc=nc_conn,varid=nc_nvnow)
+      byage[[f_vnam]][w,] = f_add0 + f_mult * nc_dat
    }#end for (a in sequence(nbyage))
-   #---~---
 
    #---~--- 
    #   Read variables by size, and assign current values to the matrix.  In case LAI
    # is in the list and it is the last variable, we calculate it from canopy and under
    # storey, after loading all variables
    #---~---
-   for (d in sequence(nbydbh-laidbh.last)){
-      nc.nvnow            = nc.bydbh[d]
-      is.scpf             = grepl(pattern="_SCPF$",x=nc.nvnow)
-      nc.pref             = gsub(pattern="_SCLS$",replacement="",x=nc.nvnow)
-      nc.pref             = gsub(pattern="_SCPF$",replacement="",x=nc.pref )
-      nc.pref             = tolower(nc.pref)
-      f                   = match(nc.pref,fatesvar$vnam)
-      f.vnam              = fatesvar$vnam[f]
-      f.add0              = eval(parse(text=fatesvar$add0[f]))
-      f.mult              = eval(parse(text=fatesvar$mult[f]))
-      f.aggr              = match.fun(fatesvar$aggr[f])
-      nc.dat              = ncvar_get(nc=nc.conn,varid=nc.nvnow)
-      nc.dat              = f.add0 + f.mult * nc.dat
+   for (d in sequence(nbydbh-laidbh_last)){
+      nc_nvnow            = nc_bydbh[d]
+      is.scpf             = grepl(pattern="_SCPF$",x=nc_nvnow)
+      nc_pref             = gsub(pattern="_SCLS$",replacement="",x=nc_nvnow)
+      nc_pref             = gsub(pattern="_SCPF$",replacement="",x=nc_pref )
+      nc_pref             = tolower(nc_pref)
+      f                   = match(nc_pref,fatesvar$vnam)
+      f_vnam              = fatesvar$vnam[f]
+      f_add0              = eval(parse(text=fatesvar$add0_sp[f]))
+      f_mult              = eval(parse(text=fatesvar$mult_sp[f]))
+      f_aggr              = match.fun(fatesvar$aggr[f])
+      nc_dat              = ncvar_get(nc=nc_conn,varid=nc_nvnow)
+      nc_dat              = f_add0 + f_mult * nc_dat
       if (is.scpf){
-         #--- Aggregate data by size class
-         nc.aggr        = tapply( X     = nc.dat
+         # Aggregate data by size class
+         nc_aggr        = tapply( X     = nc_dat
                                 , INDEX = index_scpf$scls
-                                , FUN   = f.aggr
+                                , FUN   = f_aggr
                                 , na.rm = TRUE
                                 )#end tapply
-         names(nc.aggr) = NULL
-         bydbh[[f.vnam]][w,] = nc.aggr
-         #---~---
+         names(nc_aggr) = NULL
+         bydbh[[f_vnam]][w,] = nc_aggr
       }else{
-         #--- Variable is truly a size class.
-         bydbh[[f.vnam]][w,] = nc.dat
-         #---~---
+         # Variable is truly a size class.
+         bydbh[[f_vnam]][w,] = nc_dat
       }#end if (is.scpf)
-      #---~---
-   }#end for (d in sequence(nbydbh-laidbh.last))
-   #---~---
+   }#end for (d in sequence(nbydbh-laidbh_last))
 
-   #--- Find total LAI if sought.
-   if (laidbh.last){
+   # Find total LAI if sought.
+   if (laidbh_last){
       bydbh$lai[w,] = bydbh$lai_canopy[w,] + bydbh$lai_understory[w,]
    }#end if (lai.last)
-   #---~---
 
 
 
@@ -549,76 +564,72 @@ for (w in sequence(nwhen)){
    # is in the list and it is the last variable, we calculate it from canopy and under
    # storey, after loading all variables
    #---~---
-   for (p in sequence(nbypft-laipft.last)){
+   for (p in sequence(nbypft-laipft_last)){
       # Load variable information
-      nc.nvnow = nc.bypft[p]
-      nc.pref  = tolower(gsub(pattern="_SCPF$",replacement="",x=nc.nvnow))
-      f        = match(nc.pref,fatesvar$vnam)
-      f.vnam   = fatesvar$vnam[f]
-      f.add0   = eval(parse(text=fatesvar$add0[f]))
-      f.mult   = eval(parse(text=fatesvar$mult[f]))
-      f.aggr   = match.fun(fatesvar$aggr[f])
-      f.dbh01  = fatesvar$dbh01[f]
-      #---~---
+      nc_nvnow = nc_bypft[p]
+      nc_pref  = tolower(gsub(pattern="_SCPF$",replacement="",x=nc_nvnow))
+      f        = match(nc_pref,fatesvar$vnam)
+      f_vnam   = fatesvar$vnam[f]
+      f_add0   = eval(parse(text=fatesvar$add0_sp[f]))
+      f_mult   = eval(parse(text=fatesvar$mult_sp[f]))
+      f_aggr   = match.fun(fatesvar$aggr[f])
+      f_dbh01  = fatesvar$dbh01[f]
 
-      #--- Retrieve data.
-      nc.dat   = ncvar_get(nc=nc.conn,varid=nc.nvnow)
-      #---~---
+      # Retrieve data.
+      nc_dat   = ncvar_get(nc=nc_conn,varid=nc_nvnow)
 
-      #--- Decide whether or not to exclude the first DBH class.
-      if (f.dbh01){
-         seldbh = rep(TRUE,times=length(nc.dat))
+      # Decide whether or not to exclude the first DBH class.
+      if (f_dbh01){
+         seldbh = rep(TRUE,times=length(nc_dat))
       }else{
          seldbh = ! (index_scpf$scls %in% c(1))
-      }#end if (f.dbh01)
-      #---~---
+      }#end if (f_dbh01)
 
-      #--- Aggregate data by size class
-      nc.aggr        = tapply( X     = f.add0 + f.mult * nc.dat[seldbh]
+      # Aggregate data by size class
+      nc_aggr        = tapply( X     = f_add0 + f_mult * nc_dat[seldbh]
                              , INDEX = index_scpf$pft[seldbh]
-                             , FUN   = f.aggr
+                             , FUN   = f_aggr
                              , na.rm = TRUE
                              )#end tapply
-      names(nc.aggr) = NULL
-      #---~---
+      names(nc_aggr) = NULL
 
-      #--- Brind only the PFTs we are interested in.
-      bypft[[f.vnam]][w,] = nc.aggr[pftinfo$id]
-      #---~---
-   }#end for (d in sequence(nbydbh-laidbh.last))
-   #---~---
+      # Bring only the PFTs we are interested in.
+      bypft[[f_vnam]][w,] = nc_aggr[pftinfo$id]
+   }#end for (d in sequence(nbydbh-laidbh_last))
 
-   #--- Find total LAI if sought.
-   if (laipft.last){
+   
+   # Find total LAI if sought.
+   if (laipft_last){
       bypft$lai[w,] = bypft$lai_canopy[w,] + bypft$lai_understory[w,]
-   }#end if (laipft.last)
-   #---~---
+   }#end if (laipft_last)
 
 
     
-   #--- Read 1D variables  
-   for (v in sequence(nhlm1d-etr.last)){
-      nc.nvnow            = nc.hlm1d[v]
-      nc.pref             = tolower(x=nc.nvnow)
-      h                   = match(nc.pref,hlm1dvar$vnam)
-      h.vnam              = hlm1dvar$vnam[h]
-      h.add0              = eval(parse(text=hlm1dvar$add0[h]))
-      h.mult              = eval(parse(text=hlm1dvar$mult[h]))
-      nc.dat              = ncvar_get(nc=nc.conn,varid=nc.nvnow)
-      hlm1d[[h.vnam]][w]  = h.add0 + h.mult * nc.dat
-   }#for (h in sequence(nhlm1d))
-   #---~---
+   # Read 1D variables  
+   for (v in sequence(nhlm1d-etr_last-er_last)){
+      nc_nvnow            = nc_hlm1d[v]
+      nc_pref             = tolower(x=nc_nvnow)
+      h                   = match(nc_pref,hlm1dvar$vnam)
+      h_vnam              = hlm1dvar$vnam[h]
+      h_add0              = eval(parse(text=hlm1dvar$add0[h]))
+      h_mult              = eval(parse(text=hlm1dvar$mult[h]))
+      nc_dat              = ncvar_get(nc=nc_conn,varid=nc_nvnow)
+      hlm1d[[h_vnam]][w]  = h_add0 + h_mult * nc_dat
+   }#for (h in sequence(nhlm1d-etr_last-et_last))
 
-   #--- Find total ET.
-   if (etr.last){
-      bydbh$qevtr[w,] = bydbh$qeve[w,] + bydbh$qevtr[w,] + bydbh$qsoil[w,]
-   }#end if (lai.last)
-   #---~---
+   # Find total ET.
+   if (etr_last){
+      hlm1d$qevtr[w] = hlm1d$qvege[w] + hlm1d$qvegt[w] + hlm1d$qsoil[w]
+   }#end if (etr_last)
+
+   # Find total ET.
+   if (er_last){
+      hlm1d$er[w] = hlm1d$ar[w] + hlm1d$hr[w]
+   }#end if (er_last)
 
    # Close connection
-   dummy   = nc_close(nc.conn)
-  
-}#end for (w in sequence(nwhen))
+   dummy   = nc_close(nc_conn)
+}#end for (w in sequence(nstamp))
 
 
 
@@ -633,16 +644,16 @@ cat0(" + Rescale variables by age class.")
 for (a in sequence(nbyage)){
    #--- Match variables
    f        = match(names(byage)[a],fatesvar$vnam)
-   f.vnam   = fatesvar$vnam [f]
-   f.desc   = fatesvar$desc [f]
-   f.stack  = fatesvar$stack[f]
+   f_vnam   = fatesvar$vnam [f]
+   f_desc   = fatesvar$desc [f]
+   f_stack  = fatesvar$stack[f]
    #---~---
 
    #--- Proceed only if the variable is stacked and not the patch area.
-   if (f.stack && (! (f.vnam %in% "patch_area"))){
-      cat0("   - ",f.desc,".")
-      byage[[f.vnam]] = byage[[f.vnam]] * byage$patch_area
-   }#end if (f.stack && (! (f.vnam %in% "patch_area")))
+   if (f_stack && (! (f_vnam %in% "patch_area"))){
+      cat0("   - ",f_desc,".")
+      byage[[f_vnam]] = byage[[f_vnam]] * byage$patch_area
+   }#end if (f_stack && (! (f_vnam %in% "patch_area")))
       
 }#end for (a in sequence(nbyage))
 
@@ -654,53 +665,53 @@ Turn data matrices into molten data tables (preferred data structure for plottin
 
 #--- Turn age-dependent matrices into data tables
 cat0(" + Turn age-dependent matrices into data tables.")
-age.melt = NULL
+age_melt = NULL
 for (a in sequence(nbyage)){
    #--- Match variables.
    f        = match(names(byage)[a],fatesvar$vnam)
-   f.vnam   = fatesvar$vnam[f]
-   f.desc   = fatesvar$desc[f]
-   cat0("   - ",f.desc,".")
+   f_vnam   = fatesvar$vnam[f]
+   f_desc   = fatesvar$desc[f]
+   cat0("   - ",f_desc,".")
    #---~---
 
    #--- Create molten data table for this variable.  
-   now.age      = as.data.table(byage[[f.vnam]])
-   now.age$when = chron(when)
-   now.melt     = data.table(melt(data=now.age,id.vars="when",variable.name="age",value.name=f.vnam))
+   now_age      = as.data.table(byage[[f_vnam]])
+   now_age$time = tstamp
+   now_melt     = data.table(melt(data=now_age,id.vars="time",variable.name="age",value.name=f_vnam))
    #---~---
 
    #--- Merge data table
-   if (is.null(age.melt)){
-      age.melt = now.melt
+   if (is.null(age_melt)){
+      age_melt = now_melt
    }else{
-      age.melt = merge(x=age.melt,y=now.melt,by=c("when","age"),all=TRUE)
-   }#end if (is.null(age.melt))
+      age_melt = merge(x=age_melt,y=now_melt,by=c("time","age"),all=TRUE)
+   }#end if (is.null(age_melt))
    #---~---
 }#end for (a in sequence(nbyage))
 #---~---
 
 #--- Turn size-dependent matrices into data tables
 cat0(" + Turn size-dependent matrices into data tables.")
-dbh.melt = NULL
+dbh_melt = NULL
 for (d in sequence(nbydbh)){
    #--- Match variables.
    f        = match(names(bydbh)[d],fatesvar$vnam)
-   f.vnam   = fatesvar$vnam[f]
-   f.desc   = fatesvar$desc[f]
-   cat0("   - ",f.desc,".")
+   f_vnam   = fatesvar$vnam[f]
+   f_desc   = fatesvar$desc[f]
+   cat0("   - ",f_desc,".")
    #---~---
 
    #--- Create molten data table for this variable.  
-   now.dbh      = as.data.table(bydbh[[d]])
-   now.dbh$when = chron(when)
-   now.melt     = data.table(melt(data=now.dbh,id.vars="when",variable.name="dbh",value.name=f.vnam))
+   now_dbh      = as.data.table(bydbh[[d]])
+   now_dbh$time = tstamp
+   now_melt     = data.table(melt(data=now_dbh,id.vars="time",variable.name="dbh",value.name=f_vnam))
    #---~---
 
    #--- Merge data table
-   if (is.null(dbh.melt)){
-      dbh.melt = now.melt
+   if (is.null(dbh_melt)){
+      dbh_melt = now_melt
    }else{
-      dbh.melt = merge(x=dbh.melt,y=now.melt,by=c("when","dbh"),all=TRUE)
+      dbh_melt = merge(x=dbh_melt,y=now_melt,by=c("time","dbh"),all=TRUE)
    }#end if (is.null(scls.melt))
    #---~---
 }#end for (d in sequence(nbydbh))
@@ -708,36 +719,36 @@ for (d in sequence(nbydbh)){
 
 #--- Turn PFT-dependent matrices into data tables
 cat0(" + Turn PFT-dependent matrices into data tables.")
-pft.melt = NULL
+pft_melt = NULL
 for (p in sequence(nbypft)){
    #--- Match variables.
    f        = match(names(bypft)[p],fatesvar$vnam)
-   f.vnam   = fatesvar$vnam[f]
-   f.desc   = fatesvar$desc[f]
-   cat0("   - ",f.desc,".")
+   f_vnam   = fatesvar$vnam[f]
+   f_desc   = fatesvar$desc[f]
+   cat0("   - ",f_desc,".")
    #---~---
 
    #--- Create molten data table for this variable.  
-   now.pft      = as.data.table(bypft[[p]])
-   now.pft$when = chron(when)
-   now.melt     = data.table(melt(data=now.pft,id.vars="when",variable.name="pft",value.name=f.vnam))
+   now_pft      = as.data.table(bypft[[p]])
+   now_pft$time = tstamp
+   now_melt     = data.table(melt(data=now_pft,id.vars="time",variable.name="pft",value.name=f_vnam))
    #---~---
 
    #--- Merge data table
-   if (is.null(pft.melt)){
-      pft.melt = now.melt
+   if (is.null(pft_melt)){
+      pft_melt = now_melt
    }else{
-      pft.melt = merge(x=pft.melt,y=now.melt,by=c("when","pft"),all=TRUE)
-   }#end if (is.null(pft.melt))
+      pft_melt = merge(x=pft_melt,y=now_melt,by=c("time","pft"),all=TRUE)
+   }#end if (is.null(pft_melt))
    #---~---
 }#end for (p in sequence(nbypft))
 #---~---
 
 #--- Remove data that are not molten.
-byage = age.melt
-bydbh = dbh.melt
-bypft = pft.melt
-rm(age.melt,dbh.melt,pft.melt)
+byage = age_melt
+bydbh = dbh_melt
+bypft = pft_melt
+rm(age_melt,dbh_melt,pft_melt)
 #---~---
 
 #--- Convert dbh and age classes into integers
@@ -755,47 +766,47 @@ Plot time series by age:
 cat0(" + Plot time series of age-dependent variables.")
 
 #--- Title for legend
-age.legend = desc.unit(desc="Age",unit=untab$yr)
+age_legend = desc.unit(desc="Age",unit=untab$yr)
 #---~---
 
-age.loop   = which(fatesvar$vnam %in% names(byage))
-gg.age   = list()
-for (f in age.loop){
+age_loop   = which(fatesvar$vnam %in% names(byage))
+gg_age   = list()
+for (f in age_loop){
   #--- Match variables.
-  f.vnam   = fatesvar$vnam [f]
-  f.desc   = fatesvar$desc [f]
-  f.unit   = fatesvar$unit [f]
-  f.stack  = fatesvar$stack[f]
-  cat0("   - ",f.desc,".")
+  f_vnam   = fatesvar$vnam [f]
+  f_desc   = fatesvar$desc [f]
+  f_unit   = fatesvar$unit [f]
+  f_stack  = fatesvar$stack[f]
+  cat0("   - ",f_desc,".")
   #---~---
   
   #--- Temporary data table. We convert the classes back to factor.
-  f.byage     = byage
-  f.byage$age = factor(f.byage$age,levels=sequence(nages))
-  f.colages   = viridis(nages,option="D",direction=-1)
-  f.agelabs   = agelabs
+  f_byage     = byage
+  f_byage$age = factor(f_byage$age,levels=sequence(nages))
+  f_colages   = viridis(nages,option="D",direction=-1)
+  f_agelabs   = agelabs
   #---~---
   
   #--- Initialise plot (decide whether to plot lines or stacks).
-  if (f.stack){
-     gg.now = ggplot(data=f.byage,aes_string(x="when",y=f.vnam,group="age",fill="age"))
-     gg.now = gg.now + scale_fill_manual(name=age.legend,labels=f.agelabs,values=f.colages)
-     gg.now = gg.now + geom_area(position="stack",show.legend = TRUE)
+  if (f_stack){
+     gg_now = ggplot(data=f_byage,aes_string(x="time",y=f_vnam,group="age",fill="age"))
+     gg_now = gg_now + scale_fill_manual(name=age_legend,labels=f_agelabs,values=f_colages)
+     gg_now = gg_now + geom_area(position="stack",show.legend = TRUE)
   }else{
-     gg.now = ggplot(data=f.byage,aes_string(x="when",y=f.vnam,group="age",colour="age"))
-     gg.now = gg.now + scale_colour_manual(name=age.legend,labels=f.agelabs,values=f.colages)
-     gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
-  }#end if (f.stack)
-  gg.now = gg.now + labs(title=simul.desc)
-  gg.now = gg.now + scale_x_chron(format=gg.tfmt)
-  gg.now = gg.now + xlab("Simulation time")
-  gg.now = gg.now + ylab(desc.unit(desc=f.desc,unit=untab[[f.unit]],twolines=TRUE))
-  gg.now = gg.now + theme_grey( base_size = gg.ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
-  gg.now = gg.now + theme( legend.position   = "bottom"
-                         , axis.text.x       = element_text( size   = gg.ptsz
+     gg_now = ggplot(data=f_byage,aes_string(x="time",y=f_vnam,group="age",colour="age"))
+     gg_now = gg_now + scale_colour_manual(name=age_legend,labels=f_agelabs,values=f_colages)
+     gg_now = gg_now + geom_line(lwd=1.0,show.legend = TRUE)
+  }#end if (f_stack)
+  gg_now = gg_now + labs(title=case_desc)
+  gg_now = gg_now + scale_x_datetime(date_labels=gg_tfmt)
+  gg_now = gg_now + xlab("Simulation time")
+  gg_now = gg_now + ylab(desc.unit(desc=f_desc,unit=untab[[f_unit]],twolines=TRUE))
+  gg_now = gg_now + theme_grey( base_size = gg_ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
+  gg_now = gg_now + theme( legend.position   = "bottom"
+                         , axis.text.x       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
-                         , axis.text.y       = element_text( size   = gg.ptsz
+                         , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
                          , axis.ticks.length = unit(-0.25,"cm")
@@ -804,27 +815,27 @@ for (f in age.loop){
   
   #--- Save plot.
   for (d in sequence(ndevice)){
-    f.output = paste0(f.vnam,"-tsage-",simul,".",gg.device[d])
+    f.output = paste0(f_vnam,"-tsage-",case_name,".",gg_device[d])
     dummy = ggsave( filename = f.output
-                  , plot     = gg.now
-                  , device   = gg.device[d]
-                  , path     = tsage.path
-                  , width    = gg.width
-                  , height   = gg.height
-                  , units    = gg.units
-                  , dpi      = gg.depth
+                  , plot     = gg_now
+                  , device   = gg_device[d]
+                  , path     = tsage_path
+                  , width    = gg_width
+                  , height   = gg_height
+                  , units    = gg_units
+                  , dpi      = gg_depth
                   )#end ggsave
   }#end for (o in sequence(nout))
   #---~---
 
   #--- Write plot settings to the list.
-  gg.age[[f.vnam]] = gg.now
+  gg_age[[f_vnam]] = gg_now
   #---~---
-}#end for (a in age.loop)
+}#end for (a in age_loop)
 
 
 #--- If sought, plot images on screen
-if (gg.screen) gg.age
+if (gg_screen) gg_age
 #---~---
 
 ```
@@ -836,60 +847,60 @@ Plot time series by size class:
 cat0(" + Plot time series of size-dependent variables.")
 
 #--- Title for legend
-dbh.legend = desc.unit(desc="DBH",unit=untab$cm)
+dbh_legend = desc.unit(desc="DBH",unit=untab$cm)
 #---~---
 
-dbh.loop = which(fatesvar$vnam %in% names(bydbh))
-gg.dbh   = list()
-for (f in dbh.loop){
+dbh_loop = which(fatesvar$vnam %in% names(bydbh))
+gg_dbh   = list()
+for (f in dbh_loop){
   #--- Match variables.
-  f.vnam   = fatesvar$vnam [f]
-  f.desc   = fatesvar$desc [f]
-  f.unit   = fatesvar$unit [f]
-  f.stack  = fatesvar$stack[f]
-  f.dbh01  = fatesvar$dbh01[f]
-  cat0("   - ",f.desc,".")
+  f_vnam   = fatesvar$vnam [f]
+  f_desc   = fatesvar$desc [f]
+  f_unit   = fatesvar$unit [f]
+  f_stack  = fatesvar$stack[f]
+  f_dbh01  = fatesvar$dbh01[f]
+  cat0("   - ",f_desc,".")
   #---~---
   
   #--- Decide whether to plot the first class.
-  if (f.dbh01){
+  if (f_dbh01){
     #--- Keep all classes.
-    f.bydbh     = bydbh
-    f.bydbh$dbh = factor(f.bydbh$dbh,levels=sequence(ndbhs))
-    f.coldbhs   = magma(ndbhs,direction=1)
-    f.dbhlabs   = dbhlabs
+    f_bydbh     = bydbh
+    f_bydbh$dbh = factor(f_bydbh$dbh,levels=sequence(ndbhs))
+    f_coldbhs   = magma(ndbhs,direction=1)
+    f_dbhlabs   = dbhlabs
     #---~---
   }else{
     #--- Exclude first class.
     bye         = as.numeric(bydbh$dbh) %in% 1
-    f.bydbh     = bydbh[! bye,]
-    f.bydbh$dbh = factor(f.bydbh$dbh,levels=sequence(ndbhs)[-1])
-    f.coldbhs   = magma(ndbhs,direction=1)[-1]
-    f.dbhlabs   = dbhlabs[-1]
+    f_bydbh     = bydbh[! bye,]
+    f_bydbh$dbh = factor(f_bydbh$dbh,levels=sequence(ndbhs)[-1])
+    f_coldbhs   = magma(ndbhs,direction=1)[-1]
+    f_dbhlabs   = dbhlabs[-1]
     #---~---
-  }#end if (f.dbh01)
+  }#end if (f_dbh01)
   #---~---
    
   #--- Initialise plot (decide whether to plot lines or stacks).
-  if (f.stack){
-     gg.now = ggplot(data=f.bydbh,aes_string(x="when",y=f.vnam,group="dbh",fill="dbh"))
-     gg.now = gg.now + scale_fill_manual(name=dbh.legend,labels=f.dbhlabs,values=f.coldbhs)
-     gg.now = gg.now + geom_area(position=position_stack(reverse = TRUE),show.legend = TRUE)
+  if (f_stack){
+     gg_now = ggplot(data=f_bydbh,aes_string(x="time",y=f_vnam,group="dbh",fill="dbh"))
+     gg_now = gg_now + scale_fill_manual(name=dbh_legend,labels=f_dbhlabs,values=f_coldbhs)
+     gg_now = gg_now + geom_area(position=position_stack(reverse = TRUE),show.legend = TRUE)
   }else{
-     gg.now = ggplot(data=f.bydbh,aes_string(x="when",y=f.vnam,group="dbh",colour="dbh"))
-     gg.now = gg.now + scale_colour_manual(name=dbh.legend,labels=f.dbhlabs,values=f.coldbhs)
-     gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
-  }#end if (f.stack)
-  gg.now = gg.now + labs(title=simul.desc)
-  gg.now = gg.now + scale_x_chron(format=gg.tfmt)
-  gg.now = gg.now + xlab("Simulation time")
-  gg.now = gg.now + ylab(desc.unit(desc=f.desc,unit=untab[[f.unit]],twolines=TRUE))
-  gg.now = gg.now + theme_grey( base_size = gg.ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
-  gg.now = gg.now + theme( legend.position   = "bottom"
-                         , axis.text.x       = element_text( size   = gg.ptsz
+     gg_now = ggplot(data=f_bydbh,aes_string(x="time",y=f_vnam,group="dbh",colour="dbh"))
+     gg_now = gg_now + scale_colour_manual(name=dbh_legend,labels=f_dbhlabs,values=f_coldbhs)
+     gg_now = gg_now + geom_line(lwd=1.0,show.legend = TRUE)
+  }#end if (f_stack)
+  gg_now = gg_now + labs(title=case_desc)
+  gg_now = gg_now + scale_x_datetime(date_labels=gg_tfmt)
+  gg_now = gg_now + xlab("Simulation time")
+  gg_now = gg_now + ylab(desc.unit(desc=f_desc,unit=untab[[f_unit]],twolines=TRUE))
+  gg_now = gg_now + theme_grey( base_size = gg_ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
+  gg_now = gg_now + theme( legend.position   = "bottom"
+                         , axis.text.x       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
-                         , axis.text.y       = element_text( size   = gg.ptsz
+                         , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
                          , axis.ticks.length = unit(-0.25,"cm")
@@ -898,27 +909,27 @@ for (f in dbh.loop){
 
   #--- Save plot.
   for (d in sequence(ndevice)){
-    f.output = paste0(f.vnam,"-tsdbh-",simul,".",gg.device[d])
+    f.output = paste0(f_vnam,"-tsdbh-",case_name,".",gg_device[d])
     dummy = ggsave( filename = f.output
-                  , plot     = gg.now
-                  , device   = gg.device[d]
-                  , path     = tsdbh.path
-                  , width    = gg.width
-                  , height   = gg.height
-                  , units    = gg.units
-                  , dpi      = gg.depth
+                  , plot     = gg_now
+                  , device   = gg_device[d]
+                  , path     = tsdbh_path
+                  , width    = gg_width
+                  , height   = gg_height
+                  , units    = gg_units
+                  , dpi      = gg_depth
                   )#end ggsave
   }#end for (o in sequence(nout))
   #---~---
 
   #--- Write plot settings to the list.
-  gg.dbh[[f.vnam]] = gg.now
+  gg_dbh[[f_vnam]] = gg_now
   #---~---
-}#end for (a in age.loop)
+}#end for (a in age_loop)
 
 
 #--- If sought, plot images on screen
-if (gg.screen) gg.dbh
+if (gg_screen) gg_dbh
 #---~---
 
 ```
@@ -930,47 +941,47 @@ Plot time series by plant functional type:
 cat0(" + Plot time series of size-dependent variables.")
 
 #--- Title for legend
-pft.legend = "Plant functional types"
+pft_legend = "Plant functional types"
 #---~---
 
-pft.loop = which(fatesvar$vnam %in% names(bypft))
-gg.pft   = list()
-for (f in pft.loop){
+pft_loop = which(fatesvar$vnam %in% names(bypft))
+gg_pft   = list()
+for (f in pft_loop){
   #--- Match variables.
-  f.vnam   = fatesvar$vnam [f]
-  f.desc   = fatesvar$desc [f]
-  f.unit   = fatesvar$unit [f]
-  f.stack  = fatesvar$stack[f]
-  cat0("   - ",f.desc,".")
+  f_vnam   = fatesvar$vnam [f]
+  f_desc   = fatesvar$desc [f]
+  f_unit   = fatesvar$unit [f]
+  f_stack  = fatesvar$stack[f]
+  cat0("   - ",f_desc,".")
   #---~---
   
   #--- Set plotting characteristics.
-  f.bypft     = bypft
-  f.bypft$pft = factor(f.bypft$pft,levels=sequence(npfts))
-  f.colpfts   = pftinfo$colour
-  f.pftlabs   = pftinfo$short
+  f_bypft     = bypft
+  f_bypft$pft = factor(f_bypft$pft,levels=sequence(npfts))
+  f_colpfts   = pftinfo$colour
+  f_pftlabs   = pftinfo$short
   #---~---
 
   #--- Initialise plot (decide whether to plot lines or stacks).
-  if (f.stack){
-     gg.now = ggplot(data=f.bypft,aes_string(x="when",y=f.vnam,group="pft",fill="pft"))
-     gg.now = gg.now + scale_fill_manual(name=pft.legend,labels=f.pftlabs,values=f.colpfts)
-     gg.now = gg.now + geom_area(position=position_stack(reverse = FALSE),show.legend = TRUE)
+  if (f_stack){
+     gg_now = ggplot(data=f_bypft,aes_string(x="time",y=f_vnam,group="pft",fill="pft"))
+     gg_now = gg_now + scale_fill_manual(name=pft_legend,labels=f_pftlabs,values=f_colpfts)
+     gg_now = gg_now + geom_area(position=position_stack(reverse = FALSE),show.legend = TRUE)
   }else{
-     gg.now = ggplot(data=f.bypft,aes_string(x="when",y=f.vnam,group="pft",colour="pft"))
-     gg.now = gg.now + scale_colour_manual(name=pft.legend,labels=f.pftlabs,values=f.colpfts)
-     gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
-  }#end if (f.stack)
-  gg.now = gg.now + labs(title=simul.desc)
-  gg.now = gg.now + scale_x_chron(format=gg.tfmt)
-  gg.now = gg.now + xlab("Simulation time")
-  gg.now = gg.now + ylab(desc.unit(desc=f.desc,unit=untab[[f.unit]],twolines=TRUE))
-  gg.now = gg.now + theme_grey( base_size = gg.ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
-  gg.now = gg.now + theme( legend.position   = "bottom"
-                         , axis.text.x       = element_text( size   = gg.ptsz
+     gg_now = ggplot(data=f_bypft,aes_string(x="time",y=f_vnam,group="pft",colour="pft"))
+     gg_now = gg_now + scale_colour_manual(name=pft_legend,labels=f_pftlabs,values=f_colpfts)
+     gg_now = gg_now + geom_line(lwd=1.0,show.legend = TRUE)
+  }#end if (f_stack)
+  gg_now = gg_now + labs(title=case_desc)
+  gg_now = gg_now + scale_x_datetime(date_labels=gg_tfmt)
+  gg_now = gg_now + xlab("Simulation time")
+  gg_now = gg_now + ylab(desc.unit(desc=f_desc,unit=untab[[f_unit]],twolines=TRUE))
+  gg_now = gg_now + theme_grey( base_size = gg_ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
+  gg_now = gg_now + theme( legend.position   = "bottom"
+                         , axis.text.x       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
-                         , axis.text.y       = element_text( size   = gg.ptsz
+                         , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
                          , axis.ticks.length = unit(-0.25,"cm")
@@ -979,27 +990,27 @@ for (f in pft.loop){
 
   #--- Save plot.
   for (d in sequence(ndevice)){
-    f.output = paste0(f.vnam,"-tspft-",simul,".",gg.device[d])
+    f.output = paste0(f_vnam,"-tspft-",case_name,".",gg_device[d])
     dummy = ggsave( filename = f.output
-                  , plot     = gg.now
-                  , device   = gg.device[d]
-                  , path     = tspft.path
-                  , width    = gg.width
-                  , height   = gg.height
-                  , units    = gg.units
-                  , dpi      = gg.depth
+                  , plot     = gg_now
+                  , device   = gg_device[d]
+                  , path     = tspft_path
+                  , width    = gg_width
+                  , height   = gg_height
+                  , units    = gg_units
+                  , dpi      = gg_depth
                   )#end ggsave
   }#end for (o in sequence(nout))
   #---~---
 
   #--- Write plot settings to the list.
-  gg.pft[[f.vnam]] = gg.now
+  gg_pft[[f_vnam]] = gg_now
   #---~---
-}#end for (a in age.loop)
+}#end for (a in age_loop)
 
 
 #--- If sought, plot images on screen
-if (gg.screen) gg.pft
+if (gg_screen) gg_pft
 #---~---
 
 ```
@@ -1010,39 +1021,39 @@ Plot theme time series:
 ```{r, label='plot-tstheme',message=FALSE,results='hide'}
 cat0(" + Plot time series of thematically linked variables.")
 
-gg.theme   = list()
+gg_theme   = list()
 for (th in sequence(ntstheme)){
   #--- Match variables.
-  th.thnam  = tstheme$thnam  [th]
-  th.thdesc = tstheme$thdesc [th]
-  th.thunit = tstheme$thunit [th]
-  th.vnames = tstheme$vnames [th]
-  th.vcols  = tstheme$vcols  [th]
-  th.stack  = tstheme$tsstack[th]
+  th_thnam  = tstheme$thnam  [th]
+  th_thdesc = tstheme$thdesc [th]
+  th_thunit = tstheme$thunit [th]
+  th_vnames = tstheme$vnames [th]
+  th_vcols  = tstheme$vcols  [th]
+  th_stack  = tstheme$tsstack[th]
 
   #--- Split variables to include in this plot (plot only when all data are available).
-  th.vlist   = c(unlist(strsplit(x=th.vnames,split="\\+")))
-  th.match   = match(th.vlist,hlm1dvar$vnam)
-  th.vdesc   = hlm1dvar$desc[th.match]
-  th.labels  = parse(text=paste0("paste(",hlm1dvar$short[th.match],")"))
-  n.th.vlist = length(th.vlist)
+  th_vlist   = c(unlist(strsplit(x=th_vnames,split="\\+")))
+  th_match   = match(th_vlist,hlm1dvar$vnam)
+  th_vdesc   = hlm1dvar$desc[th_match]
+  th_labels  = parse(text=paste0("paste(",hlm1dvar$short[th_match],")"))
+  n.th_vlist = length(th_vlist)
   #---~---
 
   #--- Proceed only if all variables exist in the output
-  if (all(th.vlist %in% names(hlm1d))){
+  if (all(th_vlist %in% names(hlm1d))){
      #--- Title for legend
-     cat0("   - ",th.thdesc,".")
+     cat0("   - ",th_thdesc,".")
      #---~---
 
 
      #--- Temporary data table. We convert the classes back to factor.
-     thmelt       = hlm1d[,..th.vlist]
-     thmelt$when  = chron(when)
+     thmelt       = hlm1d[,..th_vlist]
+     thmelt$time  = tstamp
      thmelt       = melt( data          = thmelt
-                        , id.vars       = "when"
+                        , id.vars       = "time"
                         , variable.name = "idvar"
-                        , measure.vars  = th.vlist
-                        , value.name    = th.thnam
+                        , measure.vars  = th_vlist
+                        , value.name    = th_thnam
                         )#end melt
      thmelt       = data.table(thmelt)
      thmelt$idvar = factor(as.integer(thmelt$idvar))
@@ -1050,40 +1061,40 @@ for (th in sequence(ntstheme)){
 
        
      #--- Find colours for theme plot.
-     th.funcol   = try(match.fun(th.vcols),silent=TRUE)
-     if ("try-error" %in% is(th.funcol)){
-       th.colour = c(unlist(strsplit(x=th.vcols,split="\\+")))
+     th_funcol   = try(match.fun(th_vcols),silent=TRUE)
+     if ("try-error" %in% is(th_funcol)){
+       th_colour = c(unlist(strsplit(x=th_vcols,split="\\+")))
      }else{
-       th.colour = th.funcol(n=n.th.vlist)
-     }#end if ("try-error %in% is(th.funcol))
+       th_colour = th_funcol(n=n.th_vlist)
+     }#end if ("try-error %in% is(th_funcol))
      #---~---
   
      
      
      #--- Initialise plot (decide whether to plot lines or stacks).
-     if (th.stack){
-        gg.now = ggplot(data=thmelt,aes_string(x="when",y=th.thnam,group="idvar",fill="idvar"))
-        gg.now = gg.now + scale_fill_manual(name=character(0),labels=th.labels,values=th.colour)
-        gg.now = gg.now + geom_area(position="stack",show.legend = TRUE)
+     if (th_stack){
+        gg_now = ggplot(data=thmelt,aes_string(x="time",y=th_thnam,group="idvar",fill="idvar"))
+        gg_now = gg_now + scale_fill_manual(name=character(0),labels=th_labels,values=th_colour)
+        gg_now = gg_now + geom_area(position="stack",show.legend = TRUE)
      }else{
-        gg.now = ggplot(data=thmelt,aes_string(x="when",y=th.thnam,group="idvar",colour="idvar"))
-        gg.now = gg.now + scale_colour_manual(name=character(0),labels=th.labels,values=th.colour)
-        gg.now = gg.now + geom_line(lwd=1.0,show.legend = TRUE)
-     }#end if (f.stack)
-     gg.now = gg.now + labs(title=simul.desc)
-     gg.now = gg.now + scale_x_chron(format=gg.tfmt)
-     gg.now = gg.now + xlab("Simulation time")
-     gg.now = gg.now + ylab(desc.unit(desc=th.thdesc,unit=untab[[th.thunit]],twolines=TRUE))
-     gg.now = gg.now + theme_grey( base_size      = gg.ptsz
+        gg_now = ggplot(data=thmelt,aes_string(x="time",y=th_thnam,group="idvar",colour="idvar"))
+        gg_now = gg_now + scale_colour_manual(name=character(0),labels=th_labels,values=th_colour)
+        gg_now = gg_now + geom_line(lwd=1.0,show.legend = TRUE)
+     }#end if (f_stack)
+     gg_now = gg_now + labs(title=case_desc)
+     gg_now = gg_now + scale_x_datetime(date_labels=gg_tfmt)
+     gg_now = gg_now + xlab("Simulation time")
+     gg_now = gg_now + ylab(desc.unit(desc=th_thdesc,unit=untab[[th_thunit]],twolines=TRUE))
+     gg_now = gg_now + theme_grey( base_size      = gg_ptsz
                                  , base_family    = "Helvetica"
                                  , base_line_size = 0.5
                                  , base_rect_size = 0.5
                                  )#end theme_grey
-     gg.now = gg.now + theme( legend.position   = "bottom"
-                            , axis.text.x       = element_text( size   = gg.ptsz
+     gg_now = gg_now + theme( legend.position   = "bottom"
+                            , axis.text.x       = element_text( size   = gg_ptsz
                                                               , margin = unit(rep(0.35,times=4),"cm")
                                                               )#end element_text
-                            , axis.text.y       = element_text( size   = gg.ptsz
+                            , axis.text.y       = element_text( size   = gg_ptsz
                                                               , margin = unit(rep(0.35,times=4),"cm")
                                                               )#end element_text
                             , axis.ticks.length = unit(-0.25,"cm")
@@ -1092,30 +1103,30 @@ for (th in sequence(ntstheme)){
   
      #--- Save plot.
      for (d in sequence(ndevice)){
-        th.output = paste0(th.thnam,"-tstheme-",simul,".",gg.device[d])
-        dummy = ggsave( filename = th.output
-                      , plot     = gg.now
-                      , device   = gg.device[d]
-                      , path     = tstheme.path
-                      , width    = gg.width
-                      , height   = gg.height
-                      , units    = gg.units
-                      , dpi      = gg.depth
+        th_output = paste0(th_thnam,"-tstheme-",case_name,".",gg_device[d])
+        dummy = ggsave( filename = th_output
+                      , plot     = gg_now
+                      , device   = gg_device[d]
+                      , path     = tstheme_path
+                      , width    = gg_width
+                      , height   = gg_height
+                      , units    = gg_units
+                      , dpi      = gg_depth
                       )#end ggsave
      }#end for (o in sequence(nout))
      #---~---
 
      #--- Write plot settings to the list.
-     gg.theme[[th.thnam]] = gg.now
+     gg_theme[[th_thnam]] = gg_now
      #---~---
     
-  }#end if (all(th.vlist %in% names(hlm1d))))    
+  }#end if (all(th_vlist %in% names(hlm1d))))    
   #---~---
-}#end for (a in age.loop)
+}#end for (a in age_loop)
 
 
 #--- If sought, plot images on screen
-if (gg.screen) gg.theme
+if (gg_screen) gg_theme
 #---~---
 
 ```
