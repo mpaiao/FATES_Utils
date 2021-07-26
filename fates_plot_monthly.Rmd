@@ -160,6 +160,12 @@ tsage_path    = file.path(plot_main,"tseries_age"  )
 tsdbh_path    = file.path(plot_main,"tseries_dbh"  )
 tspft_path    = file.path(plot_main,"tseries_pft"  )
 
+# Create paths for time series
+dummy = dir.create(tstheme_path, recursive = TRUE, showWarnings = FALSE)
+dummy = dir.create(tsage_path  , recursive = TRUE, showWarnings = FALSE)
+dummy = dir.create(tsdbh_path  , recursive = TRUE, showWarnings = FALSE)
+dummy = dir.create(tspft_path  , recursive = TRUE, showWarnings = FALSE)
+
 ```
 
 

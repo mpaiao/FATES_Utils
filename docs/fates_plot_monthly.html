@@ -379,7 +379,16 @@ simul_path = c( file.path(case_path,&quot;run&quot;), file.path(case_path,&quot;
 tstheme_path  = file.path(plot_main,&quot;tseries_theme&quot;)
 tsage_path    = file.path(plot_main,&quot;tseries_age&quot;  )
 tsdbh_path    = file.path(plot_main,&quot;tseries_dbh&quot;  )
-tspft_path    = file.path(plot_main,&quot;tseries_pft&quot;  )</code></pre>
+tspft_path    = file.path(plot_main,&quot;tseries_pft&quot;  )
+
+# Create paths for time series
+dummy = dir.create(tstheme_path, recursive = TRUE, showWarnings = FALSE)
+dummy = dir.create(tsage_path  , recursive = TRUE, showWarnings = FALSE)
+dummy = dir.create(tsdbh_path  , recursive = TRUE, showWarnings = FALSE)
+dummy = dir.create(tspft_path  , recursive = TRUE, showWarnings = FALSE)
+
+
+</code></pre>
 <p>Initial settings.</p>
 <pre class="r"><code># Extract date information from string
 if (is.character(tstampa)){
