@@ -522,9 +522,9 @@ gg_biasvar =   function( x
       #---~---
    }else if( colour_first %in% viridis_pal_info){
       #--- Viridis palette
-      colour_opts$level = viridis::viridis_pal( n         = n_colour
-                                              , option    = colour_opts$first
-                                              )#end viridis::viridis_pal
+      colour_opts$level = viridis::viridis( n         = n_colour
+                                          , option    = colour_opts$first
+                                          )#end viridis::viridis_pal
       if (colour_opts$reverse) colour_opts$level = rev(colour_opts$level)
       #---~---
    }else if ( ! ("try-error" %in% is(try(match.fun(colour_first),silent=TRUE)) )){

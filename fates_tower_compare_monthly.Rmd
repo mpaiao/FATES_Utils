@@ -46,10 +46,17 @@ First, we define the case:
 * **case_name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
 * **case_desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
 * **case_model**. Name of the land model, which will be used for legends.
+* **tstampa**.  The first time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
+* **tstampz**.  The last time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
+
+**Note**. Regardless of `tstampa`, we will always read in the very first file to retrieve some data that are only written in the first output.
+
 ```{r, label='case-settings'}
-case_name  = "D0005_ParacouTest_CLM_FATES"
-case_desc  = "D0005: Paracou test (CLM-FATES)"
-case_model = "CLM-FATES"
+case_name  = "D0006_ParacouEGHD_CLM_FATES"        # Simulation path
+case_desc  = "Paracou EvGn-HyDd test (CLM-FATES)" # Simulation description
+case_model = "CLM-FATES"                          # Model used for this simulation
+tstampa    = NA_character_ # "01/01/2008"         # First time (MM/DD/YYYY)
+tstampz    = NA_character_ # "12/01/2018"         # Last time (MM/DD/YYYY)
 ```
 
 We then set some global paths:
@@ -74,12 +81,6 @@ plot_main  = file.path(hesm_main,"figures",case_name)
 Set the name of the sub-directory in `site_main` containing the tower averages by month and year for this particular site.  This uses the structure created by the [FATES Utilities](https://github.com/mpaiao/FATES_Utils) tools.  
 ```{r,label='tower-info'}
 site_name = "1x1pt-paracouGUF_v1.5_c20210713"
-```
-
-Set maximum time range to be included in the plots.
-```{r, label='set-times'}
-tstampa = "01/01/2004" # First time (MM/DD/YYYY)
-tstampz = "12/01/2019" # Last time (MM/DD/YYYY)
 ```
 
 
@@ -119,7 +120,7 @@ __Note:__ Changes beyond this point are only needed if you are developing the no
 
 ## Initial settings.
 
-First, we load the list of host land model variables that we may consider for the comparison. We also load `list.2.data.table.r` to 
+First, we load the list of host land model variables that we may consider for the comparison. 
 ```{r, label='load-everything'}
 source(file.path(util_path,"load.everything.r"),chdir=TRUE)
 ```
@@ -170,16 +171,84 @@ if (length(site_base) > 0){
 
 
 
-Define times to consider.
-```{r, label='initial-settings'}
+Next, we find the correct simulation path. We search for files in the typical paths in which ELM-FATES or CLM-FATES simulations would be located.
+
+```{r, label='initial-settings',message=FALSE,results='hide'}
+
+cat0(" + Search FATES output.")
+
+
+hlm_midfix = c("elm.h0","clm2.h0")
+nc_base    = paste0(case_name,".",hlm_midfix,"\\.....-..\\.nc")
+nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
+                      , rep(x = nc_base   , each  = length(simul_path))
+                      )#end file.path
+nc_success = FALSE
+for (d in seq_along(nc_file)){
+   nc_path = dirname(nc_file[d])
+   nc_base = basename(nc_file[d])
+   nc_list = list.files(path=nc_path,pattern=nc_base)
+   if (length(nc_list) > 0){
+      # When finding the files, update nc_success find the first and last time.
+      nc_success = TRUE
+
+      # Find file name and the length of each file
+      nc_nfile = length(nc_list)
+      nc_nchar = nchar(nc_list[1])
+
+      # Find all times
+      nc_year   = as.numeric(substring(nc_list,nc_nchar-9,nc_nchar-6))
+      nc_month  = as.numeric(substring(nc_list,nc_nchar-4,nc_nchar-3))
+      nc_tstamp = make_datetime(year=nc_year,month=nc_month)
+
+      # Find the first and last time available.
+      i1st       = which.min(nc_tstamp)
+      ilst       = which.max(nc_tstamp)
+      nc_t1st    = nc_tstamp[i1st]
+      nc_tlst    = nc_tstamp[ilst]
+      tstamp_1st = sprintf("%2.2i/%2.2i/%4.4i",month(nc_t1st),day(nc_t1st),year(nc_t1st))
+      tstamp_lst = sprintf("%2.2i/%2.2i/%4.4i",month(nc_tlst),day(nc_tlst),year(nc_tlst))
+
+      # Save the path and "midfix" that worked.
+      simul_path = nc_path
+      nc_zero    = file.path(simul_path,nc_list[1])
+      sel_midfix = mapply(FUN=grepl,pattern=as.list(hlm_midfix),MoreArgs=list(x=nc_base))
+      hlm_midfix = hlm_midfix[sel_midfix]
+   }#end if (length(nc_list) > 0)
+}#end for (d in seq_along(nc_file))
+```
+
+
+
+
+We set the times for which we will retrieve simulation results. A few noteworthy variables.
+
+* **tstamp0**. First simulation time. This is always the actual first output file of the simulation, because the first output always has additional variables that are useful for analyses.
+* **tstampa**. First time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the first available time.
+* **tstampz**. Last time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the last available time.
+
+```{r, label='time-settings',message=FALSE,results='hide'}
 
 # Extract date information from string
-if (is.character(tstampa)){
+if (! "tstamp0" %in% ls()){
+   tstamp0 = as.integer(unlist(strsplit(tstamp_1st,split="/")))
+   year0   = tstamp0[3]
+   month0  = tstamp0[1]
+}#end if (is.character(tstampa))
+if (is.na(tstampa)){
+   tstampa = as.integer(unlist(strsplit(tstamp_1st,split="/")))
+   yeara   = tstampa[3]
+   montha  = tstampa[1]
+}else if (is.character(tstampa)){
    tstampa = as.integer(unlist(strsplit(tstampa,split="/")))
    yeara   = tstampa[3]
    montha  = tstampa[1]
 }#end if (is.character(tstampa))
 if (is.character(tstampz)){
+   tstampz = as.integer(unlist(strsplit(tstamp_lst,split="/")))
+   yearz   = tstampz[3]
+   monthz  = tstampz[1]
+}else if (is.character(tstampz)){
    tstampz = as.integer(unlist(strsplit(tstampz,split="/")))
    yearz   = tstampz[3]
    monthz  = tstampz[1]
@@ -216,6 +285,8 @@ tstamp = make_datetime(year=tyear,month=tmonth,day=1L)
 ntstamp = length(tstamp)
 
 ```
+
+
 
 ## Data retrieval.
 
@@ -291,9 +362,6 @@ The time span for site measurements and tower may not match.  In this case, we i
 
 ```{r, label='time-intersect'}
 
-# Save the original time stamp for the first model time, so we retrieve useful dimensions
-tstamp0 = tstampa
-
 # Find the minimum interval that has overlaps with both site and model.
 tstampa = max(c(min(tstamp),min(site1d$time)))
 tstampz = min(c(max(tstamp),max(site1d$time)))
@@ -317,55 +385,17 @@ Here we perform the following tasks, using the actual first history file from th
 * Retrieve size and PFT indices for the `_SCPF` variables (which will be useful in the future for comparing the model against census measurements).
 
 ```{r, label='load-hlm-data'}
-if ("nc_zero" %in% ls()){dummy = nc_close(nc_zero); rm(nc_zero)}
+if ("nc_info" %in% ls()){dummy = nc_close(nc_info); rm(nc_info)}
 
-
-#---~---
-# Determine which path and base to use.
-#---~---
-cat0(" + Guess path and model from settings.")
-
-# Extract times and build all possible file names
-w_month    = month(tstamp0)
-w_year     = year (tstamp0)
-w_ymlab    = sprintf("%4.4i-%2.2i",w_year,w_month)
-hlm_midfix = c("elm.h0","clm2.h0")
-nc_base    = paste0(case_name,".",hlm_midfix,"." ,w_ymlab,".nc")
-nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
-                      , rep(x = nc_base   , each  = length(simul_path))
-                      )#end file.path
-
-# Identify which model and path to use.
-idx = which(file.exists(nc_file))
-if (length(idx) > 0){
-   # Load the correct file.
-   nc_file = (nc_file[idx])[1]
-   nc_base = basename(nc_file)
-
-   # Remember which path and model to use for other times
-   simul_path = dirname(nc_file)
-   sel_midfix = mapply(FUN=grepl,pattern=as.list(hlm_midfix),MoreArgs=list(x=nc_base))
-   hlm_midfix = hlm_midfix[sel_midfix]
-}else{
-   # No file was found. Stop the run
-   cat0(" + Neither CLM nor ELM expected files found.")
-   cat0("   - Expected ELM file:    ",nc_file[1],".")
-   cat0("   - Expected CLM file:    ",nc_file[4],".")
-   cat0("   - Alternative ELM file: ",nc_file[2],".")
-   cat0("   - Alternative CLM file: ",nc_file[3],".")
-   stop(" Invalid files, perhaps incorrect simulation?")
-}#end if (length(idx) > 0)
-
-  
+# We always read the first actual simulation time because it has more information.
 # Open NetCDF connection and retrieve variable names
-cat0(" + Load initial data settings from ",nc_base,".")
-nc_zero  = nc_open(filename=nc_file)
-nc_nvars = nc_zero$nvars
-nc_ndims = nc_zero$ndims
+nc_info  = nc_open(filename=nc_zero)
+nc_nvars = nc_info$nvars
+nc_ndims = nc_info$ndims
 nc_dlist = rep(NA_character_,times=nc_ndims)
 nc_vlist = rep(NA_character_,times=nc_nvars)
-for (d in sequence(nc_ndims)) nc_dlist[d] = nc_zero$dim[[d]]$name
-for (v in sequence(nc_nvars)) nc_vlist[v] = nc_zero$var[[v]]$name
+for (d in sequence(nc_ndims)) nc_dlist[d] = nc_info$dim[[d]]$name
+for (v in sequence(nc_nvars)) nc_vlist[v] = nc_info$var[[v]]$name
 
 #---~---
 # Gather variable information, then initialise tibble
@@ -414,8 +444,8 @@ for (h in seq_along(nc_hlm1d)){
 
 
 # Load simulation coordinates. We check whether observations and model are reasonably close.
-hlm1d_coord = tibble( clon = c(ncvar_get(nc=nc_zero,varid="lon"))
-                    , clat = c(ncvar_get(nc=nc_zero,varid="lat"))
+hlm1d_coord = tibble( clon = c(ncvar_get(nc=nc_info,varid="lon"))
+                    , clat = c(ncvar_get(nc=nc_info,varid="lat"))
                     )#end tibble
 lon_fine = hlm1d_coord$clon >= site_coord$wlon && hlm1d_coord$clon <= site_coord$elon
 lat_fine = hlm1d_coord$clat >= site_coord$slat && hlm1d_coord$clat <= site_coord$nlat
@@ -440,12 +470,12 @@ if (! all(c(lon_fine,lat_fine))){
 
 # Load soil layers.  This is currently not used, but could be used for soil comparisons.
 cat0("   - Load soil information")
-slayer = tibble( zsoi   = c(unlist(ncvar_get(nc=nc_zero,varid='ZSOI'  )))
-               , dzsoi  = c(unlist(ncvar_get(nc=nc_zero,varid='DZSOI' )))
-               , bsw    = c(unlist(ncvar_get(nc=nc_zero,varid='BSW'   )))
-               , hksat  = c(unlist(ncvar_get(nc=nc_zero,varid='HKSAT' )))
-               , sucsat = c(unlist(ncvar_get(nc=nc_zero,varid='SUCSAT')))
-               , watsat = c(unlist(ncvar_get(nc=nc_zero,varid='WATSAT')))
+slayer = tibble( zsoi   = c(unlist(ncvar_get(nc=nc_info,varid='ZSOI'  )))
+               , dzsoi  = c(unlist(ncvar_get(nc=nc_info,varid='DZSOI' )))
+               , bsw    = c(unlist(ncvar_get(nc=nc_info,varid='BSW'   )))
+               , hksat  = c(unlist(ncvar_get(nc=nc_info,varid='HKSAT' )))
+               , sucsat = c(unlist(ncvar_get(nc=nc_info,varid='SUCSAT')))
+               , watsat = c(unlist(ncvar_get(nc=nc_info,varid='WATSAT')))
                )#end data.table
 
 #---~---
@@ -453,12 +483,12 @@ slayer = tibble( zsoi   = c(unlist(ncvar_get(nc=nc_zero,varid='ZSOI'  )))
 # census comparisons.
 #---~---
 cat0("   - Load indices for size- and pft-dependent variables.")
-index_scpf = tibble( scls   = ncvar_get(nc=nc_zero,varid='fates_scmap_levscpf'  )
-                   , pft    = ncvar_get(nc=nc_zero,varid='fates_pftmap_levscpf' )
+index_scpf = tibble( scls   = ncvar_get(nc=nc_info,varid='fates_scmap_levscpf'  )
+                   , pft    = ncvar_get(nc=nc_info,varid='fates_pftmap_levscpf' )
                    )#end data.table
 
 # Close connection
-dummy   = nc_close(nc_zero)
+dummy   = nc_close(nc_info)
 
 ```
 
@@ -586,7 +616,7 @@ mmean = mmean %>% arrange(source,month)
 First, we plot the time series of monthly averages for both site measurements (or estimates) and model predictions.
 
 
-```{r, label='plot-compemean',message=FALSE,results='hide'}
+```{r, label='plot-compemean',message=FALSE,results='hide',fig.width=10, fig.height=7.5}
 cat0(" + Plot time series comparisons between site measurements/estimates and model predictions.")
 
 
@@ -666,7 +696,7 @@ for (d in sequence(ndevice)){
 }#end for (d in sequence(ndevice))
 
 # If sought, plot images on screen
-if (gg_screen) gg_patch
+if (gg_screen) plot(gg_patch)
 
 ```
 
@@ -674,7 +704,7 @@ if (gg_screen) gg_patch
 Then we plot the mean seasonal cycle for both site measurements/estimates and model predictions. We also include a 68% inter-annual variability band. 
 
 
-```{r, label='plot-compmmean',message=FALSE,results='hide'}
+```{r, label='plot-compmmean',message=FALSE,results='hide',fig.width=10, fig.height=7.5}
 cat0(" + Plot the mean seasonal cycle of site measurements/estimates and model predictions.")
 
 # Set legends

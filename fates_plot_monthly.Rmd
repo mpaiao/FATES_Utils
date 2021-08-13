@@ -1,7 +1,7 @@
 ---
 title: "FATES post-processing script"
 author: "Marcos Longo"
-date: "12-Jul-2021"
+date: "11-Aug-2021"
 ---
 
 # Introduction
@@ -42,8 +42,6 @@ invisible(gc())
 
 
 
-
-
 # Initial settings
 
 
@@ -53,11 +51,18 @@ First, we define the case:
 
 * **case_name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
 * **case_desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
-```{r, label='case-settings'}
-case_name  = "D0005_ParacouTest_CLM_FATES"
-case_desc  = "D0005: Paracou test (CLM-FATES)"
-```
+* **tstampa**.  The first time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
+* **tstampz**.  The last time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
 
+**Note**. Regardless of `tstampa`, we will always read in the very first file to retrieve some data that are only written in the first output.
+
+```{r, label='case-settings'}
+case_name  = "D0006_ParacouEGHD_CLM_FATES"        # Simulation path
+case_desc  = "Paracou Evergreen-Deciduous (CLM-FATES)" # Simulation description
+tstampa    = NA_character_ # "01/01/2004"         # First time (MM/DD/YYYY)
+tstampz    = NA_character_ # "12/01/2019"         # Last time (MM/DD/YYYY)
+
+```
 
 
 We then set some global paths:
@@ -81,14 +86,6 @@ plot_main  = file.path(hesm_main,"figures",case_name)
 
 
 
-First we set some useful paths and initial settings.
-
-Set time range to be included in the plots.
-```{r, label='set-times',message=FALSE,results='hide'}
-tstampa = "01/01/2004" # First time (MM/DD/YYYY)
-tstampz = "12/01/2019" # Last time (MM/DD/YYYY)
-```
-
 
 _Optional_. Here we define the plant functional types to include in the plots. We define the basic PFT information 
 in variable `pftinfo`, which is a list.  Each list element contains the following sub-elements:
@@ -110,14 +107,31 @@ pftinfo      = list()
 n            = n + 1
 pftinfo[[n]] = list( id     = 1
                    , key    = "pft01"
-                   , short  = "GenBLTr"
-                   , desc   = "Generic Broadleaf Tropical Tree"
-                   , colour = "#66C2A4"
+                   , short  = "EvGn"
+                   , desc   = "Evergreen Tropical Tree"
+                   , colour = "#00BFC4"
+                   )#end list
+n            = n + 1
+pftinfo[[n]] = list( id     = 2
+                   , key    = "pft02"
+                   , short  = "HyDd"
+                   , desc   = "Hydro-deciduous Tropical Tree"
+                   , colour = "#F8766D"
                    )#end list
 ```
 
 
 General plot options for `ggplot`
+
+* **gg_device**. A vector with file types for figures. These should be extensions of common file formats (e.g., pdf, eps, tif, png, jpg).  The complete list of options can be found in [ggsave](https://www.rdocumentation.org/packages/ggplot2/versions/0.9.0/topics/ggsave).
+* **gg_depth**. The resolution of this figure (in pixels per inch), in case the figure is saved in raster format (e.g., tif, png, jpg). Ignored for vector format (e.g., pdf, eps).
+* **gg_ptsz**. The typical size for fonts (in pt). Larger sizes make it more readable, but shrink the plotting area.
+* **gg_width**. The width of the output files.  The units are defined by `gg_units`.
+* **gg_height**. The height of the output files.  The units are defined by `gg_units`.
+* **gg_units**. Units for `gg_width` and ``gg_height`.  Acceptable units are `"in"` (inches), `"cm"` (centimetres) and `"mm"` (millimetres).
+* **gg_screen**. Show images in the documentation as well. If `FALSE`, the image files will be generated, but not shown in the knitted documentation.
+* **gg_tmft**. Format for time strings in the time series. Check [scale_x_datetime](https://www.rdocumentation.org/packages/ggplot2/versions/1.0.0/topics/scale_x_datetime) for additional details.
+
 ```{r, label='set-ggplot',message=FALSE,results='hide'}
 gg_device  = c("pdf") # Output devices to use (Check ggsave for acceptable formats)
 gg_depth   = 300      # Plot resolution (dpi)
@@ -137,11 +151,19 @@ __Note:__ Changes beyond this point are only needed if you are developing the no
 
 ## Initial settings
 
-First, we load some useful packages and tools
+First, we load some useful packages and tools, using the R script `load.everything.r`. This will load all the R scripts at the `util_path` directory.
 ```{r, label='load-everything'}
 source(file.path(util_path,"load.everything.r"),chdir=TRUE)
 ```
 
+We then set some of the paths that will be used for the output files. Normally these paths should not be changed.
+
+* **case_path** is the main directory where the simulations are located.
+* **simul_path** is a vector with all the possible paths were ELM-FATES or CLM-FATES can be written.
+* **tstheme_path** is the path for time series with multiple variables, grouped under a common theme, such as energy fluxes or ecosystem productivity.
+* **tsage_path** is the path for time series separated by patch age classes. 
+* **tsage_path** is the path for time series separated by size (diameter at breast height or DBH) classes. 
+* **tspft_path** is the path for time series separated by plant functional type.
 
 
 ```{r, label='set-derived-paths'}
@@ -168,18 +190,83 @@ dummy = dir.create(tspft_path  , recursive = TRUE, showWarnings = FALSE)
 
 ```
 
+Next, we find the correct simulation path. We search for files in the typical paths in which ELM-FATES or CLM-FATES simulations would be located (`simul_path`).  Once we find the correct path, we update `simul_path` to the correct one.  We also list all the files and identify which one is the actual first history output from FATES.  The first file (full file name stored in variable `nc_zero`) has additional information that can be useful, so we must access the file even if it is not intended for output analysis.
 
-
-Initial settings.
 ```{r, label='initial-settings',message=FALSE,results='hide'}
 
+cat0(" + Search FATES output.")
+
+hlm_midfix = c("elm.h0","clm2.h0")
+nc_base    = paste0(case_name,".",hlm_midfix,"\\.....-..\\.nc")
+nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
+                      , rep(x = nc_base   , each  = length(simul_path))
+                      )#end file.path
+nc_success = FALSE
+for (d in seq_along(nc_file)){
+   nc_path = dirname(nc_file[d])
+   nc_base = basename(nc_file[d])
+   nc_list = list.files(path=nc_path,pattern=nc_base)
+   if (length(nc_list) > 0){
+      # When finding the files, update nc_success find the first and last time.
+      nc_success = TRUE
+
+      # Find file name and the length of each file
+      nc_nfile = length(nc_list)
+      nc_nchar = nchar(nc_list[1])
+
+      # Find all times
+      nc_year   = as.numeric(substring(nc_list,nc_nchar-9,nc_nchar-6))
+      nc_month  = as.numeric(substring(nc_list,nc_nchar-4,nc_nchar-3))
+      nc_tstamp = make_datetime(year=nc_year,month=nc_month)
+
+      # Find the first and last time available.
+      i1st       = which.min(nc_tstamp)
+      ilst       = which.max(nc_tstamp)
+      nc_t1st    = nc_tstamp[i1st]
+      nc_tlst    = nc_tstamp[ilst]
+      tstamp_1st = sprintf("%2.2i/%2.2i/%4.4i",month(nc_t1st),day(nc_t1st),year(nc_t1st))
+      tstamp_lst = sprintf("%2.2i/%2.2i/%4.4i",month(nc_tlst),day(nc_tlst),year(nc_tlst))
+
+      # Save the path and "midfix" that worked.
+      simul_path = nc_path
+      nc_zero    = file.path(simul_path,nc_list[1])
+      sel_midfix = mapply(FUN=grepl,pattern=as.list(hlm_midfix),MoreArgs=list(x=nc_base))
+      hlm_midfix = hlm_midfix[sel_midfix]
+   }#end if (length(nc_list) > 0)
+}#end for (d in seq_along(nc_file))
+```
+
+
+We set the times for which we will retrieve simulation results. A few noteworthy variables.
+
+* **tstamp0**. First simulation time. This is always the actual first output file of the simulation, because the first output always has additional variables that are useful for analyses.
+* **tstampa**. First time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the first available time.
+* **tstampz**. Last time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the last available time.
+* **tstamp**. The vector with all times that should be loaded.
+* **ntstamp**. The total count of time steps to load.
+
+```{r, label='time-settings',message=FALSE,results='hide'}
+
 # Extract date information from string
-if (is.character(tstampa)){
+if (! "tstamp0" %in% ls()){
+   tstamp0 = as.integer(unlist(strsplit(tstamp_1st,split="/")))
+   year0   = tstamp0[3]
+   month0  = tstamp0[1]
+}#end if (is.character(tstampa))
+if (is.na(tstampa)){
+   tstampa = as.integer(unlist(strsplit(tstamp_1st,split="/")))
+   yeara   = tstampa[3]
+   montha  = tstampa[1]
+}else if (is.character(tstampa)){
    tstampa = as.integer(unlist(strsplit(tstampa,split="/")))
    yeara   = tstampa[3]
    montha  = tstampa[1]
 }#end if (is.character(tstampa))
 if (is.character(tstampz)){
+   tstampz = as.integer(unlist(strsplit(tstamp_lst,split="/")))
+   yearz   = tstampz[3]
+   monthz  = tstampz[1]
+}else if (is.character(tstampz)){
    tstampz = as.integer(unlist(strsplit(tstampz,split="/")))
    yearz   = tstampz[3]
    monthz  = tstampz[1]
@@ -218,47 +305,28 @@ ntstamp = length(tstamp)
 ```
 
 
-Use the first time to load a few settings (dimensions, soil information).
+Before we proceed, we load the very first output file (at time `tstamp0`, file `nc_zero`), to retrieve information on dimensions, soil settings, indices to map the size and PFT classes in some variables.  We also compare the variables available in `nc_zero` with those defined in variables `fatesvar` (file `<util_path>/fates_varlist.r`) and `hlm1dvar` (file `<util_path>/hlm1d_varlist.r`).  We then create data place holders for variables that are requested and available.  We will save legend information for the following dimensions (table elements are the variable names):
+
+ **Dimension**  | **Values**     | **Element count** |**Keys (`dimnames`)** | **Labels for axes**
+----------------|----------------|-------------------|----------------------|---------------------
+ *Patch age*    | `ages`         | `nages`           | `agekeys`            | `agelabs`
+ *Size* (*DBH*) | `dbhs`         | `ndbhs`           | `dbhkeys`            | `dbhlabs`
+ *PFT*          | `pftinfo$id`   | `npfts`           | `pftinfo$key`        | `pft$short`
+
+We also create the following lists containing multiple arrays with data.  We will later convert them into tibbles.
+
+* **byage**. List of variables aggregated by patch age class.
+* **bydbh**. List of variables aggregated by cohort size (DBH) classes.
+* **bypft**. List of variables aggregated by plant functional type (PFT). 
+* **hlm1d**. List of scalar variables, many of handled by the host land model.
+
+
 ```{r, label='first-set',message=FALSE,results='hide'}
 if ("nc_conn" %in% ls()){dummy = nc_close(nc_conn); rm(nc_conn)}
 
-# Extract times and build all possible file names
-w_month    = month(tstamp[1])
-w_year     = year (tstamp[1])
-w_ymlab    = sprintf("%4.4i-%2.2i",w_year,w_month)
-hlm_midfix = c("elm.h0","clm2.h0")
-nc_base    = paste0(case_name,".",hlm_midfix,"." ,w_ymlab,".nc")
-nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
-                      , rep(x = nc_base   , each  = length(simul_path))
-                      )#end file.path
-
-
-  
-# Identify which model and path to use.
-idx = which(file.exists(nc_file))
-if (length(idx) > 0){
-   # Load the correct file.
-   nc_file = (nc_file[idx])[1]
-   nc_base = basename(nc_file)
-   cat0(" + Read data from file ",nc_base,".")
-
-   # Remember which path and model to use for other times
-   simul_path = dirname(nc_file)
-   sel_midfix = mapply(FUN=grepl,pattern=as.list(hlm_midfix),MoreArgs=list(x=nc_base))
-   hlm_midfix = hlm_midfix[sel_midfix]
-}else{
-   # No file was found. Stop the run
-   cat0(" + Neither CLM nor ELM expected files found.")
-   cat0("   - Expected ELM file:    ",nc_file[1],".")
-   cat0("   - Expected CLM file:    ",nc_file[4],".")
-   cat0("   - Alternative ELM file: ",nc_file[2],".")
-   cat0("   - Alternative CLM file: ",nc_file[3],".")
-   stop(" Invalid files, perhaps incorrect simulation?")
-}#end if (length(idx) > 0)
-
-  
+# We always read the first actual simulation time because it has more information.
 # Open NetCDF connection and retrieve variable names
-nc_conn  = nc_open(filename=nc_file)
+nc_conn  = nc_open(filename=nc_zero)
 nc_nvars = nc_conn$nvars
 nc_ndims = nc_conn$ndims
 nc_dlist = rep(NA_character_,times=nc_ndims)
@@ -275,7 +343,7 @@ idxage   = match("fates_levage",nc_dlist)
 if (is.finite(idxage)){
    ages     = nc_conn$dim[[idxage]]$vals
    nages    = nc_conn$dim[[idxage]]$len
-   agekeys  = sprintf("age.%3.3i",ages)
+   agekeys  = sprintf("age_%3.3i",ages)
    agelabs  = c( paste0("paste(",ages[-nages],"-",ages[-1],")")
                , paste0("paste(",ages[nages],"-infinity)")
                )#end c
@@ -293,7 +361,7 @@ idxdbh   = match("fates_levscls",nc_dlist)
 if (is.finite(idxdbh)){
    dbhs     = nc_conn$dim[[idxdbh]]$vals
    ndbhs    = nc_conn$dim[[idxdbh]]$len
-   dbhkeys  = sprintf("dbh.%3.3i",dbhs)
+   dbhkeys  = sprintf("dbh_%3.3i",dbhs)
    dbhlabs  = c( paste0("paste(",dbhs[-ndbhs],"-",dbhs[-1],")")
                , paste0("paste(",dbhs[ndbhs],"-infinity)")
                )#end dbhlabs
@@ -340,7 +408,7 @@ npfts = nrow(pftinfo)
 # Retrieve all variables by age class. We also test whether
 nc_byage = nc_vlist[grepl(pattern="_BY_AGE$",x=nc_vlist)]
 nc_pref  = tolower(gsub(pattern="_BY_AGE$",replacement="",x=nc_byage))
-nc_keep  = nc_pref %in% fatesvar$vnam
+nc_keep  = nc_pref %in% fatesvar$vnam & (! duplicated(nc_pref))
 no_byage = nc_byage[! nc_keep]
 nc_byage = nc_byage[  nc_keep]
 nbyage   = length(nc_byage)
@@ -349,12 +417,12 @@ nbyage   = length(nc_byage)
 #    Retrieve all variables by size class. We also test whether total LAI can be
 # obtained from under storey and canopy.
 #---~---
-is.size   = grepl(pattern="_SCLS$",x=nc_vlist) | grepl(pattern="_SCPF$",x=nc_vlist)
-nc_bydbh  = nc_vlist[is.size]
+is_size   = grepl(pattern="_SCLS$",x=nc_vlist) | grepl(pattern="_SCPF$",x=nc_vlist)
+nc_bydbh  = nc_vlist[is_size]
 nc_pref   = gsub(pattern="_SCLS$",replacement="",x=nc_bydbh)
 nc_pref   = gsub(pattern="_SCPF$",replacement="",x=nc_pref )
 nc_pref   = tolower(nc_pref)
-nc_keep   = nc_pref %in% fatesvar$vnam
+nc_keep   = (nc_pref %in% fatesvar$vnam) & (! duplicated(nc_pref))
 no_bydbh  = nc_bydbh[! nc_keep]
 nc_bydbh  = unique(nc_bydbh[  nc_keep])
 if (  all(c("LAI_UNDERSTORY_SCLS","LAI_CANOPY_SCLS") %in% nc_bydbh)
@@ -375,10 +443,10 @@ nbydbh    = length(nc_bydbh)
 #    Retrieve all variables by PFT. We also test whether total LAI can be
 # obtained from under storey and canopy.
 #---~---
-is.pft    = grepl(pattern="_SCPF$",x=nc_vlist)
-nc_bypft  = nc_vlist[is.pft]
+is_pft    = grepl(pattern="_SCPF$",x=nc_vlist)
+nc_bypft  = nc_vlist[is_pft]
 nc_pref   = tolower(gsub(pattern="_SCPF$",replacement="",x=nc_bypft ))
-nc_keep   = nc_pref %in% fatesvar$vnam
+nc_keep   = nc_pref %in% fatesvar$vnam & (! duplicated(nc_pref))
 no_bypft  = nc_bypft[! nc_keep]
 nc_bypft  = unique(nc_bypft[  nc_keep])
 if (  all(c("LAI_UNDERSTORY_SCPF","LAI_CANOPY_SCPF") %in% nc_bypft)
@@ -456,12 +524,12 @@ for (p in sequence(nbypft)){
 
 
 # Initialise 1D variables available at the HLM
-hlm1d = as.data.table( matrix( data     = NA_real_
-                             , nrow     = ntstamp
-                             , ncol     = nhlm1d
-                             , dimnames = list(NULL,tolower(nc_hlm1d))
-                             )#end matrix
-                     )#end as.data.table
+hlm1d = as_tibble( matrix( data     = NA_real_
+                         , nrow     = ntstamp
+                         , ncol     = nhlm1d
+                         , dimnames = list(NULL,tolower(nc_hlm1d))
+                         )#end matrix
+                 )#end as.data.table
 
 
 # Load soil layers
@@ -485,7 +553,21 @@ dummy   = nc_close(nc_conn)
 ```
 
 
-Loop through the times, and load the data sets.
+We then loop through the times to be read, and populate the place holders with the actual data sets.  Most data sets should be available through the netCDF files, often with one of the following extensions.
+
+* *_BY_AGE*. Variables that are aggregated by the patch age classes. These are used for populating the `byage` variable structure.
+* *_SCLS*.  Variables that are aggregated by size. These are used for populating the `bydbh` variable structure.
+* *_SCPF*. Variables that are aggregated by size **and** plant functional type. These are used for populating the `bydbh`  and `bypft` variable structures.
+
+**Note**. The extensions **must** be suppressed when listing the variables in `fatesvar` in file `<util_path>/fates_varlist.r`.  Also, scalar variables do not have unique extensions, so the full variable name must be provided in `hlm1dvar`. The model 
+
+Besides variables that exist in the FATES output files, the following variables can be set in `<util_path>/fates_varlist.r` or 
+
+* *lai* (total leaf area index) in `fates_varlist`, which will be available provided that  *lai_understory* (under storey LAI) and *lai_canopy* (canopy LAI) are available too and defined in `fates_varlist`.
+* *er* (total ecosystem respiration) in `hlm1d_varlist`, which will be available provided that  *ar* (autotrophic respiration) and *hr* (heterotrophic respiration) are available too and defined in `hlm1d_varlist`.
+* *qevtr* (total evaporation sensu [Miralles *et al.* 2020](https://dx.doi.org/10.1029/2020WR028055) ) in `hlm1d_varlist`, which will be available provided that  *qvege* (evaporation from leaf surface water), *qvegt* (transpiration) and *qsoil* (soil evaporation) are available too and defined in `hlm1d_varlist`.
+
+
 ```{r, label='load-times', message=FALSE}
 if ("nc_conn" %in% ls()){dummy = nc_close(nc_conn); rm(nc_conn)}
 for (w in sequence(ntstamp)){
@@ -532,7 +614,7 @@ for (w in sequence(ntstamp)){
    #---~---
    for (d in sequence(nbydbh-laidbh_last)){
       nc_nvnow            = nc_bydbh[d]
-      is.scpf             = grepl(pattern="_SCPF$",x=nc_nvnow)
+      is_scpf             = grepl(pattern="_SCPF$",x=nc_nvnow)
       nc_pref             = gsub(pattern="_SCLS$",replacement="",x=nc_nvnow)
       nc_pref             = gsub(pattern="_SCPF$",replacement="",x=nc_pref )
       nc_pref             = tolower(nc_pref)
@@ -543,7 +625,7 @@ for (w in sequence(ntstamp)){
       f_aggr              = match.fun(fatesvar$aggr[f])
       nc_dat              = ncvar_get(nc=nc_conn,varid=nc_nvnow)
       nc_dat              = f_add0 + f_mult * nc_dat
-      if (is.scpf){
+      if (is_scpf){
          # Aggregate data by size class
          nc_aggr        = tapply( X     = nc_dat
                                 , INDEX = index_scpf$scls
@@ -555,7 +637,7 @@ for (w in sequence(ntstamp)){
       }else{
          # Variable is truly a size class.
          bydbh[[f_vnam]][w,] = nc_dat
-      }#end if (is.scpf)
+      }#end if (is_scpf)
    }#end for (d in sequence(nbydbh-laidbh_last))
 
    # Find total LAI if sought.
@@ -598,7 +680,6 @@ for (w in sequence(ntstamp)){
                              , na.rm = TRUE
                              )#end tapply
       names(nc_aggr) = NULL
-
       # Bring only the PFTs we are interested in.
       bypft[[f_vnam]][w,] = nc_aggr[pftinfo$id]
    }#end for (d in sequence(nbydbh-laidbh_last))
@@ -666,11 +747,11 @@ for (a in sequence(nbyage)){
 ```
 
 
-Turn data matrices into molten data tables (preferred data structure for plotting and analysing).
+Turn data matrices into molten tibble objects.  These are compatible with `ggplot` and are the preferred data structure for analysing data efficiently using `tidyverse`.
 ```{r, label='melt-data'}
 
-#--- Turn age-dependent matrices into data tables
-cat0(" + Turn age-dependent matrices into data tables.")
+#--- Turn age-dependent matrices into tibble objects
+cat0(" + Turn age-dependent matrices into tibble objects.")
 age_melt = NULL
 for (a in sequence(nbyage)){
    #--- Match variables.
@@ -681,16 +762,16 @@ for (a in sequence(nbyage)){
    #---~---
 
    #--- Create molten data table for this variable.  
-   now_age      = as.data.table(byage[[f_vnam]])
+   now_age      = as_tibble(byage[[f_vnam]])
    now_age$time = tstamp
-   now_melt     = data.table(melt(data=now_age,id.vars="time",variable.name="age",value.name=f_vnam))
+   now_melt     = as_tibble(melt(data=now_age,id.vars="time",variable.name="age",value.name=f_vnam))
    #---~---
 
    #--- Merge data table
    if (is.null(age_melt)){
       age_melt = now_melt
    }else{
-      age_melt = merge(x=age_melt,y=now_melt,by=c("time","age"),all=TRUE)
+      age_melt = as_tibble(merge(x=age_melt,y=now_melt,by=c("time","age"),all=TRUE))
    }#end if (is.null(age_melt))
    #---~---
 }#end for (a in sequence(nbyage))
@@ -708,9 +789,9 @@ for (d in sequence(nbydbh)){
    #---~---
 
    #--- Create molten data table for this variable.  
-   now_dbh      = as.data.table(bydbh[[d]])
+   now_dbh      = as_tibble(bydbh[[d]])
    now_dbh$time = tstamp
-   now_melt     = data.table(melt(data=now_dbh,id.vars="time",variable.name="dbh",value.name=f_vnam))
+   now_melt     = as_tibble(melt(data=now_dbh,id.vars="time",variable.name="dbh",value.name=f_vnam))
    #---~---
 
    #--- Merge data table
@@ -735,16 +816,16 @@ for (p in sequence(nbypft)){
    #---~---
 
    #--- Create molten data table for this variable.  
-   now_pft      = as.data.table(bypft[[p]])
+   now_pft      = as_tibble(bypft[[p]])
    now_pft$time = tstamp
-   now_melt     = data.table(melt(data=now_pft,id.vars="time",variable.name="pft",value.name=f_vnam))
+   now_melt     = as_tibble(melt(data=now_pft,id.vars="time",variable.name="pft",value.name=f_vnam))
    #---~---
 
    #--- Merge data table
    if (is.null(pft_melt)){
       pft_melt = now_melt
    }else{
-      pft_melt = merge(x=pft_melt,y=now_melt,by=c("time","pft"),all=TRUE)
+      pft_melt = as_tibble(merge(x=pft_melt,y=now_melt,by=c("time","pft"),all=TRUE))
    }#end if (is.null(pft_melt))
    #---~---
 }#end for (p in sequence(nbypft))
@@ -946,29 +1027,26 @@ Plot time series by plant functional type:
 ```{r, label='plot-tspft',message=FALSE,results='hide'}
 cat0(" + Plot time series of size-dependent variables.")
 
-#--- Title for legend
+# Title for legend
 pft_legend = "Plant functional types"
-#---~---
 
 pft_loop = which(fatesvar$vnam %in% names(bypft))
 gg_pft   = list()
 for (f in pft_loop){
-  #--- Match variables.
+  # Match variables.
   f_vnam   = fatesvar$vnam [f]
   f_desc   = fatesvar$desc [f]
   f_unit   = fatesvar$unit [f]
   f_stack  = fatesvar$stack[f]
   cat0("   - ",f_desc,".")
-  #---~---
-  
-  #--- Set plotting characteristics.
+
+  # Set plotting characteristics.
   f_bypft     = bypft
   f_bypft$pft = factor(f_bypft$pft,levels=sequence(npfts))
   f_colpfts   = pftinfo$colour
   f_pftlabs   = pftinfo$short
-  #---~---
 
-  #--- Initialise plot (decide whether to plot lines or stacks).
+  # Initialise plot (decide whether to plot lines or stacks).
   if (f_stack){
      gg_now = ggplot(data=f_bypft,aes_string(x="time",y=f_vnam,group="pft",fill="pft"))
      gg_now = gg_now + scale_fill_manual(name=pft_legend,labels=f_pftlabs,values=f_colpfts)
@@ -992,9 +1070,8 @@ for (f in pft_loop){
                                                            )#end element_text
                          , axis.ticks.length = unit(-0.25,"cm")
                          )#end theme
-  #---~---
 
-  #--- Save plot.
+  # Save plot in every format requested.
   for (d in sequence(ndevice)){
     f.output = paste0(f_vnam,"-tspft-",case_name,".",gg_device[d])
     dummy = ggsave( filename = f.output
@@ -1007,17 +1084,14 @@ for (f in pft_loop){
                   , dpi      = gg_depth
                   )#end ggsave
   }#end for (o in sequence(nout))
-  #---~---
 
-  #--- Write plot settings to the list.
+  # Write plot settings to the list.
   gg_pft[[f_vnam]] = gg_now
-  #---~---
 }#end for (a in age_loop)
 
 
-#--- If sought, plot images on screen
+# If sought, plot images on screen
 if (gg_screen) gg_pft
-#---~---
 
 ```
 
@@ -1029,7 +1103,7 @@ cat0(" + Plot time series of thematically linked variables.")
 
 gg_theme   = list()
 for (th in sequence(ntstheme)){
-  #--- Match variables.
+  # Match variables.
   th_thnam  = tstheme$thnam  [th]
   th_thdesc = tstheme$thdesc [th]
   th_thunit = tstheme$thunit [th]
@@ -1037,23 +1111,22 @@ for (th in sequence(ntstheme)){
   th_vcols  = tstheme$vcols  [th]
   th_stack  = tstheme$tsstack[th]
 
-  #--- Split variables to include in this plot (plot only when all data are available).
+  # Split variables to include in this plot (plot only when all data are available).
   th_vlist   = c(unlist(strsplit(x=th_vnames,split="\\+")))
   th_match   = match(th_vlist,hlm1dvar$vnam)
   th_vdesc   = hlm1dvar$desc[th_match]
   th_labels  = parse(text=paste0("paste(",hlm1dvar$short[th_match],")"))
-  n.th_vlist = length(th_vlist)
-  #---~---
+  n_th_vlist = length(th_vlist)
 
-  #--- Proceed only if all variables exist in the output
+
+  # Proceed only if all variables exist in the output
   if (all(th_vlist %in% names(hlm1d))){
-     #--- Title for legend
+     # Title for legend
      cat0("   - ",th_thdesc,".")
-     #---~---
 
 
-     #--- Temporary data table. We convert the classes back to factor.
-     thmelt       = hlm1d[,..th_vlist]
+     # Temporary data table. We convert the classes back to factor.
+     thmelt       = hlm1d %>% select_at(th_vlist)
      thmelt$time  = tstamp
      thmelt       = melt( data          = thmelt
                         , id.vars       = "time"
@@ -1061,23 +1134,22 @@ for (th in sequence(ntstheme)){
                         , measure.vars  = th_vlist
                         , value.name    = th_thnam
                         )#end melt
-     thmelt       = data.table(thmelt)
+     thmelt       = as_tibble(thmelt)
      thmelt$idvar = factor(as.integer(thmelt$idvar))
-     #---~---
 
-       
-     #--- Find colours for theme plot.
+
+
+     # Find colours for theme plot.
      th_funcol   = try(match.fun(th_vcols),silent=TRUE)
      if ("try-error" %in% is(th_funcol)){
        th_colour = c(unlist(strsplit(x=th_vcols,split="\\+")))
      }else{
-       th_colour = th_funcol(n=n.th_vlist)
+       th_colour = th_funcol(n=n_th_vlist)
      }#end if ("try-error %in% is(th_funcol))
-     #---~---
-  
+
      
      
-     #--- Initialise plot (decide whether to plot lines or stacks).
+     # Initialise plot (decide whether to plot lines or stacks).
      if (th_stack){
         gg_now = ggplot(data=thmelt,aes_string(x="time",y=th_thnam,group="idvar",fill="idvar"))
         gg_now = gg_now + scale_fill_manual(name=character(0),labels=th_labels,values=th_colour)
@@ -1105,9 +1177,8 @@ for (th in sequence(ntstheme)){
                                                               )#end element_text
                             , axis.ticks.length = unit(-0.25,"cm")
                             )#end theme
-     #---~---
-  
-     #--- Save plot.
+
+     # Save plot.
      for (d in sequence(ndevice)){
         th_output = paste0(th_thnam,"-tstheme-",case_name,".",gg_device[d])
         dummy = ggsave( filename = th_output
@@ -1120,19 +1191,15 @@ for (th in sequence(ntstheme)){
                       , dpi      = gg_depth
                       )#end ggsave
      }#end for (o in sequence(nout))
-     #---~---
 
-     #--- Write plot settings to the list.
+     # Write plot settings to the list.
      gg_theme[[th_thnam]] = gg_now
-     #---~---
-    
+
   }#end if (all(th_vlist %in% names(hlm1d))))    
-  #---~---
 }#end for (a in age_loop)
 
 
-#--- If sought, plot images on screen
+# If sought, plot images on screen
 if (gg_screen) gg_theme
-#---~---
-
+#
 ```

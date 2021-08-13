@@ -711,9 +711,9 @@ fi
 
 
 #---~---
-#     Change PFT parameters if needed.
+#     Create parameter file, and change PFT parameters if needed.
 #---~---
-if ${USE_FATES} && [[ ${#pft_settings[*]} -gt 0 ]]
+if ${USE_FATES}
 then
 
    #--- Identify original parameter file
@@ -733,26 +733,34 @@ then
    #---~---
 
 
-   #--- Set python script for updating parameters.
-   MODIFY_PARAMS_PY="${FATES_SRC_PATH}/tools/modify_fates_paramfile.py"
    #---~---
+   #   Check whether or not to edit parameters
+   #---~---
+   if [[ ${#pft_settings[*]} -gt 0 ]]
+   then
 
-
-   #--- Loop through the parameters to update.
-   echo " + Create local parameter file."
-   for p in ${!pft_settings[*]}
-   do
-      #--- Retrieve settings.
-      pft_var=$(echo ${pft_settings[p]} | awk '{print $1}')
-      pft_num=$(echo ${pft_settings[p]} | awk '{print $2}')
-      pft_val=$(echo ${pft_settings[p]} | awk '{print $3}')
+      #--- Set python script for updating parameters.
+      MODIFY_PARAMS_PY="${FATES_SRC_PATH}/tools/modify_fates_paramfile.py"
       #---~---
 
-      #--- Update parameters.
-      ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
-         --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+
+      #--- Loop through the parameters to update.
+      echo " + Create local parameter file."
+      for p in ${!pft_settings[*]}
+      do
+         #--- Retrieve settings.
+         pft_var=$(echo ${pft_settings[p]} | awk '{print $1}')
+         pft_num=$(echo ${pft_settings[p]} | awk '{print $2}')
+         pft_val=$(echo ${pft_settings[p]} | awk '{print $3}')
+         #---~---
+
+         #--- Update parameters.
+         ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
+            --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+         #---~---
+      done
       #---~---
-   done
+   fi
    #---~---
 
 

@@ -100,14 +100,18 @@ discreet.require <<- function(...){
 #------------------------------------------------------------------------------------------#
 loaded.package = list()
 loaded.package[["data.table"  ]] = discreet.require(data.table  )
+loaded.package[["geobr"       ]] = discreet.require(geobr       )
 loaded.package[["lubridate"   ]] = discreet.require(lubridate   )
 loaded.package[["ncdf4"       ]] = discreet.require(ncdf4       )
 loaded.package[["openair"     ]] = discreet.require(openair     )
 loaded.package[["patchwork"   ]] = discreet.require(patchwork   )
 loaded.package[["purrr"       ]] = discreet.require(purrr       )
+loaded.package[["raster"      ]] = discreet.require(raster      )
 loaded.package[["RColorBrewer"]] = discreet.require(RColorBrewer)
 loaded.package[["reshape2"    ]] = discreet.require(reshape2    )
+loaded.package[["rgdal"       ]] = discreet.require(rgdal       )
 loaded.package[["scales"      ]] = discreet.require(scales      )
+loaded.package[["tabularaster"]] = discreet.require(tabularaster)
 loaded.package[["tidyverse"   ]] = discreet.require(tidyverse   )
 loaded.package[["viridis"     ]] = discreet.require(viridis     )
 #---- Packages that must be loaded at the end. --------------------------------------------#

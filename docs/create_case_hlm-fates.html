@@ -14,7 +14,7 @@
 
 <title>Create case for ELM-FATES or CLM-FATES</title>
 
-<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
@@ -766,8 +766,8 @@ then
    #---~---
 
 fi</code></pre>
-<p>Change PFT parameters if needed.</p>
-<pre class="bash"><code>if ${USE_FATES} &amp;&amp; [[ ${#pft_settings[*]} -gt 0 ]]
+<p>Create a netCDF parameter file from the cdl file, and modify parameters if required for this specific simulation.</p>
+<pre class="bash"><code>if ${USE_FATES}
 then
 
    #--- Identify original parameter file
@@ -787,26 +787,33 @@ then
    #---~---
 
 
-   #--- Set python script for updating parameters.
-   MODIFY_PARAMS_PY=&quot;${FATES_SRC_PATH}/tools/modify_fates_paramfile.py&quot;
    #---~---
+   #   Check whether or not to edit parameters
+   #---~---
+   if [[ ${#pft_settings[*]} -gt 0 ]]
+   then
 
-
-   #--- Loop through the parameters to update.
-   echo &quot; + Create local parameter file.&quot;
-   for p in ${!pft_settings[*]}
-   do
-      #--- Retrieve settings.
-      pft_var=$(echo ${pft_settings[p]} | awk &#39;{print $1}&#39;)
-      pft_num=$(echo ${pft_settings[p]} | awk &#39;{print $2}&#39;)
-      pft_val=$(echo ${pft_settings[p]} | awk &#39;{print $3}&#39;)
+      #--- Set python script for updating parameters.
+      MODIFY_PARAMS_PY=&quot;${FATES_SRC_PATH}/tools/modify_fates_paramfile.py&quot;
       #---~---
 
-      #--- Update parameters.
-      ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
-         --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+      #--- Loop through the parameters to update.
+      echo &quot; + Create local parameter file.&quot;
+      for p in ${!pft_settings[*]}
+      do
+         #--- Retrieve settings.
+         pft_var=$(echo ${pft_settings[p]} | awk &#39;{print $1}&#39;)
+         pft_num=$(echo ${pft_settings[p]} | awk &#39;{print $2}&#39;)
+         pft_val=$(echo ${pft_settings[p]} | awk &#39;{print $3}&#39;)
+         #---~---
+
+         #--- Update parameters.
+         ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
+            --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+         #---~---
+      done
       #---~---
-   done
+   fi
    #---~---
 
 
