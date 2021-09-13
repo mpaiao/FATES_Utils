@@ -14,7 +14,7 @@
 
 <title>FATES met driver converter.</title>
 
-<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
@@ -305,6 +305,15 @@ $(document).ready(function () {
 </div>
 
 
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
 <p>This script reads in hourly meteorological data from towers or automatic weather stations, and generates the meteorological driver files for FATES. The input file must be a csv file containing the following variables:</p>
@@ -433,7 +442,7 @@ data_usage_notes = paste0( &quot; If you plan to use these data for any scientif
 </ul>
 <pre class="r"><code>xid         = &quot;paracouGUF&quot;
 site_desc   = &quot;Guyaflux tower at Paracou, French Guiana&quot;
-dat_version = &quot;1.5&quot;
+dat_version = &quot;1.6&quot;
 site_lon    = -52.912222
 site_lat    =   5.281667
 site_alt    =  30.000000
@@ -627,7 +636,7 @@ kg_2_g    = 1000.    ; g_2_kg    = 1. / kg_2_g
 sec_2_hr  = 1./3600. ; hr_2_sec  = 1. / sec_2_hr
 sec_2_day = 1./86400.; day_2_sec = 1. / sec_2_day
 frac_2_pc = 100.     ; pc_2_frac = 1. / frac_2_pc</code></pre>
-<p>Then use the <code>varinfo</code> list to standardise the output. Each list element contains the following elements:</p>
+<p>Then use the <code>varinfo</code> list to standardise the output. This is a <code>tibble</code> object (defined with <code>tribble</code>), containing the following elements:</p>
 <ul>
 <li><em>vfates</em>. Variable name from the table above (don’t change this value).</li>
 <li><em>vlname</em>. Long name for variable (don’t change this value).</li>
@@ -637,68 +646,16 @@ frac_2_pc = 100.     ; pc_2_frac = 1. / frac_2_pc</code></pre>
 <li><em>mult</em>. Value to be multiplied to the original input</li>
 </ul>
 <p>For <code>add0</code> and <code>mult</code>, except for trivial factors (<code>add0=0.</code> or <code>mult=1</code>), refrain from typing “magic numbers” here. Instead, use the unit conversion parameters described in the chunk above. In case the sought unit conversion is not available in the previous chunk, feel free to add more factors.</p>
-<pre class="r"><code>n       = 0
-varinfo = list()
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;PSRF&quot;
-                   , vlname = &quot;surface pressure at the tower&quot;
-                   , vunits = &quot;Pa&quot;
-                   , vinput = &quot;atm.prss&quot;
-                   , add0   = 0.
-                   , mult   = hPa_2_Pa
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;TBOT&quot;
-                   , vlname = &quot;temperature at the tower&quot;
-                   , vunits = &quot;K&quot;
-                   , vinput = &quot;atm.tmp&quot;
-                   , add0   = degC_2_K
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;QBOT&quot;
-                   , vlname = &quot;specific humidity at the tower&quot;
-                   , vunits = &quot;kg/kg&quot;
-                   , vinput = &quot;atm.shv&quot;
-                   , add0   = 0.
-                   , mult   = g_2_kg
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;WIND&quot;
-                   , vlname = &quot;wind at the tower&quot;
-                   , vunits = &quot;m/s&quot;
-                   , vinput = &quot;atm.vels&quot;
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;FSDS&quot;
-                   , vlname = &quot;incident solar radiation at the tower&quot;
-                   , vunits = &quot;W/m2&quot;
-                   , vinput = &quot;rshort.in&quot;
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;PRECTmms&quot;
-                   , vlname = &quot;precipitation rate at the tower&quot;
-                   , vunits = &quot;mm/s&quot;
-                   , vinput = &quot;rain&quot;
-                   , add0   = 0.
-                   , mult   = sec_2_hr
-                   )#end list
-# Longwave radiation. Comment the lines below in case the variable is not available.
-n       = n + 1
-varinfo[[n]] = list( vfates = &quot;FLDS&quot;
-                   , vlname = &quot;incident long wave radiation at the tower&quot;
-                   , vunits = &quot;W/m2&quot;
-                   , vinput = &quot;rlong.in&quot;
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-
-# Convert varinfo to a &quot;tibble&quot; object
-varinfo  = do.call(what=rbind,args=lapply(X=varinfo,FUN=as_tibble,stringsAsFactors=FALSE))</code></pre>
+<pre class="r"><code>varinfo = tribble( ~vfates   , ~vlname                                    , ~vunits, ~vinput    , ~add0   , ~mult
+                 , &quot;PSRF&quot;    , &quot;surface pressure at the tower&quot;            , &quot;Pa&quot;   , &quot;atm.prss&quot; , 0.      , hPa_2_Pa
+                 , &quot;TBOT&quot;    , &quot;temperature at the tower&quot;                 , &quot;K&quot;    , &quot;atm.tmp&quot;  , degC_2_K, 1.
+                 , &quot;QBOT&quot;    , &quot;specific humidity at the tower&quot;           , &quot;kg/kg&quot;, &quot;atm.shv&quot;  , 0.      , g_2_kg
+                 , &quot;WIND&quot;    , &quot;wind at the tower&quot;                        , &quot;m/s&quot;  , &quot;atm.vels&quot; , 0.      , 1.
+                 , &quot;FSDS&quot;    , &quot;incident solar radiation at the tower&quot;    , &quot;W/m2&quot; , &quot;rshort.in&quot;, 0.      , 1.
+                 , &quot;PRECTmms&quot;, &quot;precipitation rate at the tower&quot;          , &quot;mm/s&quot; , &quot;rain&quot;     , 0.      , sec_2_hr
+                 # Longwave radiation. Comment the line below in case the variable is not available.
+                 , &quot;FLDS&quot;    , &quot;incident long wave radiation at the tower&quot;, &quot;W/m2&quot; , &quot;rlong.in&quot; , 0.      , 1.
+                 )#end tribble</code></pre>
 <p>Last, we check that at least one of the humidity variables is listed. In case multiple variables were provided, they will be all written to the netcdf. Specific humidity will be always written. If not provided, then we will calculate it and add it to the output.</p>
 <pre class="r"><code>humid.vars = c(&quot;QBOT&quot;,&quot;RBOT&quot;,&quot;EBOT&quot;,&quot;RH&quot;)
 is.humid   = any(humid.vars %in% varinfo$vfates)
@@ -984,10 +941,11 @@ att_template = list( title          = &quot;To be replaced when looping through 
                    , data_provider  = paste0(datprov_name,&quot; &lt;&quot;,datprov_email,&quot;&gt;&quot;)
                    , usage_notes    = data_usage_notes
                    )#end list</code></pre>
-<p>Loop through every group, and generate the output file.</p>
+<p>Loop through every group, and generate the output file. Because ELM and CLM may expect met drivers to be consistent with leap/normal years when recycling drivers, we suppress February 29 data and use the <code>noleap</code> calendar.</p>
 <pre class="r"><code>for (m in sequence(nmet)){
-   # Copy the subset to a local variable.
-   met_this = met_output[[m]]
+   # Copy the subset to a local variable.  Make sure to remove February 29 entirely.
+   met_this = met_output[[m]] %&gt;%
+              filter( ! ( (month(time) == 2) &amp; (day(time) == 29)) )
    nthis    = nrow(met_this)
 
    # Find first time for this month
@@ -1119,7 +1077,7 @@ att_template = list( title          = &quot;To be replaced when looping through 
    dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEN&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
    # Time, append calendar type.
    dummy = ncvar_put(nc=nc_conn,varid=&quot;time&quot;  ,vals=tsince)
-   dummy = ncatt_put(nc=nc_conn,varid=&quot;time&quot;  ,attname=&quot;calendar&quot;,attval=&quot;gregorian&quot;)
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;time&quot;  ,attname=&quot;calendar&quot;,attval=&quot;noleap&quot;)
    #---~---
 
    # Put variables to the netcdf

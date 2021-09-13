@@ -17,6 +17,17 @@ references:
      year: 1980
 ---
 
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+
 # Introduction
 
 This script reads in hourly meteorological drivers and eddy covariance data from towers and generates averages by month and year that can be used to assess ELM and CLM. Currently, the script takes only "1-D" variables (i.e., no soil data), but this will be revisited in the future. Except for time information, all other variables are optional, but typically include the following:
@@ -101,12 +112,15 @@ Load some packages. By default, we skip the warning messages, but it may be a go
 visualise them if it is the first time running.
 ```{r, label='load-packages', message=FALSE, results='hide'}
 
-isfine = c( data.table = require(data.table,quietly=TRUE,warn.conflicts=FALSE)
-          , lubridate  = require(lubridate ,quietly=TRUE,warn.conflicts=FALSE)
-          , ncdf4      = require(ncdf4     ,quietly=TRUE,warn.conflicts=FALSE)
-          , purrr      = require(purrr     ,quietly=TRUE,warn.conflicts=FALSE)
-          , reshape2   = require(reshape2  ,quietly=TRUE,warn.conflicts=FALSE)
-          , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
+isfine = c( data.table   = require(data.table  ,quietly=TRUE,warn.conflicts=FALSE)
+          , lubridate    = require(lubridate   ,quietly=TRUE,warn.conflicts=FALSE)
+          , ncdf4        = require(ncdf4       ,quietly=TRUE,warn.conflicts=FALSE)
+          , patchwork    = require(patchwork   ,quietly=TRUE,warn.conflicts=FALSE)
+          , purrr        = require(purrr       ,quietly=TRUE,warn.conflicts=FALSE)
+          , RColorBrewer = require(RColorBrewer,quietly=TRUE,warn.conflicts=FALSE)
+          , reshape2     = require(reshape2    ,quietly=TRUE,warn.conflicts=FALSE)
+          , tidyverse    = require(tidyverse   ,quietly=TRUE,warn.conflicts=FALSE)
+          , viridis      = require(viridis     ,quietly=TRUE,warn.conflicts=FALSE)
           )#end c
 if (! all(isfine)){
    cat0(" List of required packages, and the success status loading them:\n")
@@ -124,8 +138,8 @@ Set paths and files for input and output.
 * **output_path**. The main output path for the site.
 
 ```{r, label='path-settings'}
-main_path   = file.path(path.expand("~"),"Documents","LocalData","TowerData","Paracou","make_single_site")
-input_file  = file.path(main_path,"input_csv","gyf_eddy-data_2004-2019.csv")
+main_path   = file.path(path.expand("~"),"Documents","LocalData","TowerData","Tanguro","make_single_site")
+input_file  = file.path(main_path,"input_csv","tb0_eddy-data_2008-2018.csv")
 output_path = file.path(path.expand("~"),"Data","FATES_DataSets")
 ```
 
@@ -139,10 +153,10 @@ In case you do not want to specify any of them, set them to `NA_character_`
 * **datprov_email**. Data provider email.
 * **data_usage_notes**. Brief data usage note message.
 ```{r }
-author_name  = "Marcos Longo"
-author_email = "mlongo@lbl.gov"
-datprov_name = "Damien Bonal"
-datprov_email = "damien.bonal@inrae.fr"
+author_name  = "That Is You"
+author_email = "yourself@somewhere.gov"
+datprov_name = "Data Provider"
+datprov_email = "amazing_collaborator@somewhere.edu"
 data_usage_notes = paste0( " If you plan to use these data for any scientific analysis,"
                          , " you should contact the data provider first and ask for permission"
                          , " to use the data and check with them how to acknowledge their"
@@ -166,13 +180,13 @@ Provide some basic information about the tower:
 * **undef_out**. A number to denote missing values in the output (NetCDF) file. This is needed by NetCDF.
 
 ```{r, label='met-driver-settings'}
-xid         = "paracouGUF"
-site_desc   = "Guyaflux tower at Paracou, French Guiana"
-dat_version = "1.5"
-site_lon    = -52.912222
-site_lat    =   5.281667
-site_alt    =  30.000000
-site_refhgt =   58.0
+xid         = "tanguroMT-BR"
+site_desc   = "Tanguro, MT, Brazil"
+dat_version = "1.0"
+site_lon    = -52.41
+site_lat    =   -13.08
+site_alt    =  349.0
+site_refhgt =   36.0
 dxy         =   1.0
 undef_in    = "NaN"
 undef_out   = -9999.99
@@ -183,7 +197,7 @@ Useful variables for time conversion:
 Western Hemisphere and the time zone is UTC-3, then utc_off should be -3 (**Important**.  If the input data are already in UTC, then set `utc_off` to zero).
 * **Year offset**, if year is provided with two digits. For example, if the data are for 2003-2016 but the years are in 03-16 format, set `year_off` to 2000.  If the year is already provided in four digits, set it to zero.
 ```{r, label='utc-settings'}
-utc_off  = -3
+utc_off  = -4
 year_off = 0
 ```
 
@@ -281,8 +295,7 @@ umol_2_gC = 1.20107e-5; gC_2_umol = 1. / umol_2_gC
 
 
 
-Then use the `varinfo` list to standardise the output.  Each list element contains the 
-following elements:
+Then use the `varinfo` list to standardise the output.  This is a `tibble` object (defined with `tribble`), containing the following elements:
 
 * *vfates*.  Variable name from the table above (don't change this value).
 * *vlname*.  Long name for variable (don't change this value).
@@ -297,141 +310,24 @@ In case the sought unit conversion is not available in the previous chunk, feel 
 more factors.
 
 ```{r, label='var-info-settings'}
-n       = 0
-varinfo = list()
-n       = 0
-varinfo = list()
-n       = n + 1
-varinfo[[n]] = list( vfates = "PBOT"
-                   , vlname = "surface pressure at the tower"
-                   , vunits = "Pa"
-                   , vinput = "atm.prss"
-                   , add0   = 0.
-                   , mult   = hPa_2_Pa
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "TBOT"
-                   , vlname = "temperature at the tower"
-                   , vunits = "K"
-                   , vinput = "atm.tmp"
-                   , add0   = degC_2_K
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "QBOT"
-                   , vlname = "specific humidity at the tower"
-                   , vunits = "kg/kg"
-                   , vinput = "atm.shv"
-                   , add0   = 0.
-                   , mult   = g_2_kg
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "WIND"
-                   , vlname = "wind at the tower"
-                   , vunits = "m/s"
-                   , vinput = "atm.vels"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "FSDS"
-                   , vlname = "incident solar radiation at the tower"
-                   , vunits = "W/m2"
-                   , vinput = "rshort.in"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "FLDS"
-                   , vlname = "incident thermal radiation at the tower"
-                   , vunits = "W/m2"
-                   , vinput = "rlong.in"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "PRECTmms"
-                   , vlname = "precipitation rate at the tower"
-                   , vunits = "mm/s"
-                   , vinput = "rain"
-                   , add0   = 0.
-                   , mult   = sec_2_hr
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "FSR"
-                   , vlname = "outgoing shortwave (solar) irradiance"
-                   , vunits = "W/m2"
-                   , vinput = "rshort.out"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "FIRE"
-                   , vlname = "outgoing long wave (thermal) irradiance"
-                   , vunits = "W/m2"
-                   , vinput = "rlong.out"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "Rnet"
-                   , vlname = "Net irradiance (solar + thermal)"
-                   , vunits = "W/m2"
-                   , vinput = "rnet"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "FSH"
-                   , vlname = "Sensible heat flux"
-                   , vunits = "W/m2"
-                   , vinput = "sens"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "QEVTR"
-                   , vlname = "Total water vapour flux"
-                   , vunits = "mm/s"
-                   , vinput = "fh2o"
-                   , add0   = 0.
-                   , mult   = sec_2_hr
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "USTAR"
-                   , vlname = "Friction velocity"
-                   , vunits = "m/s"
-                   , vinput = "ustar"
-                   , add0   = 0.
-                   , mult   = 1.
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "GPP"
-                   , vlname = "Gross primary productivity"
-                   , vunits = "gC/m2/s"
-                   , vinput = "gep"
-                   , add0   = 0.
-                   , mult   = umol_2_gC
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "ER"
-                   , vlname = "Ecosystem respiration"
-                   , vunits = "gC/m2/s"
-                   , vinput = "reco"
-                   , add0   = 0.
-                   , mult   = umol_2_gC
-                   )#end list
-n       = n + 1
-varinfo[[n]] = list( vfates = "NEP"
-                   , vlname = "Net Ecosystem productivity (+ is sink)"
-                   , vunits = "gC/m2/s"
-                   , vinput = "nee"
-                   , add0   = 0.
-                   , mult   = -umol_2_gC
-                   )#end list
-
-# Convert varinfo to a "tibble" object
-varinfo  = do.call(what=rbind,args=lapply(X=varinfo,FUN=as_tibble,stringsAsFactors=FALSE))
+varinfo = tribble( ~vfates   , ~vlname                                  , ~vunits  , ~vinput     , ~add0   , ~mult
+                 , "PBOT"    , "surface pressure at the tower"          , "Pa"     , "atm.prss"  , 0.      ,  hPa_2_Pa
+                 , "TBOT"    , "temperature at the tower"               , "K"      , "atm.tmp"   , degC_2_K,  1.
+                 , "QBOT"    , "specific humidity at the tower"         , "kg/kg"  , "atm.shv"   , 0.      ,  g_2_kg
+                 , "WIND"    , "wind at the tower"                      , "m/s"    , "atm.vels"  , 0.      ,  1.
+                 , "FSDS"    , "incident solar radiation at the tower"  , "W/m2"   , "rshort.in" , 0.      ,  1.
+                 , "FLDS"    , "incident thermal radiation at the tower", "W/m2"   , "rlong.in"  , 0.      ,  1.
+                 , "PRECTmms", "precipitation rate at the tower"        , "mm/s"   , "rain"      , 0.      ,  sec_2_hr
+                 , "FSR"     , "outgoing shortwave (solar) irradiance"  , "W/m2"   , "rshort.out", 0.      ,  1.
+                 , "FIRE"    , "outgoing long wave (thermal) irradiance", "W/m2"   , "rlong.out" , 0.      ,  1.
+                 , "Rnet"    , "Net irradiance (solar + thermal)"       , "W/m2"   , "rnet"      , 0.      ,  1.
+                 , "FSH"     , "Sensible heat flux"                     , "W/m2"   , "fsens"     , 0.      ,  1.
+                 , "QEVTR"   , "Total water vapour flux"                , "mm/s"   , "fh2o"      , 0.      ,  sec_2_hr
+                 , "USTAR"   , "Friction velocity"                      , "m/s"    , "ustar"     , 0.      ,  1.
+                 , "GPP"     , "Gross primary productivity"             , "gC/m2/s", "gep"       , 0.      ,  umol_2_gC
+                 , "ER"      , "Ecosystem respiration"                  , "gC/m2/s", "reco"      , 0.      ,  umol_2_gC
+                 , "NEP"     , "Net Ecosystem productivity (+ is sink)" , "gC/m2/s", "nee"       , 0.      , -umol_2_gC
+                 )#end tribble
 ```
 
 

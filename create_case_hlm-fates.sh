@@ -108,7 +108,7 @@ export HLM_USRDAT_DOMAIN="domain.lnd.${SITE_NAME}_navy.nc"
 # Surface data file (it must be in the SITE_NAME sub-directory).
 export HLM_USRDAT_SURDAT="surfdata_${SITE_NAME}.nc"
 # Calendar type for the meteorological drivers ('NO_LEAP' or 'GREGORIAN')
-export METD_CALENDAR="GREGORIAN"
+export METD_CALENDAR="NO_LEAP"
 # CDL file containing FATES parameters (it must be in the SITE_NAME sub-directory).
 #---~---
 

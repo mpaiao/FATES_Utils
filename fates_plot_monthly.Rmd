@@ -47,20 +47,37 @@ invisible(gc())
 
 In this part, we set a few useful global paths, files, and variables.
 
-First, we define the case:
+First, we define the case (variable `case_info`). For convenience, we use a *tibble* structure (`tribble`) containing the following elements for a few simulations:
 
-* **case_name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
-* **case_desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
+* **idx**. A simple index number, so we can select the simulation to process. This is useful for when handling multiple runs.
+* **name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
+* **model**. Which model was used (typically `CLM-FATES` or `ELM-FATES`). The name may appear in `name` too, but this is used for titles.
+* **desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
 * **tstampa**.  The first time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
 * **tstampz**.  The last time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
+
+It is possible to select the simulation to process using the variable case_idx
 
 **Note**. Regardless of `tstampa`, we will always read in the very first file to retrieve some data that are only written in the first output.
 
 ```{r, label='case-settings'}
-case_name  = "D0006_ParacouEGHD_CLM_FATES"        # Simulation path
-case_desc  = "Paracou Evergreen-Deciduous (CLM-FATES)" # Simulation description
-tstampa    = NA_character_ # "01/01/2004"         # First time (MM/DD/YYYY)
-tstampz    = NA_character_ # "12/01/2019"         # Last time (MM/DD/YYYY)
+
+# Define the data structure
+case_info = tidyr::tribble( ~idx, ~name                        , ~model     , ~desc                        , ~tstampa     , ~tstampz
+                          ,    6, "D0006_ParacouEGHD_CLM_FATES", "CLM-FATES", "Paracou Evergreen-Deciduous", NA_character_, NA_character_
+                          ,    7, "D0007_TanguroEGHD_CLM_FATES", "CLM-FATES", "Tanguro Evergreen-Deciduous", NA_character_, NA_character_
+                          )#end tribble
+
+# Use case_idx to select which simulation to process
+case_idx  = 6
+
+# Copy the names to scalars.
+case_idx     = match(case_idx,case_info$idx)
+case_name    = case_info$name[case_idx]
+case_model   = case_info$model[case_idx]
+case_desc    = paste0(case_info$desc[case_idx]," (",case_model,")")
+case_tstampa = case_info$tstampa[case_idx]
+case_tstampz = case_info$tstampz[case_idx]
 
 ```
 
@@ -88,7 +105,7 @@ plot_main  = file.path(hesm_main,"figures",case_name)
 
 
 _Optional_. Here we define the plant functional types to include in the plots. We define the basic PFT information 
-in variable `pftinfo`, which is a list.  Each list element contains the following sub-elements:
+in variable `pftinfo`, which is going to be a tibble object.  Each row must contain the following sub-elements:
 * *id*. PFT index in FATES. 
 * *key*. Short name to define PFT in data structures. Prefer strings that start with a letter, and have only letters, numbers, `.`, and `_`.
 * **short**. Short name to define PFT in figure legends. Feel free to use spaces, `plotmath` symbols and other characters, but keep them short.
@@ -102,22 +119,10 @@ In some cases setting names and descriptions for PFTs will not be feasible (e.g.
 user_pftinfo = TRUE
 
 # List of PFTs, in case user_pftinfo is TRUE
-n            = 0
-pftinfo      = list()
-n            = n + 1
-pftinfo[[n]] = list( id     = 1
-                   , key    = "pft01"
-                   , short  = "EvGn"
-                   , desc   = "Evergreen Tropical Tree"
-                   , colour = "#00BFC4"
-                   )#end list
-n            = n + 1
-pftinfo[[n]] = list( id     = 2
-                   , key    = "pft02"
-                   , short  = "HyDd"
-                   , desc   = "Hydro-deciduous Tropical Tree"
-                   , colour = "#F8766D"
-                   )#end list
+pftinfo = tidyr::tribble( ~id, ~key   , ~short , ~desc                          , ~colour
+                        ,   1, "pft01", "EvGn" , "Evergreen Tropical Tree"      , "#00BFC4"
+                        ,   2, "pft02", "HyDd" , "Hydro-deciduous Tropical Tree", "#F8766D"
+                        )#end tidyr::tribble
 ```
 
 
@@ -240,8 +245,8 @@ for (d in seq_along(nc_file)){
 We set the times for which we will retrieve simulation results. A few noteworthy variables.
 
 * **tstamp0**. First simulation time. This is always the actual first output file of the simulation, because the first output always has additional variables that are useful for analyses.
-* **tstampa**. First time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the first available time.
-* **tstampz**. Last time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the last available time.
+* **tstampa**. First time used for output. If `case_tstampa` was set as `NA_character_` at the beginning of the script, we will use the first available time.
+* **tstampz**. Last time used for output. If `this`case_tstampz` was set as `NA_character_` at the beginning of the script, we will use the last available time.
 * **tstamp**. The vector with all times that should be loaded.
 * **ntstamp**. The total count of time steps to load.
 
@@ -253,21 +258,21 @@ if (! "tstamp0" %in% ls()){
    year0   = tstamp0[3]
    month0  = tstamp0[1]
 }#end if (is.character(tstampa))
-if (is.na(tstampa)){
+if (is.na(case_tstampa)){
    tstampa = as.integer(unlist(strsplit(tstamp_1st,split="/")))
    yeara   = tstampa[3]
    montha  = tstampa[1]
-}else if (is.character(tstampa)){
-   tstampa = as.integer(unlist(strsplit(tstampa,split="/")))
+}else{
+   tstampa = as.integer(unlist(strsplit(case_tstampa,split="/")))
    yeara   = tstampa[3]
    montha  = tstampa[1]
 }#end if (is.character(tstampa))
-if (is.character(tstampz)){
+if (is.na(case_tstampz)){
    tstampz = as.integer(unlist(strsplit(tstamp_lst,split="/")))
    yearz   = tstampz[3]
    monthz  = tstampz[1]
-}else if (is.character(tstampz)){
-   tstampz = as.integer(unlist(strsplit(tstampz,split="/")))
+}else{
+   tstampz = as.integer(unlist(strsplit(case_tstampz,split="/")))
    yearz   = tstampz[3]
    monthz  = tstampz[1]
 }#end if (is.character(tstampz))
@@ -397,9 +402,6 @@ if (! is.finite(idxpft)){
                    , colour           = brewer.pal(n=npftids,name="PuBuGn")
                    , stringsAsFactors = FALSE
                    )#end tibble
-}else if (! is_tibble(pftinfo)){
-   # Convert user-defined pftinfo to a "tibble" object
-   pftinfo  = do.call(what=rbind,args=lapply(X=pftinfo,FUN=as_tibble,stringsAsFactors=FALSE))
 }#end if (! is.finite(idxpft))
 
 # Set number of PFTs (active PFTs only) 
@@ -729,14 +731,13 @@ Note that patch area by age must be always included in FATES output. Patch area 
 #--- Scale patch variables by age that should be stacked. 
 cat0(" + Rescale variables by age class.")
 for (a in sequence(nbyage)){
-   #--- Match variables
+   # Match variables
    f        = match(names(byage)[a],fatesvar$vnam)
    f_vnam   = fatesvar$vnam [f]
    f_desc   = fatesvar$desc [f]
    f_stack  = fatesvar$stack[f]
-   #---~---
 
-   #--- Proceed only if the variable is stacked and not the patch area.
+   # Proceed only if the variable is stacked and not the patch area.
    if (f_stack && (! (f_vnam %in% "patch_area"))){
       cat0("   - ",f_desc,".")
       byage[[f_vnam]] = byage[[f_vnam]] * byage$patch_area
@@ -754,96 +755,82 @@ Turn data matrices into molten tibble objects.  These are compatible with `ggplo
 cat0(" + Turn age-dependent matrices into tibble objects.")
 age_melt = NULL
 for (a in sequence(nbyage)){
-   #--- Match variables.
+   # Match variables.
    f        = match(names(byage)[a],fatesvar$vnam)
    f_vnam   = fatesvar$vnam[f]
    f_desc   = fatesvar$desc[f]
    cat0("   - ",f_desc,".")
-   #---~---
 
-   #--- Create molten data table for this variable.  
+   # Create molten data table for this variable.  
    now_age      = as_tibble(byage[[f_vnam]])
    now_age$time = tstamp
    now_melt     = as_tibble(melt(data=now_age,id.vars="time",variable.name="age",value.name=f_vnam))
-   #---~---
 
-   #--- Merge data table
+   # Merge data table
    if (is.null(age_melt)){
       age_melt = now_melt
    }else{
       age_melt = as_tibble(merge(x=age_melt,y=now_melt,by=c("time","age"),all=TRUE))
    }#end if (is.null(age_melt))
-   #---~---
 }#end for (a in sequence(nbyage))
-#---~---
 
-#--- Turn size-dependent matrices into data tables
+# Turn size-dependent matrices into data tables
 cat0(" + Turn size-dependent matrices into data tables.")
 dbh_melt = NULL
 for (d in sequence(nbydbh)){
-   #--- Match variables.
+   # Match variables.
    f        = match(names(bydbh)[d],fatesvar$vnam)
    f_vnam   = fatesvar$vnam[f]
    f_desc   = fatesvar$desc[f]
    cat0("   - ",f_desc,".")
-   #---~---
 
-   #--- Create molten data table for this variable.  
+   # Create molten data table for this variable.  
    now_dbh      = as_tibble(bydbh[[d]])
    now_dbh$time = tstamp
    now_melt     = as_tibble(melt(data=now_dbh,id.vars="time",variable.name="dbh",value.name=f_vnam))
-   #---~---
 
-   #--- Merge data table
+   # Merge data table
    if (is.null(dbh_melt)){
       dbh_melt = now_melt
    }else{
       dbh_melt = merge(x=dbh_melt,y=now_melt,by=c("time","dbh"),all=TRUE)
    }#end if (is.null(scls.melt))
-   #---~---
 }#end for (d in sequence(nbydbh))
-#---~---
 
-#--- Turn PFT-dependent matrices into data tables
+# Turn PFT-dependent matrices into data tables
 cat0(" + Turn PFT-dependent matrices into data tables.")
 pft_melt = NULL
 for (p in sequence(nbypft)){
-   #--- Match variables.
+   # Match variables.
    f        = match(names(bypft)[p],fatesvar$vnam)
    f_vnam   = fatesvar$vnam[f]
    f_desc   = fatesvar$desc[f]
    cat0("   - ",f_desc,".")
-   #---~---
 
-   #--- Create molten data table for this variable.  
+   # Create molten data table for this variable.  
    now_pft      = as_tibble(bypft[[p]])
    now_pft$time = tstamp
    now_melt     = as_tibble(melt(data=now_pft,id.vars="time",variable.name="pft",value.name=f_vnam))
-   #---~---
 
-   #--- Merge data table
+   # Merge data table
    if (is.null(pft_melt)){
       pft_melt = now_melt
    }else{
       pft_melt = as_tibble(merge(x=pft_melt,y=now_melt,by=c("time","pft"),all=TRUE))
    }#end if (is.null(pft_melt))
-   #---~---
 }#end for (p in sequence(nbypft))
-#---~---
 
-#--- Remove data that are not molten.
+# Remove data that are not molten.
 byage = age_melt
 bydbh = dbh_melt
 bypft = pft_melt
 rm(age_melt,dbh_melt,pft_melt)
-#---~---
 
-#--- Convert dbh and age classes into integers
+# Convert dbh and age classes into integers
 cat0(" + Convert classes to integers.")
 byage$age = as.numeric(byage$age)
 bydbh$dbh = as.numeric(bydbh$dbh)
 bypft$pft = as.numeric(bypft$pft)
-#---~---
 ```
 
 
@@ -852,9 +839,8 @@ Plot time series by age:
 ```{r, label='plot-tsage',message=FALSE,results='hide'}
 cat0(" + Plot time series of age-dependent variables.")
 
-#--- Title for legend
+# Title for legend
 age_legend = desc.unit(desc="Age",unit=untab$yr)
-#---~---
 
 age_loop   = which(fatesvar$vnam %in% names(byage))
 gg_age   = list()
@@ -896,6 +882,7 @@ for (f in age_loop){
                          , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
+                         , plot.title        = element_text( size = gg_ptsz)
                          , axis.ticks.length = unit(-0.25,"cm")
                          )#end theme
   #---~---
@@ -990,6 +977,7 @@ for (f in dbh_loop){
                          , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
+                         , plot.title        = element_text( size = gg_ptsz)
                          , axis.ticks.length = unit(-0.25,"cm")
                          )#end theme
   #---~---
@@ -1068,6 +1056,7 @@ for (f in pft_loop){
                          , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),"cm")
                                                            )#end element_text
+                         , plot.title        = element_text( size = gg_ptsz)
                          , axis.ticks.length = unit(-0.25,"cm")
                          )#end theme
 
@@ -1107,9 +1096,9 @@ for (th in sequence(ntstheme)){
   th_thnam  = tstheme$thnam  [th]
   th_thdesc = tstheme$thdesc [th]
   th_thunit = tstheme$thunit [th]
+  th_stack  = tstheme$thstack[th]
   th_vnames = tstheme$vnames [th]
   th_vcols  = tstheme$vcols  [th]
-  th_stack  = tstheme$tsstack[th]
 
   # Split variables to include in this plot (plot only when all data are available).
   th_vlist   = c(unlist(strsplit(x=th_vnames,split="\\+")))
@@ -1176,6 +1165,7 @@ for (th in sequence(ntstheme)){
                                                               , margin = unit(rep(0.35,times=4),"cm")
                                                               )#end element_text
                             , axis.ticks.length = unit(-0.25,"cm")
+                            , plot.title        = element_text( size = gg_ptsz)
                             )#end theme
 
      # Save plot.
@@ -1201,5 +1191,4 @@ for (th in sequence(ntstheme)){
 
 # If sought, plot images on screen
 if (gg_screen) gg_theme
-#
 ```

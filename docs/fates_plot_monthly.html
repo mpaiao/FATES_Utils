@@ -332,28 +332,16 @@ hesm_main  = file.path(home_path,&quot;Documents/LocalData/FATES/Simulations&quo
 site_main  = file.path(home_path,&quot;Data/FATES_DataSets&quot;)
 util_path  = file.path(home_path,&quot;Util/RUtils&quot;)
 plot_main  = file.path(hesm_main,&quot;figures&quot;,case_name)</code></pre>
-<p><em>Optional</em>. Here we define the plant functional types to include in the plots. We define the basic PFT information in variable <code>pftinfo</code>, which is a list. Each list element contains the following sub-elements: * <em>id</em>. PFT index in FATES. * <em>key</em>. Short name to define PFT in data structures. Prefer strings that start with a letter, and have only letters, numbers, <code>.</code>, and <code>_</code>. * <strong>short</strong>. Short name to define PFT in figure legends. Feel free to use spaces, <code>plotmath</code> symbols and other characters, but keep them short. * <strong>desc</strong>. Long name to define PFTs, for general information. * <strong>colour</strong>. Colour associated with PFT. Prefer to use R’s hexadecimal format (e.g. <code>"#1F78B4"</code>).</p>
+<p><em>Optional</em>. Here we define the plant functional types to include in the plots. We define the basic PFT information in variable <code>pftinfo</code>, which is going to be a tibble object. Each row must contain the following sub-elements: * <em>id</em>. PFT index in FATES. * <em>key</em>. Short name to define PFT in data structures. Prefer strings that start with a letter, and have only letters, numbers, <code>.</code>, and <code>_</code>. * <strong>short</strong>. Short name to define PFT in figure legends. Feel free to use spaces, <code>plotmath</code> symbols and other characters, but keep them short. * <strong>desc</strong>. Long name to define PFTs, for general information. * <strong>colour</strong>. Colour associated with PFT. Prefer to use R’s hexadecimal format (e.g. <code>"#1F78B4"</code>).</p>
 <p>In some cases setting names and descriptions for PFTs will not be feasible (e.g., when many PFTs are included). In this case, set <code>user_pftinfo=FALSE</code>.</p>
 <pre class="r"><code># Use the user-defined PFT settings?
 user_pftinfo = TRUE
 
 # List of PFTs, in case user_pftinfo is TRUE
-n            = 0
-pftinfo      = list()
-n            = n + 1
-pftinfo[[n]] = list( id     = 1
-                   , key    = &quot;pft01&quot;
-                   , short  = &quot;EvGn&quot;
-                   , desc   = &quot;Evergreen Tropical Tree&quot;
-                   , colour = &quot;#00BFC4&quot;
-                   )#end list
-n            = n + 1
-pftinfo[[n]] = list( id     = 2
-                   , key    = &quot;pft02&quot;
-                   , short  = &quot;HyDd&quot;
-                   , desc   = &quot;Hydro-deciduous Tropical Tree&quot;
-                   , colour = &quot;#F8766D&quot;
-                   )#end list</code></pre>
+pftinfo = tidyr::tribble( ~id, ~key   , ~short , ~desc                          , ~colour
+                        ,   1, &quot;pft01&quot;, &quot;EvGn&quot; , &quot;Evergreen Tropical Tree&quot;      , &quot;#00BFC4&quot;
+                        ,   2, &quot;pft02&quot;, &quot;HyDd&quot; , &quot;Hydro-deciduous Tropical Tree&quot;, &quot;#F8766D&quot;
+                        )#end tidyr::tribble</code></pre>
 <p>General plot options for <code>ggplot</code></p>
 <ul>
 <li><strong>gg_device</strong>. A vector with file types for figures. These should be extensions of common file formats (e.g., pdf, eps, tif, png, jpg). The complete list of options can be found in <a href="https://www.rdocumentation.org/packages/ggplot2/versions/0.9.0/topics/ggsave">ggsave</a>.</li>
@@ -633,9 +621,6 @@ if (! is.finite(idxpft)){
                    , colour           = brewer.pal(n=npftids,name=&quot;PuBuGn&quot;)
                    , stringsAsFactors = FALSE
                    )#end tibble
-}else if (! is_tibble(pftinfo)){
-   # Convert user-defined pftinfo to a &quot;tibble&quot; object
-   pftinfo  = do.call(what=rbind,args=lapply(X=pftinfo,FUN=as_tibble,stringsAsFactors=FALSE))
 }#end if (! is.finite(idxpft))
 
 # Set number of PFTs (active PFTs only) 
@@ -950,14 +935,13 @@ dummy   = nc_close(nc_conn)</code></pre>
 cat0(&quot; + Rescale variables by age class.&quot;)</code></pre>
 <pre><code>##  + Rescale variables by age class.</code></pre>
 <pre class="r"><code>for (a in sequence(nbyage)){
-   #--- Match variables
+   # Match variables
    f        = match(names(byage)[a],fatesvar$vnam)
    f_vnam   = fatesvar$vnam [f]
    f_desc   = fatesvar$desc [f]
    f_stack  = fatesvar$stack[f]
-   #---~---
 
-   #--- Proceed only if the variable is stacked and not the patch area.
+   # Proceed only if the variable is stacked and not the patch area.
    if (f_stack &amp;&amp; (! (f_vnam %in% &quot;patch_area&quot;))){
       cat0(&quot;   - &quot;,f_desc,&quot;.&quot;)
       byage[[f_vnam]] = byage[[f_vnam]] * byage$patch_area
@@ -973,58 +957,50 @@ cat0(&quot; + Turn age-dependent matrices into tibble objects.&quot;)</code></pr
 <pre><code>##  + Turn age-dependent matrices into tibble objects.</code></pre>
 <pre class="r"><code>age_melt = NULL
 for (a in sequence(nbyage)){
-   #--- Match variables.
+   # Match variables.
    f        = match(names(byage)[a],fatesvar$vnam)
    f_vnam   = fatesvar$vnam[f]
    f_desc   = fatesvar$desc[f]
    cat0(&quot;   - &quot;,f_desc,&quot;.&quot;)
-   #---~---
 
-   #--- Create molten data table for this variable.  
+   # Create molten data table for this variable.  
    now_age      = as_tibble(byage[[f_vnam]])
    now_age$time = tstamp
    now_melt     = as_tibble(melt(data=now_age,id.vars=&quot;time&quot;,variable.name=&quot;age&quot;,value.name=f_vnam))
-   #---~---
 
-   #--- Merge data table
+   # Merge data table
    if (is.null(age_melt)){
       age_melt = now_melt
    }else{
       age_melt = as_tibble(merge(x=age_melt,y=now_melt,by=c(&quot;time&quot;,&quot;age&quot;),all=TRUE))
    }#end if (is.null(age_melt))
-   #---~---
 }#end for (a in sequence(nbyage))</code></pre>
 <pre><code>##    - Canopy area.
 ##    - Gross Primary Productivity.
 ##    - Leaf area index.
 ##    - Patch area.</code></pre>
-<pre class="r"><code>#---~---
-
-#--- Turn size-dependent matrices into data tables
+<pre class="r"><code># Turn size-dependent matrices into data tables
 cat0(&quot; + Turn size-dependent matrices into data tables.&quot;)</code></pre>
 <pre><code>##  + Turn size-dependent matrices into data tables.</code></pre>
 <pre class="r"><code>dbh_melt = NULL
 for (d in sequence(nbydbh)){
-   #--- Match variables.
+   # Match variables.
    f        = match(names(bydbh)[d],fatesvar$vnam)
    f_vnam   = fatesvar$vnam[f]
    f_desc   = fatesvar$desc[f]
    cat0(&quot;   - &quot;,f_desc,&quot;.&quot;)
-   #---~---
 
-   #--- Create molten data table for this variable.  
+   # Create molten data table for this variable.  
    now_dbh      = as_tibble(bydbh[[d]])
    now_dbh$time = tstamp
    now_melt     = as_tibble(melt(data=now_dbh,id.vars=&quot;time&quot;,variable.name=&quot;dbh&quot;,value.name=f_vnam))
-   #---~---
 
-   #--- Merge data table
+   # Merge data table
    if (is.null(dbh_melt)){
       dbh_melt = now_melt
    }else{
       dbh_melt = merge(x=dbh_melt,y=now_melt,by=c(&quot;time&quot;,&quot;dbh&quot;),all=TRUE)
    }#end if (is.null(scls.melt))
-   #---~---
 }#end for (d in sequence(nbydbh))</code></pre>
 <pre><code>##    - Above-ground biomass.
 ##    - Basal area.
@@ -1054,33 +1030,28 @@ for (d in sequence(nbydbh)){
 ##    - Trimming (Canopy).
 ##    - Trimming (Understory).
 ##    - Leaf area index.</code></pre>
-<pre class="r"><code>#---~---
-
-#--- Turn PFT-dependent matrices into data tables
+<pre class="r"><code># Turn PFT-dependent matrices into data tables
 cat0(&quot; + Turn PFT-dependent matrices into data tables.&quot;)</code></pre>
 <pre><code>##  + Turn PFT-dependent matrices into data tables.</code></pre>
 <pre class="r"><code>pft_melt = NULL
 for (p in sequence(nbypft)){
-   #--- Match variables.
+   # Match variables.
    f        = match(names(bypft)[p],fatesvar$vnam)
    f_vnam   = fatesvar$vnam[f]
    f_desc   = fatesvar$desc[f]
    cat0(&quot;   - &quot;,f_desc,&quot;.&quot;)
-   #---~---
 
-   #--- Create molten data table for this variable.  
+   # Create molten data table for this variable.  
    now_pft      = as_tibble(bypft[[p]])
    now_pft$time = tstamp
    now_melt     = as_tibble(melt(data=now_pft,id.vars=&quot;time&quot;,variable.name=&quot;pft&quot;,value.name=f_vnam))
-   #---~---
 
-   #--- Merge data table
+   # Merge data table
    if (is.null(pft_melt)){
       pft_melt = now_melt
    }else{
       pft_melt = as_tibble(merge(x=pft_melt,y=now_melt,by=c(&quot;time&quot;,&quot;pft&quot;),all=TRUE))
    }#end if (is.null(pft_melt))
-   #---~---
 }#end for (p in sequence(nbypft))</code></pre>
 <pre><code>##    - Above-ground biomass.
 ##    - Basal area.
@@ -1104,28 +1075,23 @@ for (p in sequence(nbypft)){
 ##    - Number density (Canopy).
 ##    - Number density (Understory).
 ##    - Leaf area index.</code></pre>
-<pre class="r"><code>#---~---
-
-#--- Remove data that are not molten.
+<pre class="r"><code># Remove data that are not molten.
 byage = age_melt
 bydbh = dbh_melt
 bypft = pft_melt
 rm(age_melt,dbh_melt,pft_melt)
-#---~---
 
-#--- Convert dbh and age classes into integers
+# Convert dbh and age classes into integers
 cat0(&quot; + Convert classes to integers.&quot;)</code></pre>
 <pre><code>##  + Convert classes to integers.</code></pre>
 <pre class="r"><code>byage$age = as.numeric(byage$age)
 bydbh$dbh = as.numeric(bydbh$dbh)
-bypft$pft = as.numeric(bypft$pft)
-#---~---</code></pre>
+bypft$pft = as.numeric(bypft$pft)</code></pre>
 <p>Plot time series by age:</p>
 <pre class="r"><code>cat0(&quot; + Plot time series of age-dependent variables.&quot;)
 
-#--- Title for legend
+# Title for legend
 age_legend = desc.unit(desc=&quot;Age&quot;,unit=untab$yr)
-#---~---
 
 age_loop   = which(fatesvar$vnam %in% names(byage))
 gg_age   = list()
@@ -1167,6 +1133,7 @@ for (f in age_loop){
                          , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
                                                            )#end element_text
+                         , plot.title        = element_text( size = gg_ptsz)
                          , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
                          )#end theme
   #---~---
@@ -1256,6 +1223,7 @@ for (f in dbh_loop){
                          , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
                                                            )#end element_text
+                         , plot.title        = element_text( size = gg_ptsz)
                          , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
                          )#end theme
   #---~---
@@ -1329,6 +1297,7 @@ for (f in pft_loop){
                          , axis.text.y       = element_text( size   = gg_ptsz
                                                            , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
                                                            )#end element_text
+                         , plot.title        = element_text( size = gg_ptsz)
                          , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
                          )#end theme
 
@@ -1359,29 +1328,28 @@ if (gg_screen) gg_pft</code></pre>
 
 gg_theme   = list()
 for (th in sequence(ntstheme)){
-  #--- Match variables.
+  # Match variables.
   th_thnam  = tstheme$thnam  [th]
   th_thdesc = tstheme$thdesc [th]
   th_thunit = tstheme$thunit [th]
+  th_stack  = tstheme$thstack[th]
   th_vnames = tstheme$vnames [th]
   th_vcols  = tstheme$vcols  [th]
-  th_stack  = tstheme$tsstack[th]
 
-  #--- Split variables to include in this plot (plot only when all data are available).
+  # Split variables to include in this plot (plot only when all data are available).
   th_vlist   = c(unlist(strsplit(x=th_vnames,split=&quot;\\+&quot;)))
   th_match   = match(th_vlist,hlm1dvar$vnam)
   th_vdesc   = hlm1dvar$desc[th_match]
   th_labels  = parse(text=paste0(&quot;paste(&quot;,hlm1dvar$short[th_match],&quot;)&quot;))
   n_th_vlist = length(th_vlist)
-  #---~---
 
-  #--- Proceed only if all variables exist in the output
+
+  # Proceed only if all variables exist in the output
   if (all(th_vlist %in% names(hlm1d))){
-     #--- Title for legend
+     # Title for legend
      cat0(&quot;   - &quot;,th_thdesc,&quot;.&quot;)
-     #---~---
 
-     #--- Temporary data table. We convert the classes back to factor.
+     # Temporary data table. We convert the classes back to factor.
      thmelt       = hlm1d %&gt;% select_at(th_vlist)
      thmelt$time  = tstamp
      thmelt       = melt( data          = thmelt
@@ -1392,21 +1360,18 @@ for (th in sequence(ntstheme)){
                         )#end melt
      thmelt       = as_tibble(thmelt)
      thmelt$idvar = factor(as.integer(thmelt$idvar))
-     #---~---
 
-       
-     #--- Find colours for theme plot.
+     # Find colours for theme plot.
      th_funcol   = try(match.fun(th_vcols),silent=TRUE)
      if (&quot;try-error&quot; %in% is(th_funcol)){
        th_colour = c(unlist(strsplit(x=th_vcols,split=&quot;\\+&quot;)))
      }else{
        th_colour = th_funcol(n=n_th_vlist)
      }#end if (&quot;try-error %in% is(th_funcol))
-     #---~---
-  
+
      
      
-     #--- Initialise plot (decide whether to plot lines or stacks).
+     # Initialise plot (decide whether to plot lines or stacks).
      if (th_stack){
         gg_now = ggplot(data=thmelt,aes_string(x=&quot;time&quot;,y=th_thnam,group=&quot;idvar&quot;,fill=&quot;idvar&quot;))
         gg_now = gg_now + scale_fill_manual(name=character(0),labels=th_labels,values=th_colour)
@@ -1433,10 +1398,10 @@ for (th in sequence(ntstheme)){
                                                               , margin = unit(rep(0.35,times=4),&quot;cm&quot;)
                                                               )#end element_text
                             , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                            , plot.title        = element_text( size = gg_ptsz)
                             )#end theme
-     #---~---
-  
-     #--- Save plot.
+
+     # Save plot.
      for (d in sequence(ndevice)){
         th_output = paste0(th_thnam,&quot;-tstheme-&quot;,case_name,&quot;.&quot;,gg_device[d])
         dummy = ggsave( filename = th_output
@@ -1449,21 +1414,17 @@ for (th in sequence(ntstheme)){
                       , dpi      = gg_depth
                       )#end ggsave
      }#end for (o in sequence(nout))
-     #---~---
 
-     #--- Write plot settings to the list.
+     # Write plot settings to the list.
      gg_theme[[th_thnam]] = gg_now
-     #---~---
-    
+
   }#end if (all(th_vlist %in% names(hlm1d))))    
-  #---~---
 }#end for (a in age_loop)
 
 
-#--- If sought, plot images on screen
+# If sought, plot images on screen
 if (gg_screen) gg_theme</code></pre>
 <p><img src="fates_plot_monthly_files/figure-html/plot-tstheme-1.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-2.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-3.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-4.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-5.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-6.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-7.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-8.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-9.png" width="672" /><img src="fates_plot_monthly_files/figure-html/plot-tstheme-10.png" width="672" /></p>
-<pre class="r"><code>#---~---</code></pre>
 </div>
 </div>
 
