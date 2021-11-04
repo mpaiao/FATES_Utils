@@ -22,6 +22,15 @@ export MACH="eschweilera"       # Machine used for preparing the case
 #---~---
 
 
+
+#--- Case handling options.
+export CASE_SUBMIT=true   # Should the script submit the run after creating case?
+export CASE_WAIT=true     # Should the script lock the terminal until the run finishes?
+                          #   (ignored if CASE_SUBMIT=false)
+#---~---
+
+
+
 #---~---
 #    Debugging settings
 #
@@ -47,8 +56,8 @@ export USE_FATES=true
 # In all cases, use XXXX in the part you want to be replaced with either E3SM or CTSM.
 #---~---
 export WORK_PATH="${HOME}/Models/XXXX/cime/scripts"
-export CASE_ROOT="${HOME}/Documents/LocalData/FATES/Cases"
-export SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
+export CASE_ROOT="${HOME}/Documents/LocalData/FATES/SingleRuns/Cases"
+export SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/SingleRuns/Simulations"
 #---~---
 
 
@@ -58,7 +67,7 @@ export SIMUL_ROOT="${HOME}/Documents/LocalData/FATES/Simulations"
 # script will use default settings.
 #---~---
 export COMP=""
-export CASE_NAME="D0005_ParacouTest"
+export CASE_PREFIX="S0000_ParacouTest"
 #---~---
 
 
@@ -102,7 +111,7 @@ export RESOL="YYY_USRDAT" # Grid resolution
 # Path containing all the data sets.
 export SITE_BASE_PATH="${HOME}/Data/FATES_DataSets"
 # Sub-directory with data sets specific to this site.
-export SITE_NAME="1x1pt-paracouGUF_v1.5_c20210713"
+export SITE_NAME="1x1pt-paracouGUF_v1.6_c20210913"
 # Domain file (it must be in the SITE_NAME sub-directory).
 export HLM_USRDAT_DOMAIN="domain.lnd.${SITE_NAME}_navy.nc"
 # Surface data file (it must be in the SITE_NAME sub-directory).
@@ -156,7 +165,7 @@ export INVENTORY_BASE="${SITE_NAME}_nounder_info.txt"
 #---~---
 xml_settings=("DEBUG                             FALSE"
               "RUN_STARTDATE                     2004-01-01"
-              "STOP_N                            16"
+              "STOP_N                            4"
               "STOP_OPTION                       nyears"
               "REST_N                            1"
               "YYY_FORCE_COLDSTART               on"
@@ -167,22 +176,24 @@ xml_settings=("DEBUG                             FALSE"
 
 
 #---~---
-#    PFT Parameter settings to change.  In case you don't want to change any parameter, leave
-# this part blank.  Otherwise, the first argument is the variable name, the second argument
-# is the PFT number, and the third argument is the value.
+#    Parameter settings to change.  In case you don't want to change any parameter, 
+# leave this part blank.  Otherwise, the first argument is the variable name, the second 
+# argument is the PFT number (or zero if it is a global parameter), and the third argument 
+# is the value.
 #
 # Example:
 #
-# No change in PFT settings:
-# pft_settings=()
+# No change in parameter settings:
+# prm_settings=()
 #
 # Changes in xml settings
-# pft_settings=("fates_wood_density 1      0.65"
-#               "fates_wood_density 2      0.75"
-#               "fates_smpsc        1 -200000.0"
-#               "fates_smpsc        2 -300000.0")
+# prm_settings=("fates_phen_drought_threshold  0 -203943.2"
+#               "fates_alloc_storage_cushion   1       1.2"
+#               "fates_alloc_storage_cushion   2       2.4"
+#               "fates_leaf_vcmax25top         1  30.94711"
+#               "fates_leaf_vcmax25top         2  46.42066")
 #---~---
-pft_settings=()
+prm_settings=()
 #---~---
 
 
@@ -213,6 +224,7 @@ pft_settings=()
 if ${USE_FATES}
 then
    hlm_settings=("hist_empty_htapes .true."
+                 "fates_parteh_mode      1"
                  "hist_fincl1       'AGB','AGB_SCPF','AR','EFLX_LH_TOT',\
                                     'FSH','ELAI','FIRE','FLDS','FSDS','FSR','GPP','HR',\
                                     'NEP','GPP_BY_AGE','PATCH_AREA_BY_AGE','BA_SCPF',\
@@ -220,21 +232,35 @@ then
                                     'NPLANT_UNDERSTORY_SCPF','DDBH_CANOPY_SCPF',\
                                     'DDBH_UNDERSTORY_SCPF','MORTALITY_CANOPY_SCPF',\
                                     'MORTALITY_UNDERSTORY_SCPF','GPP_SCPF','AR_SCPF',\
-                                    'NPP_SCPF','ELAI','ESAI','TLAI','TSAI','LAI_BY_AGE',\
-                                    'LAI_CANOPY_SCLS','LAI_UNDERSTORY_SCLS',\
+                                    'NPP_SCPF','NPP_LEAF_SCPF','NPP_SEED_SCPF',\
+                                    'NPP_FNRT_SCPF','NPP_BGSW_SCPF','NPP_AGSW_SCPF',\
+                                    'NPP_BGDW_SCPF','NPP_AGDW_SCPF','NPP_STOR_SCPF',\
+                                    'ELAI','ESAI','TLAI','TSAI','LAI_BY_AGE',\
+                                    'LAI_CANOPY_SCPF','LAI_UNDERSTORY_SCPF',\
                                     'PATCH_AREA_BY_AGE','DEMOTION_RATE_SCLS',\
-                                    'PROMOTION_RATE_SCLS','M1_SCPF','M2_SCPF','M3_SCPF',\
+                                    'PROMOTION_RATE_SCLS','BLEAF_CANOPY_SCPF',\
+                                    'BLEAF_UNDERSTORY_SCPF','BSTOR_CANOPY_SCPF',\
+                                    'BSTOR_UNDERSTORY_SCPF','M1_SCPF','M2_SCPF','M3_SCPF',\
                                     'M4_SCPF','M5_SCPF','M6_SCPF','M7_SCPF','M8_SCPF',\
-                                    'M9_SCPF','M10_SCPF','CARBON_BALANCE_CANOPY_SCLS',\
+                                    'M9_SCPF','M10_SCPF','AR_SCPF','AR_GROW_SCPF',\
+                                    'AR_DARKM_SCPF','AR_AGSAPM_SCPF','AR_CROOTM_SCPF',\
+                                    'AR_FROOTM_SCPF','CARBON_BALANCE_CANOPY_SCLS',\
                                     'CARBON_BALANCE_UNDERSTORY_SCLS',\
                                     'TRIMMING_CANOPY_SCLS','TRIMMING_UNDERSTORY_SCLS',\
+                                    'SITE_DROUGHT_STATUS','SITE_DAYSINCE_DROUGHTLEAFOFF',\
+                                    'SITE_DAYSINCE_DROUGHTLEAFON',\
+                                    'SITE_MEANLIQVOL_DROUGHTPHEN',\
+                                    'SITE_MEANSMP_DROUGHTPHEN',\
                                     'TBOT','QBOT','PBOT','QVEGE','QVEGT','QSOIL',\
-                                    'FSH_V','FSH_G','FGR','BTRAN','ZWT','ZWT_PERCH','SMP',\
-                                    'TSA','TV','TREFMNAV','TREFMXAV','TG','TAF','QAF',\
-                                    'UAF','Q2M','RAIN','QDIRECT_THROUGHFALL','QDRIP',\
-                                    'QOVER','QDRAI','QINTR','USTAR','U10'")
+                                    'C_STOMATA','C_LBLAYER','C_STOMATA_BY_AGE',\
+                                    'C_LBLAYER_BY_AGE','FSH_V','FSH_G','FGR','BTRAN',\
+                                    'BTRANMN','ZWT','ZWT_PERCH','SMP','TSOI','TSA','TV',\
+                                    'TREFMNAV','TREFMXAV','TG','TAF','QAF','UAF','Q2M',\
+                                    'RAIN','QDIRECT_THROUGHFALL','QDRIP','QOVER','QDRAI',\
+                                    'QINTR','USTAR','U10'")
 else
    hlm_settings=("hist_empty_htapes .true."
+                 "fates_parteh_mode      1"
                  "hist_fincl1       'AR','EFLX_LH_TOT','FSH','ELAI','FIRE','FLDS',\
                                     'FSDS','FSR','GPP','HR','NEP','ELAI','ESAI','TLAI',\
                                     'TSAI','TBOT','QBOT','PBOT','QVEGE','QVEGT','QSOIL',\
@@ -309,10 +335,6 @@ E3SM)
    export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
    #---~---
 
-   #--- Main path for FATES
-   export FATESMODEL_PATH="${HOSTMODEL_PATH}/components/elm/src/external_models/fates"
-   #---~---
-
    #--- Additional options for "create_newcase"
    export NEWCASE_OPTS=""
    #---~---
@@ -351,10 +373,6 @@ CTSM|CESM)
    export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
    #---~---
 
-   #--- Main path for FATES
-   export FATESMODEL_PATH="${HOSTMODEL_PATH}/src/fates"
-   #---~---
-
    #--- Additional options for "create_newcase"
    export NEWCASE_OPTS="--run-unsupported"
    #---~---
@@ -380,8 +398,8 @@ esac
 
 
 #--- Define version of host model and FATES
-export HLM_HASH="${HLM}-$(cd ${HOSTMODEL_PATH};   git log -n 1 --pretty=%h)"
-export FATES_HASH="FATES-$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)"
+export HLM_HASH="${HLM}-$(cd ${HOSTMODEL_PATH};  git log -n 1 --pretty=%h)"
+export FATES_HASH="FATES-$(cd ${FATES_SRC_PATH}; git log -n 1 --pretty=%h)"
 #---~---
 
 
@@ -398,9 +416,9 @@ export RESOL=$(echo "${RESOL}" | sed s@"YYY"@"${HLM}"@g | sed s@"yyy"@"${hlm}"@g
 #---~---
 #   Set default case name prefix in case none was provided.
 #---~---
-if [[ "${CASE_NAME}" == "" ]]
+if [[ "${CASE_PREFIX}" == "" ]]
 then
-   export CASE_NAME="SX_${COMP}_${MACH}_${TODAY}"
+   export CASE_PREFIX="SX_${COMP}_${MACH}_${TODAY}"
 fi
 #---~---
 
@@ -410,15 +428,15 @@ fi
 #---~---
 if ${USE_FATES} && ${APPEND_GIT_HASH}
 then
-   export CASE_NAME="${CASE_NAME}_${HLM_HASH}_${FATES_HASH}"
+   export CASE_NAME="${CASE_PREFIX}_${HLM_HASH}_${FATES_HASH}"
 elif ${APPEND_GIT_HASH}
 then
-   export CASE_NAME="${CASE_NAME}_${HLM_HASH}_BigLeaf"
+   export CASE_NAME="${CASE_PREFIX}_${HLM_HASH}_BigLeaf"
 elif ${USE_FATES}
 then
-   export CASE_NAME="${CASE_NAME}_${HLM}_FATES"
+   export CASE_NAME="${CASE_PREFIX}_${HLM}_FATES"
 else
-   export CASE_NAME="${CASE_NAME}_${HLM}_BigLeaf"
+   export CASE_NAME="${CASE_PREFIX}_${HLM}_BigLeaf"
 fi
 #---~---
 
@@ -434,6 +452,7 @@ export SIMUL_PATH="${SIMUL_ROOT}/${CASE_NAME}"
 
 #--- Namelist for the host land model.
 export USER_NL_HLM="${CASE_PATH}/user_nl_${hlm}"
+export USER_NL_MOSART="${CASE_PATH}/user_nl_mosart"
 #---~---
 
 
@@ -528,8 +547,8 @@ case "${RESOL}" in
    ./xmlchange CALENDAR="${METD_CALENDAR}"
    ./xmlchange ${V_HLM_USRDAT_NAME}="${SITE_NAME}"
    ./xmlchange ATM_DOMAIN_PATH="${SITE_PATH}"
-   ./xmlchange LND_DOMAIN_PATH="${SITE_PATH}"
    ./xmlchange ATM_DOMAIN_FILE="${HLM_USRDAT_DOMAIN}"
+   ./xmlchange LND_DOMAIN_PATH="${SITE_PATH}"
    ./xmlchange LND_DOMAIN_FILE="${HLM_USRDAT_DOMAIN}"
    ./xmlchange DIN_LOC_ROOT_CLMFORC="${SITE_BASE_PATH}"
 
@@ -604,25 +623,28 @@ fi
 #---~---
 
 
-
-#---~---
-#
-# WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! 
-# WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! 
-# WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! 
-# WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! 
-#
-#     This part modifies the DATM namelist. Do NOT change this unless you know exactly
-# what you are doing.
-#---~---
-USER_NL_DATM="${CASE_PATH}/user_nl_datm"
-touch ${USER_NL_DATM}
-echo "taxmode = 'cycle','cycle','cycle'" >> ${USER_NL_DATM}
-#---~---
-
-
-#--- Start setting up the case
+#--- Initial case set up.
 ./case.setup
+#---~---
+
+
+
+#---~---
+#    Append the surface data information to the namelist, in case we are using 
+#---~---
+case "${RESOL}" in
+?LM_USRDAT)
+   # Append surface data file to the namelist.
+   HLM_SURDAT_FILE="${SITE_PATH}/${HLM_USRDAT_SURDAT}"
+   
+   echo "fsurdat = '${HLM_SURDAT_FILE}'" >> ${USER_NL_HLM}
+   echo "frivinp_rtm = ' '"              >> ${USER_NL_MOSART}
+   ;;
+esac
+#---~---
+
+
+#--- Preview namelists
 ./preview_namelists
 #---~---
 
@@ -676,20 +698,6 @@ esac
 
 
 #---~---
-#    Append the surface data information to the namelist, in case we are using 
-#---~---
-case "${RESOL}" in
-?LM_USRDAT)
-   # Append surface data file to the namelist.
-   HLM_SURDAT_FILE="${SITE_PATH}/${HLM_USRDAT_SURDAT}"
-   echo "fsurdat = '${HLM_SURDAT_FILE}'" >> ${USER_NL_HLM}
-   ;;
-esac
-#---~---
-
-
-
-#---~---
 #     Include settings for the inventory initialisation.
 #---~---
 if ${USE_FATES} && [[ "${INVENTORY_BASE}" != "" ]]
@@ -736,7 +744,7 @@ then
    #---~---
    #   Check whether or not to edit parameters
    #---~---
-   if [[ ${#pft_settings[*]} -gt 0 ]]
+   if [[ ${#prm_settings[*]} -gt 0 ]]
    then
 
       #--- Set python script for updating parameters.
@@ -746,17 +754,25 @@ then
 
       #--- Loop through the parameters to update.
       echo " + Create local parameter file."
-      for p in ${!pft_settings[*]}
+      for p in ${!prm_settings[*]}
       do
          #--- Retrieve settings.
-         pft_var=$(echo ${pft_settings[p]} | awk '{print $1}')
-         pft_num=$(echo ${pft_settings[p]} | awk '{print $2}')
-         pft_val=$(echo ${pft_settings[p]} | awk '{print $3}')
+         prm_var=$(echo ${prm_settings[p]} | awk '{print $1}')
+         prm_pft=$(echo ${prm_settings[p]} | awk '{print $2}')
+         prm_val=$(echo ${prm_settings[p]} | awk '{print $3}')
          #---~---
 
          #--- Update parameters.
-         ${MODIFY_PARAMS_PY} --var ${pft_var} --pft ${pft_num} --val ${pft_val}               \
-            --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+         case ${pft_num} in
+         0)
+            ${MODIFY_PARAMS_PY} --var ${prm_var} --val ${prm_val}                          \
+               --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+            ;;
+         *)
+            ${MODIFY_PARAMS_PY} --var ${prm_var} --pft ${prm_pft} --val ${prm_val}         \
+               --fin ${FATES_PARAMS_CASE} --fout ${FATES_PARAMS_CASE} --O
+            ;;
+         esac
          #---~---
       done
       #---~---
@@ -770,7 +786,7 @@ then
    #---~---
 else
    #--- No changes needed.
-   echo " + No PFT parameter settings required."
+   echo " + No parameter settings required."
    #---~---
 fi
 #---~---
@@ -826,9 +842,33 @@ fi
 
 #--- Build case.
 ./case.build --clean
-./case.build
+./case.build 2>&1 | tee ./cb_output.log
 #---~---
 
+
+
+#--- Check that job ran successfully. If so, see if the case should be submitted.
+is_success=$(echo ./cb_output.log | grep "MODEL BUILD HAS FINISHED SUCCESSFULLY" | wc -l)
+if [[ ${is_success} -eq 0 ]]
+then
+   echo " Model was not successfully built, check logs..."
+   exit 99
+elif ${CASE_SUBMIT} && ${CASE_WAIT}
+then
+   echo " Submit the case."
+   ./case.submit 2>&1 | tee ./cs_output.log
+   echo " Case simulation ended."
+elif ${CASE_SUBMIT}
+then
+   echo " Submit the case."
+   ./case.submit 1> ./cs_output.log 2>&1 &
+   echo " Simulation is running in background.  Check progress by using:"
+   echo "    tail -f ${CASE_PATH}/cs_output.log"
+else
+   echo " Case is ready to run. You can submit by using:"
+   echo "    (cd ${CASE_PATH}; ./case.submit | tee ./cs_output.log)"
+fi
+#---~---
 
 
 #--- Return to the original path.

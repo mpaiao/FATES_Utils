@@ -41,22 +41,49 @@ invisible(gc())
 
 In this part, we set a few useful global paths, files, and variables.
 
-First, we define the case:
+First, we define the case (variable `case_info`). For convenience, we use a *tibble* structure (`tribble`) containing the following elements for a few simulations:
 
-* **case_name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
-* **case_desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
-* **case_model**. Name of the land model, which will be used for legends.
+* **idx**. A simple index number, so we can select the simulation to process. This is useful for when handling multiple runs.
+* **name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
+* **model**. Which model was used (typically `CLM-FATES` or `ELM-FATES`). The name may appear in `name` too, but this is used for titles.
+* **desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
 * **tstampa**.  The first time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
 * **tstampz**.  The last time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
+* **site**. The sub-directory name in `site_main` containing the tower averages by month and year for this particular site.  This uses the structure created by the [FATES Utilities](https://github.com/mpaiao/FATES_Utils) tools.
+
+It is possible to select the simulation to process using the variable case_idx
 
 **Note**. Regardless of `tstampa`, we will always read in the very first file to retrieve some data that are only written in the first output.
 
 ```{r, label='case-settings'}
-case_name  = "D0006_ParacouEGHD_CLM_FATES"        # Simulation path
-case_desc  = "Paracou EvGn-HyDd test (CLM-FATES)" # Simulation description
-case_model = "CLM-FATES"                          # Model used for this simulation
-tstampa    = NA_character_ # "01/01/2008"         # First time (MM/DD/YYYY)
-tstampz    = NA_character_ # "12/01/2018"         # Last time (MM/DD/YYYY)
+
+# Define the data structure
+case_info = tidyr::tribble( ~idx, ~name                                , ~model       , ~desc                          
+                                , ~site                                , ~tstampa     , ~tstampz
+                          ,    0, "D0000_ParacouTest_CLM_FATES"        , "CLM-FATES"  , "Paracou Test"                  
+                                , "1x1pt-paracouGUF_v1.6_c20210913"    , NA_character_, NA_character_
+                          ,    1, "S0001_ParacouNewPhen_CLM_FATES"     , "CLM-FATES"  , "Paracou: New Phenology"
+                                , "1x1pt-paracouGUF_v1.6_c20210913"    , NA_character_, NA_character_
+                          ,    2, "S0002_TanguroNewPhen_CLM_FATES"     , "CLM-FATES"  , "Tanguro: New Phenology"
+                                , "1x1pt-tanguroMT-BR_v1.2_c20210913"  , NA_character_, NA_character_
+                          ,    3, "S0003_PetrolinaNewPhen_CLM_FATES"   , "CLM-FATES"  , "Petrolina: New Phenology"
+                                , "1x1pt-petrolinaPE-BR_v1.2_c20210913", NA_character_, NA_character_
+                          )#end tribble
+
+# Use case_idx to select which simulation to process
+case_idx  = 1
+
+# Copy the names to scalars.
+case_idx     = match(case_idx,case_info$idx)
+case_name    = case_info$name   [case_idx]
+case_model   = case_info$model  [case_idx]
+case_desc    = paste0(case_info$desc[case_idx]," (",case_model,")")
+case_site    = case_info$site   [case_idx]
+case_tstampa = case_info$tstampa[case_idx]
+case_tstampz = case_info$tstampz[case_idx]
+
+
+
 ```
 
 We then set some global paths:
@@ -71,16 +98,10 @@ We then set some global paths:
 
 ```{r, label='path-settings'}
 home_path  = path.expand("~")
-hesm_main  = file.path(home_path,"Documents/LocalData/FATES/Simulations")
+hesm_main  = file.path(home_path,"Documents/LocalData/FATES/SingleRuns/Simulations")
 site_main  = file.path(home_path,"Data/FATES_DataSets")
 util_path  = file.path(home_path,"Util/RUtils")
-plot_main  = file.path(hesm_main,"figures",case_name)
-```
-
-
-Set the name of the sub-directory in `site_main` containing the tower averages by month and year for this particular site.  This uses the structure created by the [FATES Utilities](https://github.com/mpaiao/FATES_Utils) tools.  
-```{r,label='tower-info'}
-site_name = "1x1pt-paracouGUF_v1.5_c20210713"
+plot_main  = file.path(hesm_main,"Figures",case_name)
 ```
 
 
@@ -146,27 +167,49 @@ taylor_biasvar_path = file.path(plot_main,"taylor_biasvar")
 dummy = dir.create(comparison_path    ,recursive = TRUE,showWarnings = FALSE)
 dummy = dir.create(taylor_biasvar_path,recursive = TRUE,showWarnings = FALSE)
 
-# Define eddy covariance tower file
-site_path = file.path(site_main,site_name)
-site_base = list.files(path=site_path,pattern="_eddy-summ\\.nc$")
+# Define eddy covariance tower and leaf area index files.
+site_path = file.path(site_main,case_site)
+eddy_base = list.files(path=site_path,pattern="_eddy-summ\\.nc$")
+mlai_base = list.files(path=site_path,pattern="_c6modis-summ\\.nc$")
 
 #    Make sure we found the tower file, otherwise, stop. In case more than one file exists, 
 # we take the most recent one. 
-if (length(site_base) > 0){
-   site_file = file.path(site_path,site_base)
-   site_info = file.info(site_file)
-   iuse      = which.max(as.POSIXct(site_info$mtime))
-   site_base = site_base[iuse]
-   site_file = site_file[iuse]
+if (length(eddy_base) > 0){
+   eddy_file = file.path(site_path,eddy_base)
+   eddy_info = file.info(eddy_file)
+   iuse      = which.max(as.POSIXct(eddy_info$mtime))
+   eddy_base = eddy_base[iuse]
+   eddy_file = eddy_file[iuse]
 }else{
    cat(" Tower file data not found.  Check your settings.\n")
    cat(" site_main = \"",site_main,"\"\n",sep="")
-   cat(" site_name = \"",site_name,"\"\n",sep="")
+   cat(" case_site = \"",case_site,"\"\n",sep="")
    cat(" site_path = \"",site_path,"\"\n",sep="")
    cat(" Path \"site_main\" exists = ",file.exists(site_main),"\n",sep="")
    cat(" Path \"site_path\" exists = ",file.exists(site_path),"\n",sep="")
    stop(" Path settings for site data are likely incorrect.")
-}
+}#end if
+
+
+#    Make sure we found the MODIS LAI file, otherwise, skip LAI. In case more than one file exists, 
+# we take the most recent one. 
+if (length(mlai_base) > 0){
+   mlai_file = file.path(site_path,mlai_base)
+   mlai_info = file.info(mlai_file)
+   iuse      = which.max(as.POSIXct(mlai_info$mtime))
+   mlai_base = mlai_base[iuse]
+   mlai_file = mlai_file[iuse]
+}else{
+   cat(" MODIS file data not found.  Check your settings.\n")
+   cat(" site_main = \"",site_main,"\"\n",sep="")
+   cat(" case_site = \"",case_site,"\"\n",sep="")
+   cat(" site_path = \"",site_path,"\"\n",sep="")
+   cat(" Path \"site_main\" exists = ",file.exists(site_main),"\n",sep="")
+   cat(" Path \"site_path\" exists = ",file.exists(site_path),"\n",sep="")
+   warning(" MODIS data are not available for this site.")
+}#end if
+
+
 ```
 
 
@@ -224,8 +267,10 @@ for (d in seq_along(nc_file)){
 We set the times for which we will retrieve simulation results. A few noteworthy variables.
 
 * **tstamp0**. First simulation time. This is always the actual first output file of the simulation, because the first output always has additional variables that are useful for analyses.
-* **tstampa**. First time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the first available time.
-* **tstampz**. Last time used for output. If this was set as `NA_character_` at the beginning of the script, we will update it with the last available time.
+* **tstampa**. First time used for output. If `case_tstampa` was set as `NA_character_` at the beginning of the script, we will use the first available time.
+* **tstampz**. Last time used for output. If `this`case_tstampz` was set as `NA_character_` at the beginning of the script, we will use the last available time.
+* **tstamp**. The vector with all times that should be loaded.
+* **ntstamp**. The total count of time steps to load.
 
 ```{r, label='time-settings',message=FALSE,results='hide'}
 
@@ -235,21 +280,21 @@ if (! "tstamp0" %in% ls()){
    year0   = tstamp0[3]
    month0  = tstamp0[1]
 }#end if (is.character(tstampa))
-if (is.na(tstampa)){
+if (is.na(case_tstampa)){
    tstampa = as.integer(unlist(strsplit(tstamp_1st,split="/")))
    yeara   = tstampa[3]
    montha  = tstampa[1]
-}else if (is.character(tstampa)){
-   tstampa = as.integer(unlist(strsplit(tstampa,split="/")))
+}else{
+   tstampa = as.integer(unlist(strsplit(case_tstampa,split="/")))
    yeara   = tstampa[3]
    montha  = tstampa[1]
 }#end if (is.character(tstampa))
-if (is.character(tstampz)){
+if (is.na(case_tstampz)){
    tstampz = as.integer(unlist(strsplit(tstamp_lst,split="/")))
    yearz   = tstampz[3]
    monthz  = tstampz[1]
-}else if (is.character(tstampz)){
-   tstampz = as.integer(unlist(strsplit(tstampz,split="/")))
+}else{
+   tstampz = as.integer(unlist(strsplit(case_tstampz,split="/")))
    yearz   = tstampz[3]
    monthz  = tstampz[1]
 }#end if (is.character(tstampz))
@@ -299,37 +344,38 @@ First we retrieve the site measurements and estimates of ecosystem productivity 
 For additional information on which variables to be loaded and which units to use in the output, check the `hlm1dvar` settings in  [RUtils/hlm_varlist.r](https://github.com/mpaiao/FATES_Utils/blob/master/RUtils/hlm_varlist.r).
 
 ```{r, label='load-eddy'}
-if ("nc_site" %in% ls()){dummy = nc_close(nc_site); rm(nc_site)}
+if ("nc_eddy" %in% ls()){dummy = nc_close(nc_eddy); rm(nc_eddy)}
 
 # Open NetCDF connection and retrieve variable names
-cat0(" + Load site data from ",site_base,".")
-nc_site  = nc_open(filename=site_file)
-nc_nvars = nc_site$nvars
-nc_ndims = nc_site$ndims
+cat0(" + Load site data from ",eddy_base,".")
+nc_eddy  = nc_open(filename=eddy_file)
+nc_nvars = nc_eddy$nvars
+nc_ndims = nc_eddy$ndims
 nc_dlist = rep(NA_character_,times=nc_ndims)
 nc_vlist = rep(NA_character_,times=nc_nvars)
-for (d in sequence(nc_ndims)) nc_dlist[d] = nc_site$dim[[d]]$name
-for (v in sequence(nc_nvars)) nc_vlist[v] = nc_site$var[[v]]$name
+for (d in sequence(nc_ndims)) nc_dlist[d] = nc_eddy$dim[[d]]$name
+for (v in sequence(nc_nvars)) nc_vlist[v] = nc_eddy$var[[v]]$name
 
 # Select variables to load
 nc_obs1d    = nc_vlist[tolower(nc_vlist) %in% hlm1dvar$vnam[hlm1dvar$assess]]
 
 
 # Extract time information
-site_time0  = as_datetime(gsub(pattern="^days since ",replacement="",x=nc_site$dim$time$units))
-site_time   = site_time0 + days(nc_site$dim$time$vals)
-n_site_time = nc_site$dim$time$len
+eddy_time0  = as_datetime(gsub(pattern="^days since ",replacement="",x=nc_eddy$dim$time$units))
+eddy_time   = eddy_time0 + days(nc_eddy$dim$time$vals)
+n_eddy_time = nc_eddy$dim$time$len
 
 # Initialise a tibble that will host all data
-site1d = tibble( time = site_time)
+eddy1d = tibble( time = eddy_time)
 
 # Find conversion factors for monthly variables.
-cmon.day = days_in_month(site1d$time)
+cmon.day = days_in_month(eddy1d$time)
 cmon.hr  = day.hr  * cmon.day
 cmon.min = day.min * cmon.day
 cmon.sec = day.sec * cmon.day
 
 # Loop through variables, and load data sets.
+o_loop = which(nc_obs1d %in% hlm1dvar$vnam)
 for (o in seq_along(nc_obs1d)){
    # Retrieve settings for variable
    nc_nvnow        = nc_obs1d[o]
@@ -338,27 +384,99 @@ for (o in seq_along(nc_obs1d)){
    h_desc          = hlm1dvar$desc[h]
    h_add0          = eval(parse(text=hlm1dvar$add0[h]))
    h_mult          = eval(parse(text=hlm1dvar$mult[h]))
-   nc_dat          = ncvar_get(nc=nc_site,varid=nc_nvnow)
+   nc_dat          = ncvar_get(nc=nc_eddy,varid=nc_nvnow)
    cat0("   - Retrieve ",h_desc,".")
-   site1d[[h_vnam]] = h_add0 + h_mult * nc_dat
+   eddy1d[[h_vnam]] = h_add0 + h_mult * nc_dat
 }#end for (o in seq_along(nc_obs1d))
 
 # Load site coordinates. We will check whether observations and model are reasonably close.
-site_coord = tibble( clon = c(ncvar_get(nc=nc_site,varid="LONGXY"))
-                   , clat = c(ncvar_get(nc=nc_site,varid="LATIXY"))
-                   , wlon = c(ncvar_get(nc=nc_site,varid="EDGEW" ))
-                   , elon = c(ncvar_get(nc=nc_site,varid="EDGEE" ))
-                   , slat = c(ncvar_get(nc=nc_site,varid="EDGES" ))
-                   , nlat = c(ncvar_get(nc=nc_site,varid="EDGEN" ))
+site_coord = tibble( clon = c(ncvar_get(nc=nc_eddy,varid="LONGXY"))
+                   , clat = c(ncvar_get(nc=nc_eddy,varid="LATIXY"))
+                   , wlon = c(ncvar_get(nc=nc_eddy,varid="EDGEW" ))
+                   , elon = c(ncvar_get(nc=nc_eddy,varid="EDGEE" ))
+                   , slat = c(ncvar_get(nc=nc_eddy,varid="EDGES" ))
+                   , nlat = c(ncvar_get(nc=nc_eddy,varid="EDGEN" ))
                    )#end tibble
 
 
 # Close file and remove connection.
-dummy = nc_close(nc_site)
-rm(nc_site)
+dummy = nc_close(nc_eddy)
+rm(nc_eddy)
 ```
 
-The time span for site measurements and tower may not match.  In this case, we identify the overlapping time interval, and trim both the site and model assessment to this period in which both are available.  We always keep track of the actual first time of the model, though, because the first history file contains additional data that may be useful when we adapt the code to compare soil state variables.
+
+
+If available, we retrieve MODIS-derived data.  Currently only LAI is loaded, but other variables may be included in the future as well.
+For additional information on which variables to be loaded and which units to use in the output, check the `fatesvar` settings in  [RUtils/fates_varlist.r](https://github.com/mpaiao/FATES_Utils/blob/master/RUtils/fates_varlist.r).
+
+```{r, label='load-mlai'}
+if (file.exists(mlai_file)){
+   
+   if ("nc_mlai" %in% ls()){dummy = nc_close(nc_mlai); rm(nc_mlai)}
+   
+   # Open NetCDF connection and retrieve variable names
+   cat0(" + Load site data from ",mlai_base,".")
+   nc_mlai  = nc_open(filename=mlai_file)
+   nc_nvars = nc_mlai$nvars
+   nc_ndims = nc_mlai$ndims
+   nc_dlist = rep(NA_character_,times=nc_ndims)
+   nc_vlist = rep(NA_character_,times=nc_nvars)
+   for (d in sequence(nc_ndims)) nc_dlist[d] = nc_mlai$dim[[d]]$name
+   for (v in sequence(nc_nvars)) nc_vlist[v] = nc_mlai$var[[v]]$name
+   
+   # Select variables to load
+   nc_obs1d    = nc_vlist[tolower(nc_vlist) %in% hlm1dvar$vnam[hlm1dvar$assess]]
+   
+   
+   # Extract time information
+   mlai_time0  = as_datetime(gsub(pattern="^days since ",replacement="",x=nc_mlai$dim$time$units))
+   mlai_time   = mlai_time0 + days(nc_mlai$dim$time$vals)
+   n_mlai_time = nc_mlai$dim$time$len
+   
+   # Initialise a tibble that will host all data
+   mlai1d = tibble( time = mlai_time)
+   
+   # Find conversion factors for monthly variables.
+   cmon.day = days_in_month(mlai1d$time)
+   cmon.hr  = day.hr  * cmon.day
+   cmon.min = day.min * cmon.day
+   cmon.sec = day.sec * cmon.day
+   
+   # Loop through variables, and load data sets.
+   o_loop = which(nc_obs1d %in% hlm1dvar$vnam)
+   for (o in seq_along(nc_obs1d)){
+      # Retrieve settings for variable
+      nc_nvnow        = nc_obs1d[o]
+      h               = match(tolower(nc_nvnow),hlm1dvar$vnam)
+      h_vnam          = hlm1dvar$vnam[h]
+      h_desc          = hlm1dvar$desc[h]
+      h_add0          = eval(parse(text=hlm1dvar$add0[h]))
+      h_mult          = eval(parse(text=hlm1dvar$mult[h]))
+      nc_dat          = ncvar_get(nc=nc_mlai,varid=nc_nvnow)
+      cat0("   - Retrieve ",h_desc,".")
+      mlai1d[[h_vnam]] = h_add0 + h_mult * nc_dat
+   }#end for (o in seq_along(nc_obs1d))
+   
+   
+   # Close file and remove connection.
+   dummy = nc_close(nc_mlai)
+   rm(nc_mlai)
+
+   # Merge the two objects
+   site1d      = full_join(x=eddy1d,y=mlai1d,by=c("time")) %>% 
+                 arrange(time)
+   n_site_time = nrow(site1d)
+}else{
+   # MODIS data not found. Turn eddy1d into site1d.
+   site1d = eddy1d
+   n_site_time = n_eddy_time
+}#end if (file.exists(mlai_file))
+
+```
+
+
+
+The time span for site simulations and tower may not match.  In this case, we identify the overlapping time interval, and trim both the site and model assessment to this period in which both are available.  We always keep track of the actual first time of the model, though, because the first history file contains additional data that may be useful when we adapt the code to compare soil state variables.
 
 ```{r, label='time-intersect'}
 
@@ -402,11 +520,23 @@ for (v in sequence(nc_nvars)) nc_vlist[v] = nc_info$var[[v]]$name
 #---~---
 
 cat0("   - Identify all HLM variables.")
-# Retrieve all "1D" variables that are available at the host model.
+# Retrieve all "1D" variables that are available at the host model. 
+# A few variables may not exist in truly 1D, so we check if they may be reconstructed.
 nc_pref   = tolower(x=nc_vlist)
-nc_keep   = nc_pref %in% hlm1dvar$vnam
+nc_scpf   = ( nc_pref %in% paste0(hlm1dvar$vnam,"_canopy_scpf"    )
+            | nc_pref %in% paste0(hlm1dvar$vnam,"_understory_scpf") )
+nc_scls   = ( nc_pref %in% paste0(hlm1dvar$vnam,"_canopy_scls"    )
+            | nc_pref %in% paste0(hlm1dvar$vnam,"_understory_scls") )
+nc_keep   = nc_pref %in% hlm1dvar$vnam | ( ( !  nc_pref %in% hlm1dvar$vnam ) & ( nc_scpf | nc_scls ) )
 no_hlm1d  = nc_vlist[! nc_keep]
 nc_hlm1d  = nc_vlist[  nc_keep]
+
+# Remove suffix, we will add them back later when needed.
+nc_hlm1d  = gsub(pattern="_CANOPY_SCPF$"    ,replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_CANOPY_SCLS$"    ,replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_UNDERSTORY_SCPF$",replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_UNDERSTORY_SCLS$",replacement="",x=nc_hlm1d)
+nc_hlm1d  = sort(unique(nc_hlm1d))
 
 # Check whether to append "evapotranspiration"
 cat("   - Check whether or not we can find evapotranspiration... ")
@@ -523,14 +653,40 @@ for (w in sequence(ntstamp)){
 
    # Read 1D variables  
    for (v in sequence(nhlm1d-etr_last-er_last)){
+      # Retrieve variable
       nc_nvnow            = nc_hlm1d[v]
+      nc_can_scpf         = paste0(nc_nvnow,"_CANOPY_SCPF")
+      nc_und_scpf         = paste0(nc_nvnow,"_UNDERSTORY_SCPF")
+      nc_can_scls         = paste0(nc_nvnow,"_CANOPY_SCLS")
+      nc_und_scls         = paste0(nc_nvnow,"_UNDERSTORY_SCLS")
       nc_pref             = tolower(x=nc_nvnow)
+
+      # Map variable to variable table, get the addition and multiplication factors.
       h                   = match(nc_pref,hlm1dvar$vnam)
       h_vnam              = hlm1dvar$vnam[h]
       h_add0              = eval(parse(text=hlm1dvar$add0[h]))
       h_mult              = eval(parse(text=hlm1dvar$mult[h]))
-      nc_dat              = ncvar_get(nc=nc_hlm,varid=nc_nvnow)
-      hlm1d[[h_vnam]][w]  = h_add0 + h_mult * nc_dat
+      
+      if (nc_nvnow %in% nc_vlist){
+         # Read variable as is.
+         nc_dat              = ncvar_get(nc=nc_hlm,varid=nc_nvnow)
+         hlm1d[[h_vnam]][w]  = h_add0 + h_mult * nc_dat
+      }else if(all(c(nc_can_scpf,nc_und_scpf) %in% nc_vlist)){
+         # Build variable from the size- and PFT- arrays.
+         nc_can              = ncvar_get(nc=nc_hlm,varid=nc_can_scpf)
+         nc_und              = ncvar_get(nc=nc_hlm,varid=nc_und_scpf)
+         hlm1d[[h_vnam]][w]  = h_add0 + h_mult * sum(nc_can+nc_und)
+      }else if(all(c(nc_can_scls,nc_und_scls) %in% nc_vlist)){
+         # Build variable from the size- and PFT- arrays.
+         nc_can              = ncvar_get(nc=nc_hlm,varid=nc_can_scls)
+         nc_und              = ncvar_get(nc=nc_hlm,varid=nc_und_scls)
+         hlm1d[[h_vnam]][w]  = h_add0 + h_mult * sum(nc_can+nc_und)
+      }else{
+         cat0("--------------------------------------------------")
+         cat0(" The following variable is not available: ",nc_nvnow,".")
+         cat0(" The attempts to add canopy and under storey also failed..")
+         stop(" Missing variable.")
+      }#end if (is.na(h))
    }#for (h in sequence(nhlm1d-etr_last-et_last))
 
    # Find total ET.

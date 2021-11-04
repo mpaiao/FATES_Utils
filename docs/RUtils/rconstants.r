@@ -126,27 +126,31 @@ g2kg       <<- 1. / kg2g        # # of kilograms in a gram                     [
 #------------------------------------------------------------------------------------------#
 # Miscellaneous convertion factors.                                                        #
 #------------------------------------------------------------------------------------------#
-mol.2.umol     <<- 1.e6                 # mol         => umol
-umol.2.mol     <<- 1.e-6                # umol        => mol
-umol.2.kgC     <<- 1.20107e-8           # umol(CO2)   => kg(C)
-Watts.2.Ein    <<- 4.6e-6               # W/m2        => mol/m2/s
-Ein.2.Watts    <<- 1./Watts.2.Ein       # mol/m2/s    => W/m2
-kgC.2.umol     <<- 1. / umol.2.kgC      # kg(C)       => umol(CO2)
-kgom2.2.tonoha <<- 10.                  # kg(C)/m2    => ton(C)/ha
-tonoha.2.kgom2 <<- 0.1                  # ton(C)/ha   => kg(C)/m2
-umols.2.kgCyr  <<- umol.2.kgC * yr.sec  # umol(CO2)/s => kg(C)/yr
-kgCyr.2.umols  <<- 1. / umols.2.kgCyr   # kg(C)/yr    => umol(CO2)/s
-kgCday.2.umols <<- kgC.2.umol / day.sec # kg(C)/day   => umol(CO2)/s
-Torr.2.Pa      <<- prefsea / 760.       # Torr        => Pa
-Pa.2.Torr      <<- 1. / Torr.2.Pa       # Pa          => Torr
-hPa.2.Pa       <<- 100.                 # hPa         => Pa
-Pa.2.hPa       <<- 1. / hPa.2.Pa        # Pa          => hPa
-kt.2.mos       <<- 1852 / hr.sec        # knots       => m/s
-mos.2.kt       <<- 1. / kt.2.mos        # m/s         => knots
-frac2pc        <<- 100.                 # fraction    => percent
-pc2frac        <<- 1. / frac2pc         # percent     => fraction
-ha.2.m2        <<- 10000.               # hectare     => m2
-m2.2.ha        <<- 1./ha.2.m2           # m2          => hectare
+mol.2.umol     <<- 1.e6                     # mol            => umol
+umol.2.mol     <<- 1.e-6                    # umol           => mol
+umol.2.kgC     <<- 1.20107e-8               # umol(CO2)      => kg(C)
+Watts.2.Ein    <<- 4.6e-6                   # W/m2           => mol/m2/s
+Ein.2.Watts    <<- 1./Watts.2.Ein           # mol/m2/s       => W/m2
+kgC.2.umol     <<- 1. / umol.2.kgC          # kg(C)          => umol(CO2)
+kgom2.2.tonoha <<- 10.                      # kg(C)/m2       => ton(C)/ha
+tonoha.2.kgom2 <<- 0.1                      # ton(C)/ha      => kg(C)/m2
+umols.2.kgCyr  <<- umol.2.kgC * yr.sec      # umol(CO2)/s    => kg(C)/yr
+umols.2.kgWday <<- umol.2.mol*mmh2o*day.sec # umol (H2O)/s   => kg (H2O) / day
+kgCyr.2.umols  <<- 1. / umols.2.kgCyr       # kg(C)/yr       => umol(CO2)/s
+kgCday.2.umols <<- kgC.2.umol / day.sec     # kg(C)/day      => umol(CO2)/s
+kgWday.2.umols <<- 1. / umols.2.kgWday      # kg (H2O) / day => umol (H2O)/s
+Torr.2.Pa      <<- prefsea / 760.           # Torr           => Pa
+Pa.2.Torr      <<- 1. / Torr.2.Pa           # Pa             => Torr
+hPa.2.Pa       <<- 100.                     # hPa            => Pa
+Pa.2.hPa       <<- 1. / hPa.2.Pa            # Pa             => hPa
+kt.2.mos       <<- 1852 / hr.sec            # knots          => m/s
+mos.2.kt       <<- 1. / kt.2.mos            # m/s            => knots
+frac2pc        <<- 100.                     # fraction       => percent
+pc2frac        <<- 1. / frac2pc             # percent        => fraction
+ha.2.m2        <<- 10000.                   # hectare        => m2
+m2.2.ha        <<- 1./ha.2.m2               # m2             => hectare
+m2.2.cm2       <<- 10000.                   # cm2            => m2
+cm2.2.m2       <<- 1./m2.2.cm2              # m2             => cm2
 #------------------------------------------------------------------------------------------#
 
 

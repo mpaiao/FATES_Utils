@@ -9,13 +9,15 @@ navbar:
     href: make_fates_met_driver.html
   - text: "Surface/Domain files"
     href: make_fates_domain+surface.html
-  - text: "Set up single-site runs"
+  - text: "Run single-site simulations"
     href: create_case_hlm-fates.html
   - text: "Single-site visualisation with R"
     href: fates_plot_monthly.html
   - text: "Make tower-based benchmark file"
     href: make_fates_tower_summary.html
-  - text: "Evaluate FATES against tower"
+  - text: "MODIS LAI files"
+    href: c6_modis-lai_poi.html
+  - text: "Evaluate FATES against tower and MODIS"
     href: fates_tower_compare_monthly.html
 output:
   html_document:

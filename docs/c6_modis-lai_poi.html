@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Marcos Longo" />
+
+
+<title>Processor for MODIS LAI time series at points of interest</title>
+
+<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+<link rel="stylesheet" href="styles.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">FATES Utilities</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="make_fates_met_driver.html">Meteorological driver</a>
+</li>
+<li>
+  <a href="make_fates_domain+surface.html">Surface/Domain files</a>
+</li>
+<li>
+  <a href="create_case_hlm-fates.html">Run single-site simulations</a>
+</li>
+<li>
+  <a href="fates_plot_monthly.html">Single-site visualisation with R</a>
+</li>
+<li>
+  <a href="make_fates_tower_summary.html">Make tower-based benchmark file</a>
+</li>
+<li>
+  <a href="c6_modis-lai_poi.html">MODIS LAI files</a>
+</li>
+<li>
+  <a href="fates_tower_compare_monthly.html">Evaluate FATES against tower and MODIS</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Processor for MODIS LAI time series at points of interest</h1>
+<h4 class="author">Marcos Longo</h4>
+<h4 class="date">19-Oct-2021</h4>
+
+</div>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>This document shows how to generate time series of MODIS-derived leaf area index and FPAR for points of interest. The code will aggregate pixels near the point of interest, restrict the vegetation to sought classes only, and process only the data with the highest quality used.</p>
+<p>This script relies on data downloaded through <a href="https://lpdaacsvc.cr.usgs.gov/appeears/">AppEEARS</a>. There you will need to request the following data centred around the points of interest:</p>
+<table>
+<colgroup>
+<col width="10%" />
+<col width="15%" />
+<col width="37%" />
+<col width="17%" />
+<col width="19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><strong>Product</strong></th>
+<th><strong>Layer</strong></th>
+<th><strong>Description</strong></th>
+<th><strong>Spatial Resolution</strong></th>
+<th><strong>Temporal Resolution</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>MCD12Q1</strong></td>
+<td><strong>LC_Type1</strong></td>
+<td>Annual IGBP land cover classificat0ion</td>
+<td>500 m</td>
+<td>1 year</td>
+</tr>
+<tr class="even">
+<td><strong>MCD12Q1</strong></td>
+<td><strong>QC</strong></td>
+<td>Quality flags for land cover classificat0ion</td>
+<td>500 m</td>
+<td>1 year</td>
+</tr>
+<tr class="odd">
+<td><strong>MCD15A2H</strong></td>
+<td><strong>Lai_500m</strong></td>
+<td>Leaf area index</td>
+<td>500 m</td>
+<td>8 days</td>
+</tr>
+<tr class="even">
+<td><strong>MCD15A2H</strong></td>
+<td><strong>LaiStdDev_500m</strong></td>
+<td>Standard deviation of leaf area index</td>
+<td>500 m</td>
+<td>8 days</td>
+</tr>
+<tr class="odd">
+<td><strong>MCD15A2H</strong></td>
+<td><strong>Fpar_500m</strong></td>
+<td>Fraction of Photosynthetically Active Radiation</td>
+<td>500 m</td>
+<td>8 days</td>
+</tr>
+<tr class="even">
+<td><strong>MCD15A2H</strong></td>
+<td><strong>FparStdDev_500m</strong></td>
+<td>Standard deviation of FPAR</td>
+<td>500 m</td>
+<td>8 days</td>
+</tr>
+<tr class="odd">
+<td><strong>MCD15A2H</strong></td>
+<td><strong>FparLai_QC</strong></td>
+<td>Quality control flags for FPAR and LAI</td>
+<td>500 m</td>
+<td>8 days</td>
+</tr>
+<tr class="even">
+<td><strong>MCD15A2H</strong></td>
+<td><strong>FparExtra_QC</strong></td>
+<td>Extra detail quality for FPAR and LAI</td>
+<td>500 m</td>
+<td>8 days</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>This script assumes that the output data are saved in <strong>NetCDF-4</strong> format, using either <strong>geographic coordinates</strong> (preferred) or <em>MODIS Sinusoidal</em> coordinates. Make sure to select these settings when requesting data from AppEEARS. The script was written for Collection 6.</p>
+</div>
+<div id="reset-session" class="section level1">
+<h1>Reset session</h1>
+<p>Use this chunk to fully reset R.</p>
+<pre class="r"><code># Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) &gt; 0){
+   dummy = sapply(X=paste0(&quot;package:&quot;,plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) &gt; 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())</code></pre>
+</div>
+<div id="main-settings" class="section level1">
+<h1>Main settings</h1>
+<div id="path-and-file-locat0ion" class="section level2">
+<h2>Path and file locat0ion</h2>
+<p>Set paths and files for input and output.</p>
+<ul>
+<li><strong>home_path</strong>. Typically the user’s home path. Useful for building other paths. <code>path.expand("~")</code> typically works for all users.</li>
+<li><strong>main_path</strong>. The main path for processing data. The output path will be generated here.</li>
+<li><strong>util_path</strong>. Directory with useful functions and packages.</li>
+<li><strong>input_path</strong>. The locat0ion where existing surface and domain netcdf files are locat0ed</li>
+<li><strong>output_path</strong>. The main output path for the data. A sub-directory for this site will be created.</li>
+<li><strong>plot_path</strong>. The path for plots.</li>
+</ul>
+<pre class="r"><code>home_path   = path.expand(&quot;~&quot;)
+util_path   = file.path(home_path,&quot;Util&quot;,&quot;RUtils&quot;)
+main_path   = file.path(home_path,&quot;Data&quot;,&quot;MODIS_LAI&quot;)
+input_path  = file.path(main_path,&quot;InputData&quot;)
+output_path = file.path(main_path,&quot;MCD15A2H_Site&quot;)
+plot_path   = file.path(main_path,&quot;Figures&quot;)</code></pre>
+<p>Set the sites to process images. We put the information in a tibble object <code>poi_list</code> containing the following variables.</p>
+<ul>
+<li><strong>site</strong>. Site name (it must match the name of the sub-directory of <code>input_path</code>. Normally this is the same name given to the data retrieval from AppEEARS)</li>
+<li><strong>output</strong>. Output identifier, FATES style. This is useful for adding the data to existing folders.</li>
+<li><strong>lon</strong>. Longitude of the point of interest. The LAI output will pool data from multiple pixels centred around this longitude (defined by <code>sample_radius</code>).</li>
+<li><strong>lat</strong>. Latitude of the point of interest. The LAI output will pool data from multiple pixels centred around this latitude.(defined by <code>sample_radius</code>).</li>
+<li><strong>dxy</strong>. Intended grid size (we will generate a 1x1-point pseudo-grid for FATES).</li>
+<li><strong>geographic</strong>. Coordinate system used for this site. If <code>TRUE</code>, we assum geographic coordinates (i.e., longitude and latitude). If <code>FALSE</code>, we assume MODIS sinusoidal.</li>
+<li><strong>igbp_include</strong>. A character with the classes to include in the sample (represented by letters, case insensitive). Use the table below to guide the selection.</li>
+<li><strong>colour</strong>. A character with the colour to be used for each site.</li>
+</ul>
+<p>The following table shows which classes are included when each of the flags are set to true</p>
+<table>
+<thead>
+<tr class="header">
+<th>LC_Type1 Class</th>
+<th>Description</th>
+<th>igbp_include letter</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Evergreen Needleleaf Forests</td>
+<td>a</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Evergreen Broadleaf Forests</td>
+<td>b</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Deciduous Needleleaf Forests</td>
+<td>c</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Deciduous Broadleaf Forests</td>
+<td>d</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Mixed Forests</td>
+<td>e</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Closed Scrublands</td>
+<td>f</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Open Scrublands</td>
+<td>g</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Woody Savannahs</td>
+<td>h</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Savannahs</td>
+<td>i</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Grasslands</td>
+<td>j</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Permanent Wetlands</td>
+<td>k</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Croplands</td>
+<td>l</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Urban and Built-up Lands</td>
+<td>m</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>Cropland Natural Vegetation Mosaics</td>
+<td>n</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>Permanent Snow and Ice</td>
+<td>o</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>Barren</td>
+<td>p</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Water Bodies</td>
+<td>q</td>
+</tr>
+<tr class="even">
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># List of polygons to process.
+poi_list = tidyr::tribble( ~site      , ~output                              , ~lon   ,    ~lat, ~dxy, ~geographic, ~igbp_include,   ~colour
+                         , &quot;Paracou&quot;  , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    , -52.912,   5.282,  1.0,        TRUE,          &quot;bd&quot;, &quot;#8DA0CB&quot;
+                         , &quot;Tanguro&quot;  , &quot;1x1pt-tanguroMT-BR_v1.2_c20210913&quot;  , -52.409, -13.081,  1.0,        TRUE,          &quot;bd&quot;, &quot;#66C2A5&quot;
+                         , &quot;Petrolina&quot;, &quot;1x1pt-petrolinaPE-BR_v1.2_c20210913&quot;, -40.370,  -9.165,  1.0,        TRUE,      &quot;bdfghi&quot;, &quot;#FC8D62&quot;
+                         )#end tribble
+
+# Number of polygons to process
+n_poi_list = nrow(poi_list)</code></pre>
+<p>Additional settings for the output file</p>
+<ul>
+<li><strong>dat_version</strong>. Version of this data set.</li>
+<li><strong>undef_out</strong>. A number to denote missing values in the output (NetCDF) file. This is needed by NetCDF.</li>
+</ul>
+<pre class="r"><code>dat_version = &quot;1.6&quot;
+undef_out   = -9999.99</code></pre>
+<p>Additional settings for data processing:</p>
+<ul>
+<li><strong>sample_radius</strong>. The maximum radial distance to the reference point that shall be used for the sampling.</li>
+<li><strong>ci_range</strong>. Range of data to show for time series.</li>
+<li><strong>alpha_ribbon</strong>. Opaqueness level for ribbon (0 means transparent, 1 means fully opaque).</li>
+</ul>
+<pre class="r"><code># Set maximum distance from the point of interest that we will consider for sampling [in kilometres]
+sample_radius = 20.
+
+# Which quality flags to consider data high quality
+qcfine_mcd15a2h  = c(0,2,32,34) # Fine classes: FparLai_QC (MCD15A2H)
+exfine_mcd15a2h = c(0,128)      # Fine classes: FparExtra_QC (MCD15A2H)
+qcfine_mcd12q1   = c(0)         # Fine classes: QC (MCD12Q1)
+
+#  Set the range of data to show for time series.
+ci_range = 2*pnorm(1)-1
+
+# Opaqueness factor for ribbon
+alpha_ribbon = 0.4</code></pre>
+<p>General plot options for <code>ggplot</code></p>
+<ul>
+<li><strong>gg_device</strong>. A vector with file types for figures. These should be extensions of common file formats (e.g., pdf, eps, tif, png, jpg). The complete list of options can be found in <a href="https://www.rdocumentation.org/packages/ggplot2/versions/0.9.0/topics/ggsave">ggsave</a>.</li>
+<li><strong>gg_depth</strong>. The resolution of this figure (in pixels per inch), in case the figure is saved in raster format (e.g., tif, png, jpg). Ignored for vector format (e.g., pdf, eps).</li>
+<li><strong>gg_ptsz</strong>. The typical size for fonts (in pt). Larger sizes make it more readable, but shrink the plotting area.</li>
+<li><strong>gg_width</strong>. The width of the output files. The units are defined by <code>gg_units</code>.</li>
+<li><strong>gg_height</strong>. The height of the output files. The units are defined by <code>gg_units</code>.</li>
+<li><strong>gg_units</strong>. Units for <code>gg_width</code> and `<code>gg_height</code>. Acceptable units are <code>"in"</code> (inches), <code>"cm"</code> (centimetres) and <code>"mm"</code> (millimetres).</li>
+<li><strong>gg_screen</strong>. Show images in the documentation as well. If <code>FALSE</code>, the image files will be generated, but not shown in the knitted documentation.</li>
+<li><strong>gg_tmft</strong>. Format for time strings in the time series. Check <a href="https://www.rdocumentation.org/packages/ggplot2/versions/1.0.0/topics/scale_x_datetime">scale_x_datetime</a> for additional details.</li>
+<li><strong>gg_ncolours</strong>. Number of colours to use in heat maps (such as soil time series and plots by DBH class and PFT)</li>
+</ul>
+<pre class="r"><code>gg_device   = c(&quot;pdf&quot;) # Output devices to use (Check ggsave for acceptable formats)
+gg_depth    = 300      # Plot resolution (dpi)
+gg_ptsz     = 18       # Font size
+gg_width    = 11.0     # Plot width (units below)
+gg_height   = 8.5      # Plot height (units below)
+gg_units    = &quot;in&quot;     # Units for plot size
+gg_screen   = TRUE     # Show plots on screen as well?
+gg_tfmt     = &quot;%Y&quot;     # Format for time strings in the time series
+gg_ncolours = 129      # Number of node colours for heat maps.
+gg_fleg     = 1./6.    # Fraction of plotting area dedicat0ed for legend
+
+# Number of output types.
+ndevice = length(gg_device)</code></pre>
+<p>This concludes the initial settings. From this point on, you may not need to change anything, unless you are debugging or adding new features.</p>
+</div>
+</div>
+<div id="data-processing" class="section level1">
+<h1>Data processing</h1>
+<div id="initial-settings" class="section level2">
+<h2>Initial settings</h2>
+<p>First, we load some useful packages and tools, using the R script <code>load.everything.r</code>. This will load all the R scripts at the <code>util_path</code> directory.</p>
+<pre class="r"><code>source(file.path(util_path,&quot;load.everything.r&quot;),chdir=TRUE)</code></pre>
+<pre><code>##  + Load scripts from /Users/marcoslongo/Dropbox/Home/Util/RUtils.</code></pre>
+</div>
+<div id="define-output-paths" class="section level2">
+<h2>Define output paths</h2>
+<pre class="r"><code># Create output paths
+dummy = dir.create(path=output_path,recursive=TRUE,showWarnings=FALSE)
+dummy = dir.create(path=plot_path  ,recursive=TRUE,showWarnings=FALSE)</code></pre>
+</div>
+<div id="load-data" class="section level2">
+<h2>Load data</h2>
+<p>Here we loop through all the sites and load the data. First, we make sure all data are in geographic coordinates (even if the data were retrieved in MODIS sinusoidal coordinates). Then we eliminate points with subpar quality from the analysis. We then aggregate the 8-day data into monthly, to increase the sample size. We then append the information to a global tibble, which will be used to make the site-level time series.</p>
+<p>We always convert the results to geographic coordinates before aggregating and sub-sampling.</p>
+<pre class="r"><code># Make sure no connection is open before reading the data
+if (&quot;nc_conn&quot; %in% ls()) dummy = nc_close(nc=nc_conn)
+
+# Initialise the data set
+emean = NULL
+
+# Loop through sites, and load the data.
+for (p in sequence(n_poi_list)){
+   # Useful short names
+   p_site       = poi_list$site      [p]
+   p_output     = poi_list$output    [p]
+   p_lon        = poi_list$lon       [p]
+   p_lat        = poi_list$lat       [p]
+   p_geographic = poi_list$geographic[p]
+   p_igbp       = match(unlist(strsplit(poi_list$igbp_include[p],split=&quot;&quot;)),letters)
+   p_input_path = file.path(input_path,p_site)
+   cat0(&quot; + Retrieve data from &quot;,p_site,&quot;.&quot;)
+
+   # Find data sets with MCD12Q1 and MCD15A2H data
+   p_mcd12q1    = list.files(path=p_input_path,pattern=&quot;^MCD12Q1(.+)\\.nc$&quot;)
+   p_mcd15a2h   = list.files(path=p_input_path,pattern=&quot;^MCD15A2H(.+)\\.nc$&quot;)
+   
+   # Make sure both files were unambiguously found
+   if ( (length(p_mcd12q1) != 1 ) || (length(p_mcd15a2h) != 1 ) ){
+      cat0( &quot; At site &quot;,p_site,&quot;.&quot;)
+      cat0( &quot; Directory &quot;,p_input_path,&quot;.&quot;)
+      cat0( &quot; This directory should contain EXACTLY one file with MCD12Q1 data,&quot;)
+      cat0( &quot;    and one file with MCD15A2H.  Instead, this is what was found.&quot; )
+      cat0( &quot; - Number of MCD12Q1 files  = &quot;,length(p_mcd12q1 ),&quot;.&quot;)
+      cat0( &quot; - Number of MCD15A2H files = &quot;,length(p_mcd15a2h),&quot;.&quot;)
+      stop(paste0(&quot; Fix the input path for this site before proceeding.&quot;))
+   }#end if ( (length(p_mcd12q1) != 1 ) || (length(p_mcd15a2h) != 1 ) )
+
+   # Read the MCD15A2H data
+   cat0(&quot;   - Read data from file &quot;,p_mcd15a2h,&quot;.&quot;)
+   nc_conn  = nc_open(filename=file.path(p_input_path,p_mcd15a2h))
+
+   # Get dimensions. 
+   cat0(&quot;     &gt; Get dimensions.&quot;)
+   if ( p_geographic ){
+      # Get dimensions
+      nc_nx    = nc_conn$dim$lon$len
+      nc_ny    = nc_conn$dim$lat$len
+      nc_nt    = nc_conn$dim$time$len
+      nc_yswap = rev(sequence(nc_ny))
+   }else{
+      # Get dimensions
+      nc_nx    = nc_conn$dim$xdim$len
+      nc_ny    = nc_conn$dim$ydim$len
+      nc_nt    = nc_conn$dim$time$len
+      nc_yswap = rev(sequence(nc_ny))
+   }#end if ( p_geographic )
+
+      
+   # Retrieve the times. This happens in a few steps. 
+   cat0(&quot;     &gt; Find times.&quot;)
+   # Step 1.  Get first time.
+   nc_time0 = nc_conn$dim$time$units
+   nc_time0 = gsub(pattern=&quot;days since &quot;,replacement=&quot;&quot; ,x=nc_time0)
+   nc_time0 = gsub(pattern=&quot;:&quot;          ,replacement=&quot; &quot;,x=nc_time0)
+   nc_time0 = gsub(pattern=&quot;-&quot;          ,replacement=&quot; &quot;,x=nc_time0)
+   nc_time0 = as.numeric(unlist(strsplit(x=nc_time0,split=&quot; &quot;)))
+   nc_time0 = make_date(year=nc_time0[1],month=nc_time0[2],day=nc_time0[3])
+   # Step 3. Get the times. Note that MODIS provides data in Julian calendar, not Gregorian. 
+   #         Because 2000 was a leap year in Gregorian and Julian, this distinction does not
+   #         matter, but could matter in 2100 or if adapting this script to other data sets.
+   nc_times = nc_time0 + days(nc_conn$dim$time$vals)
+   
+   # Retrieve coordinates depending on the reference system
+   if ( p_geographic){
+      cat0(&quot;     &gt; Retrieve longitude/latitude coordinates.&quot;)
+      nc_lon = nc_conn$dim$lon$vals
+      nc_lat = rev(nc_conn$dim$lat$vals)
+
+      # Initialise the tibble
+      p_datum   = tibble( ixy    = rep(x=sequence(nc_nx*nc_ny)    ,times=nc_nt)
+                        , lon    = rep(x=rep(x=nc_lon,times=nc_ny),times=nc_nt)
+                        , lat    = rep(x=rep(x=nc_lat,each =nc_nx),times=nc_nt)
+                        , time   = rep(x=nc_times,each=nc_nx*nc_ny)
+                        , year   = year(time)
+                        , month  = month(time)
+                        , day    = day(time)
+                        )#end tibble
+
+      # Remove lubridate time
+      p_datum   = p_datum %&gt;% select(c(ixy,lon,lat,year,month,day))
+      
+   }else{
+      cat0(&quot;     &gt; Retrieve sinusoidal coordinates.&quot;)
+      # Get sinusoidal coordinates
+      nc_xsinus = nc_conn$dim$xdim$vals
+      nc_ysinus = rev(nc_conn$dim$ydim$vals)
+      
+      # Get the radius
+      nc_erad   = ncatt_get(nc=nc_conn,varid=&quot;crs&quot;,attname=&quot;radius_of_sphere&quot;)$value
+
+      # Initialise the tibble
+      p_datum   = tibble( ixy    = rep(x=sequence(nc_nx*nc_ny)       ,times=nc_nt)
+                        , xsinus = rep(x=rep(x=nc_xsinus,times=nc_ny),times=nc_nt)
+                        , ysinus = rep(x=rep(x=nc_ysinus,each =nc_nx),times=nc_nt)
+                        , time   = rep(x=nc_times,each=nc_nx*nc_ny)
+                        , year   = year(time)
+                        , month  = month(time)
+                        , day    = day(time)
+                        , lat    = 180.*ysinus/nc_erad/pi
+                        , lon    = 180.*xsinus/nc_erad/pi/cos(lat*pi/180.)
+                        )#end tibble
+
+      # Remove sinusoidal information and lubridate time.
+      p_datum   = p_datum %&gt;% select(c(ixy,lon,lat,year,month,day))
+   }#end if ( p_geographic)
+
+
+   # Calculate the distance to central point.
+   cat0(&quot;     &gt; Find distances to reference point. &quot;)
+   p_datum = p_datum %&gt;%
+             mutate( dist = c( rdist.earth( x1    = cbind(p_datum$lon,p_datum$lat)
+                                          , x2    = cbind(p_lon,p_lat)
+                                          , miles = FALSE
+                                          )#end rdist.earth
+                             )#end c
+                   )#end mutate
+
+   # Retrieve the LAI, FPAR, and QC fields   
+   cat0(&quot;     &gt; Load MCD15A2H variables.&quot;)
+   p_datum = p_datum %&gt;% 
+             mutate( lai     = c(ncvar_get(nc=nc_conn,varid=&quot;Lai_500m&quot;       )[,nc_yswap,])
+                   , lai_sd  = c(ncvar_get(nc=nc_conn,varid=&quot;LaiStdDev_500m&quot; )[,nc_yswap,])
+                   , fpar    = c(ncvar_get(nc=nc_conn,varid=&quot;Fpar_500m&quot;      )[,nc_yswap,])
+                   , fpar_sd = c(ncvar_get(nc=nc_conn,varid=&quot;FparStdDev_500m&quot;)[,nc_yswap,])
+                   , qcflag  = c(ncvar_get(nc=nc_conn,varid=&quot;FparLai_QC&quot;     )[,nc_yswap,])
+                   , qcextra = c(ncvar_get(nc=nc_conn,varid=&quot;FparExtra_QC&quot;   )[,nc_yswap,])
+                   )#end mutate
+   
+   # Close the connection.
+   cat0(&quot;     &gt; Close connection.&quot;)
+   dummy = nc_close(nc = nc_conn)
+
+   # Read the MCD12Q1 data
+   cat0(&quot;   - Read data from file &quot;,p_mcd12q1,&quot;.&quot;)
+   nc_conn  = nc_open(filename=file.path(p_input_path,p_mcd12q1))
+
+      if ( p_geographic ){
+      # Get dimensions
+      nc_nx12    = nc_conn$dim$lon$len
+      nc_ny12    = nc_conn$dim$lat$len
+      nc_nt12    = nc_conn$dim$time$len
+   }else{
+      # Get dimensions
+      nc_nx12    = nc_conn$dim$xdim$len
+      nc_ny12    = nc_conn$dim$ydim$len
+      nc_nt12    = nc_conn$dim$time$len
+   }#end if ( p_geographic )
+
+
+   # Check dimensions. Both the MCD15A2H and MCD12Q1 data sets should have the same spatial dimensions. 
+   cat0(&quot;     &gt; C dimensions.&quot;)
+   
+   if ( (nc_nx12 != nc_nx) || (nc_ny12 != nc_ny) ){
+      cat0(&quot;-------------------------------------------------------&quot;)
+      cat0(&quot; MCD12Q1 and MCD15A2H files are spatially incompatible!&quot;)
+      cat0(&quot;-------------------------------------------------------&quot;)
+      cat0(&quot; Input file path           = &quot;,p_input_path             )
+      cat0(&quot; MCD12Q1 dimensions  (x;y) = (&quot;,nc_nx12,&quot;;&quot;,nc_ny12,&quot;)&quot; )
+      cat0(&quot; MCD15A2H dimensions (x;y) = (&quot;,nc_nx  ,&quot;;&quot;,nc_ny  ,&quot;)&quot; )
+      cat0(&quot;-------------------------------------------------------&quot;)
+      stop(&quot; MCD12Q1 and MCD15A2H files should come from the same AppEEARS order!&quot;)
+   }#end if ( (nc_conn$dim$xdim$len != nc_nx) || (nc_conn$dim$xdim$len != nc_ny) )
+
+
+   # Load MCD12Q1 variables.
+   cat0(&quot;     &gt; Load MCD12Q1 variables from most recent year.&quot;)
+   p_datum = p_datum %&gt;%
+             mutate( igbp   = rep(c(ncvar_get(nc=nc_conn,varid=&quot;LC_Type1&quot;)[,nc_yswap,nc_nt12]),each=nc_nt)
+                   , qc12   = rep(c(ncvar_get(nc=nc_conn,varid=&quot;QC&quot;      )[,nc_yswap,nc_nt12]),each=nc_nt)
+                   )#end mutate
+
+   # Eliminate data that had lower quality.
+   cat0(&quot;     &gt; Remove data with lower quality.&quot;)
+   p_datum = p_datum                                %&gt;%
+             filter( qcflag  %in% qcfine_mcd15a2h ) %&gt;%
+             filter( qcextra %in% exfine_mcd15a2h ) %&gt;%
+             filter( qc12    %in% qcfine_mcd12q1  )
+
+   #    Find the mediabs by month and year for each pixel. We use medians instead of averages 
+   # because poor-quality data seem to be mostly biased low, so using medians should mitigate 
+   # this effect.
+   cat0(&quot;     &gt; Find pixel-based medians by month and year.&quot;)
+   p_emean = p_datum                                                 %&gt;%
+             group_by(year,month,ixy)                                %&gt;%
+             summarise( lon     = mean(lon ,na.rm=TRUE)
+                      , lat     = mean(lat ,na.rm=TRUE)
+                      , dist    = mean(dist,na.rm=TRUE)
+                      , lai     = median(lai ,na.rm=TRUE)
+                      , lai_sd  = sqrt(median(lai_sd^2 ,na.rm=TRUE))
+                      , fpar    = median(fpar,na.rm=TRUE)
+                      , fpar_sd = sqrt(median(fpar_sd^2,na.rm=TRUE))
+                      , igbp    = median(igbp,na.rm=TRUE)          ) %&gt;%
+             ungroup()                                               %&gt;%
+             mutate   ( lc_use  = igbp %in% p_igbp )                 %&gt;%
+             mutate   ( site  = p_site
+                      , lon0  = p_lon
+                      , lat0  = p_lat )                              %&gt;%
+             select(site,lon0,lat0,ixy,year,month,lon,lat,dist
+                   ,lai,lai_sd,fpar,fpar_sd,igbp,lc_use      )       %&gt;%
+             arrange(ixy,year,month)
+   
+   
+      
+   # Close the connection.
+   cat0(&quot;     &gt; Close connection.&quot;)
+   dummy = nc_close(nc = nc_conn)
+
+   
+   # Append data to the global data 
+   emean = rbind( emean, p_emean)
+}#end for (p in sequence(n_poi_list))</code></pre>
+<pre><code>##  + Retrieve data from Paracou.
+##    - Read data from file MCD15A2H.006_500m_aid0001.nc.
+##      &gt; Get dimensions.
+##      &gt; Find times.
+##      &gt; Retrieve longitude/latitude coordinates.
+##      &gt; Find distances to reference point. 
+##      &gt; Load MCD15A2H variables.
+##      &gt; Close connection.
+##    - Read data from file MCD12Q1.006_500m_aid0001.nc.
+##      &gt; C dimensions.
+##      &gt; Load MCD12Q1 variables from most recent year.
+##      &gt; Remove data with lower quality.
+##      &gt; Find pixel-based medians by month and year.
+##      &gt; Close connection.
+##  + Retrieve data from Tanguro.
+##    - Read data from file MCD15A2H.006_500m_aid0001.nc.
+##      &gt; Get dimensions.
+##      &gt; Find times.
+##      &gt; Retrieve longitude/latitude coordinates.
+##      &gt; Find distances to reference point. 
+##      &gt; Load MCD15A2H variables.
+##      &gt; Close connection.
+##    - Read data from file MCD12Q1.006_500m_aid0001.nc.
+##      &gt; C dimensions.
+##      &gt; Load MCD12Q1 variables from most recent year.
+##      &gt; Remove data with lower quality.
+##      &gt; Find pixel-based medians by month and year.
+##      &gt; Close connection.
+##  + Retrieve data from Petrolina.
+##    - Read data from file MCD15A2H.006_500m_aid0001.nc.
+##      &gt; Get dimensions.
+##      &gt; Find times.
+##      &gt; Retrieve longitude/latitude coordinates.
+##      &gt; Find distances to reference point. 
+##      &gt; Load MCD15A2H variables.
+##      &gt; Close connection.
+##    - Read data from file MCD12Q1.006_500m_aid0001.nc.
+##      &gt; C dimensions.
+##      &gt; Load MCD12Q1 variables from most recent year.
+##      &gt; Remove data with lower quality.
+##      &gt; Find pixel-based medians by month and year.
+##      &gt; Close connection.</code></pre>
+</div>
+<div id="spatial-average" class="section level2">
+<h2>Spatial average</h2>
+<p>Here all the data are aggregated by month, but not spatially. In this step, we keep only the pixels that are within the pre-defined maximum distance from the point of interest and that has one of the classes that can be aggregated, and apply the spatial average for each month and year.</p>
+<pre class="r"><code># Find the lower and upper quantiles
+quant_lwr = 0.5 - 0.5 * ci_range
+quant_upr = 0.5 + 0.5 * ci_range
+
+
+# Filter data and find the time series for each site.
+cat0(&quot; + Find time series by site.&quot;)</code></pre>
+<pre><code>##  + Find time series by site.</code></pre>
+<pre class="r"><code>poi_emean = emean                                                                               %&gt;%
+            filter ( ( dist &lt;= sample_radius ) &amp; lc_use )                                       %&gt;%
+            mutate ( lai_wgt  = ifelse(test=lai_sd  %gt% 0., yes = 1./lai_sd^2 , no = 0.)
+                   , fpar_wgt = ifelse(test=fpar_sd %gt% 0., yes = 1./fpar_sd^2, no = 0.) )     %&gt;%
+            group_by (site,year,month)                                                          %&gt;%
+            summarise( lai_qmid   = median(x=lai,na.rm=TRUE)
+                     , lai_sdev   = sqrt( median(x=lai_sd^2,na.rm=TRUE) )
+                     , lai_n      = sum( is.finite(lai) &amp; is.finite(lai_sd) )
+                     , fpar_qmid  = median(x=fpar,na.rm=TRUE)
+                     , fpar_sdev  = sqrt(median(x=fpar_sd^2,na.rm=TRUE))
+                     , fpar_n     = sum( is.finite(fpar) &amp; is.finite(fpar_sd) )           )     %&gt;%
+            ungroup()                                                                           %&gt;%
+            mutate   ( lai_qlwr   = pmax(0., qnorm(p=quant_lwr,mean=lai_qmid ,sd=lai_sdev) )
+                     , lai_qupr   = qnorm(p=quant_upr,mean=lai_qmid ,sd=lai_sdev)
+                     , fpar_qlwr  = pmax(0., qnorm(p=quant_lwr,mean=fpar_qmid,sd=fpar_sdev) )
+                     , fpar_qupr  = pmin(1., qnorm(p=quant_upr,mean=fpar_qmid,sd=fpar_sdev) ) ) %&gt;%
+            mutate ( when = make_date(year=year,month=month))                                   %&gt;%
+            select_at(all_of( c(&quot;site&quot;,&quot;when&quot;
+                               ,&quot;lai_qlwr&quot;,&quot;lai_qmid&quot;,&quot;lai_qupr&quot;,&quot;lai_sdev&quot;,&quot;lai_n&quot;
+                               ,&quot;fpar_qlwr&quot;,&quot;fpar_qmid&quot;,&quot;fpar_qupr&quot;,&quot;fpar_sdev&quot;,&quot;fpar_n&quot;)))   %&gt;%
+            arrange(site,when)
+
+cat0(&quot; + Find mean annual cycle by site.&quot;)</code></pre>
+<pre><code>##  + Find mean annual cycle by site.</code></pre>
+<pre class="r"><code>poi_mmean = poi_emean                                                                           %&gt;%
+            mutate( month    = month(when)
+                  , lai_wgt  = ifelse(test=lai_sdev  %gt% 0., yes = 1./lai_sdev^2 , no = 0.)
+                  , fpar_wgt = ifelse(test=fpar_sdev %gt% 0., yes = 1./fpar_sdev^2, no = 0.) )  %&gt;%
+            group_by (site,month)                                                               %&gt;%
+            summarise( lai_qmid   = mean(x=lai_qmid,na.rm=TRUE)
+                     , lai_sdev   = sqrt( mean(x=lai_sdev^2,na.rm=TRUE) )
+                     , lai_n      = sum( is.finite(lai_qmid) &amp; is.finite(lai_sdev) )
+                     , fpar_qmid  = mean(x=fpar_qmid,na.rm=TRUE)
+                     , fpar_sdev  = sqrt(mean(x=fpar_sdev^2,na.rm=TRUE))
+                     , fpar_n     = sum( is.finite(fpar_qmid) &amp; is.finite(fpar_sdev) )     )    %&gt;%
+            ungroup()                                                                           %&gt;%
+            mutate   ( lai_qlwr   = pmax(0., qnorm(p=quant_lwr,mean=lai_qmid ,sd=lai_sdev) )
+                     , lai_qupr   = qnorm(p=quant_upr,mean=lai_qmid ,sd=lai_sdev)
+                     , fpar_qlwr  = pmax(0., qnorm(p=quant_lwr,mean=fpar_qmid,sd=fpar_sdev) )
+                     , fpar_qupr  = pmin(1., qnorm(p=quant_upr,mean=fpar_qmid,sd=fpar_sdev) ) ) %&gt;%
+            arrange(site,month)</code></pre>
+</div>
+</div>
+<div id="output-plots" class="section level1">
+<h1>Output plots</h1>
+<p>First, we plot the time series of LAI for the three sites.</p>
+<pre class="r"><code>cat0(&quot; + Plot the time series of LAI for all sites by month and year.&quot;)</code></pre>
+<pre><code>##  + Plot the time series of LAI for all sites by month and year.</code></pre>
+<pre class="r"><code># Retrieve useful elements from the POI list
+p_site   = poi_list$site
+p_colour = poi_list$colour
+
+# First, turn sites into factors
+show_emean = poi_emean %&gt;% mutate( site = factor(site,levels=poi_list$site))
+
+# Plot time series with the range
+gg_emean = ggplot( data    = show_emean
+                 , mapping = aes_string( x      = &quot;when&quot;
+                                       , y      = &quot;lai_qmid&quot;
+                                       , ymin   = &quot;lai_qlwr&quot;
+                                       , ymax   = &quot;lai_qupr&quot;
+                                       , group  = &quot;site&quot;
+                                       , colour = &quot;site&quot;
+                                       , fill   = &quot;site&quot;
+                                       )#end aes_string
+                 )#end ggplot
+gg_emean = gg_emean + scale_colour_manual(name=&quot;&quot;,aesthetics=&quot;colour&quot;,labels=p_site,values=p_colour)
+gg_emean = gg_emean + scale_colour_manual(name=&quot;&quot;,aesthetics=&quot;fill&quot;  ,labels=p_site,values=p_colour)
+
+# Add ribbons with lower and upper range, and also the medians as lines
+gg_emean = gg_emean + geom_ribbon( alpha = alpha_ribbon, colour = &quot;transparent&quot;, show.legend=TRUE)
+gg_emean = gg_emean + geom_line( lwd = 1.0, show.legend=TRUE)
+
+# Add local annotation
+gg_emean = gg_emean + labs(title=element_blank())
+gg_emean = gg_emean + scale_x_date(date_labels=gg_tfmt)
+gg_emean = gg_emean + xlab(element_blank())
+gg_emean = gg_emean + ylab( desc.unit( desc = &quot;MODIS Leaf Area Index (MCD15A2H)&quot;
+                                     , unit = untab$m2lom2
+                                     , twolines = TRUE
+                                     )#end desc.unit
+                          )#end ylab
+gg_emean = gg_emean + theme_grey( base_size      = gg_ptsz
+                                , base_family    = &quot;Helvetica&quot;
+                                , base_line_size = 0.5
+                                , base_rect_size = 0.5
+                                )#end theme_grey
+
+# Additional settings
+gg_emean = gg_emean + theme( axis.text.x       = element_text( size   = gg_ptsz
+                                                            , margin = unit(rep(0.35,times=4),&quot;char&quot;)
+                                                            )#end element_text
+                           , axis.text.y       = element_text( size   = gg_ptsz
+                                                            , margin = unit(rep(0.35,times=4),&quot;char&quot;)
+                                                            )#end element_text
+                           , axis.ticks.length = unit(-0.2,&quot;char&quot;)
+                           , axis.title.y      = element_text( size = gg_ptsz * 0.9)
+                           )#end theme
+
+# Save plots.
+for (d in sequence(ndevice)){
+   e_output = paste0(&quot;emean_lai_mcd15a2h_v006.&quot;,gg_device[d])
+   dummy    = ggsave( filename = e_output
+                    , plot     = gg_emean
+                    , device   = gg_device[d]
+                    , path     = plot_path
+                    , width    = gg_width
+                    , height   = gg_height
+                    , units    = gg_units
+                    , dpi      = gg_depth
+                    )#end ggsave
+
+}#end for (d in sequence(ndevice))
+
+# If sought, plot images on screen
+if (gg_screen) plot(gg_emean)</code></pre>
+<p><img src="c6_modis-lai_poi_files/figure-html/plot-emean-1.png" width="672" /></p>
+<pre class="r"><code>cat0(&quot; + Plot the mean annual cycle of LAI for all sites.&quot;)</code></pre>
+<pre><code>##  + Plot the mean annual cycle of LAI for all sites.</code></pre>
+<pre class="r"><code># Retrieve useful elements from the POI list
+p_site   = poi_list$site
+p_colour = poi_list$colour
+
+# First, turn sites into factors
+show_mmean = poi_mmean %&gt;% mutate( site = factor(site,levels=poi_list$site))
+
+# Plot time series with the range
+gg_mmean = ggplot( data    = show_mmean
+                 , mapping = aes_string( x      = &quot;month&quot;
+                                       , y      = &quot;lai_qmid&quot;
+                                       , ymin   = &quot;lai_qlwr&quot;
+                                       , ymax   = &quot;lai_qupr&quot;
+                                       , group  = &quot;site&quot;
+                                       , colour = &quot;site&quot;
+                                       , fill   = &quot;site&quot;
+                                       )#end aes_string
+                 )#end ggplot
+gg_mmean = gg_mmean + scale_colour_manual(name=&quot;&quot;,aesthetics=&quot;colour&quot;,labels=p_site,values=p_colour)
+gg_mmean = gg_mmean + scale_colour_manual(name=&quot;&quot;,aesthetics=&quot;fill&quot;  ,labels=p_site,values=p_colour)
+
+# Add ribbons with lower and upper range, and also the medians as lines
+gg_mmean = gg_mmean + geom_ribbon( alpha = alpha_ribbon, colour = &quot;transparent&quot;, show.legend=TRUE)
+gg_mmean = gg_mmean + geom_line( lwd = 1.0, show.legend=TRUE)
+
+# Add local annotation
+gg_mmean = gg_mmean + labs(title=element_blank())
+gg_mmean = gg_mmean + scale_x_continuous( breaks = sequence(12)
+                                        , labels = substring(month.abb,1,1)
+                                        )#end scale_x_continuous
+gg_mmean = gg_mmean + xlab(element_blank())
+gg_mmean = gg_mmean + ylab( desc.unit( desc = &quot;MODIS Leaf Area Index (MCD15A2H)&quot;
+                                     , unit = untab$m2lom2
+                                     , twolines = TRUE
+                                     )#end desc.unit
+                          )#end ylab
+gg_mmean = gg_mmean + theme_grey( base_size      = gg_ptsz
+                                , base_family    = &quot;Helvetica&quot;
+                                , base_line_size = 0.5
+                                , base_rect_size = 0.5
+                                )#end theme_grey
+
+# Additional settings
+gg_mmean = gg_mmean + theme( axis.text.x       = element_text( size   = gg_ptsz
+                                                            , margin = unit(rep(0.35,times=4),&quot;char&quot;)
+                                                            )#end element_text
+                           , axis.text.y       = element_text( size   = gg_ptsz
+                                                            , margin = unit(rep(0.35,times=4),&quot;char&quot;)
+                                                            )#end element_text
+                           , axis.ticks.length = unit(-0.2,&quot;char&quot;)
+                           , axis.title.y      = element_text( size = gg_ptsz * 0.9)
+                           )#end theme
+
+# Save plots.
+for (d in sequence(ndevice)){
+   m_output = paste0(&quot;mmean_lai_mcd15a2h_v006.&quot;,gg_device[d])
+   dummy    = ggsave( filename = m_output
+                    , plot     = gg_mmean
+                    , device   = gg_device[d]
+                    , path     = plot_path
+                    , width    = gg_width
+                    , height   = gg_height
+                    , units    = gg_units
+                    , dpi      = gg_depth
+                    )#end ggsave
+
+}#end for (d in sequence(ndevice))
+
+# If sought, plot images on screen
+if (gg_screen) plot(gg_mmean)</code></pre>
+<p><img src="c6_modis-lai_poi_files/figure-html/plot-mmean-1.png" width="672" /></p>
+<p>Define the template for the global attributes.</p>
+<pre class="r"><code># Define the code developer information (indirect way so the email is not visible).
+developer_name  = c( 111L, 103L, 110L, 111L,  76L,  32L, 115L, 111L,  99L, 114L,  97L,  77L)
+developer_email = c( 118L, 111L, 103L,  46L, 108L,  98L, 108L,  64L, 111L, 103L, 110L, 111L
+                   , 108L, 109L)
+
+
+# Define the template.  We will update the title in each time step.
+att_template = list( title          = &quot;To be replaced when looping through months&quot;
+                   , version        = dat_version
+                   , date_created   = paste0(as.character(now(tzone=&quot;UTC&quot;)), &quot;UTC&quot;)
+                   , source_code    = &quot;c6_modis-lai_poi.Rmd&quot;
+                   , code_notes     = &quot;LAI (MCD15A2H) for benchmarking ELM-FATES and CLM-FATES&quot;
+                   , code_developer = paste0( intToUtf8(rev(developer_name))
+                                            ,&quot; &lt;&quot;
+                                            , intToUtf8(rev(developer_email))
+                                            ,&quot;&gt;&quot;
+                                            )#end paste0
+                   , data_info      = paste0(&quot; Data downloaded through AppEEARS&quot;
+                                            ,&quot; (https://lpdaac.usgs.gov/tools/appeears/).&quot;
+                                            ,&quot; MODIS (Collection 6) products used:&quot;
+                                            ,&quot; MCD15A2H (https://doi.org/10.5067/MODIS/MCD15A2H.006);&quot;
+                                            ,&quot; MCD12Q1 (https://doi.org/10.5067/MODIS/MCD12Q1.006).&quot;
+                                            )#end paste0
+                   )#end list</code></pre>
+<p>Create a single NetCDF file with all the averages by month and year. We do not save the monthly average across all years because simulations may or may not overlap with all the observation months and years.</p>
+<pre class="r"><code>for (p in sequence(n_poi_list)){
+   # Useful short names
+   p_site       = poi_list$site      [p]
+   p_output     = poi_list$output    [p]
+   p_lon        = poi_list$lon       [p]
+   p_lat        = poi_list$lat       [p]
+   p_dxy        = poi_list$dxy       [p]
+   cat0(&quot; + Generate output data for &quot;,p_site,&quot;.&quot;)
+
+   # Find precision for the coordinates (typically 1% of the grid size).
+   p_outprec = -floor(log10(p_dxy*0.01))
+
+   # Define output file
+   mlai_base = paste0(p_output,&quot;_c6modis-summ.nc&quot;)
+   mlai_file = file.path(output_path,mlai_base)
+  
+   # Standardise coordinates (and make sure latitude cannot exceed the poles).
+   outlon  = round(p_lon,p_outprec) %% 360.
+   outlat  = max(-90,min(90-0.5*p_dxy,round(p_lat,p_outprec)))
+
+   # Find edges.
+   edge_w = (outlon - 0.5 * p_dxy) %% 360.
+   edge_e = (outlon + 0.5 * p_dxy) %% 360.
+   edge_s = outlat - 0.5 * p_dxy
+   edge_n = outlat + 0.5 * p_dxy
+   
+   # Extract data for this POI.
+   this_emean   = poi_emean                %&gt;% 
+                  filter(site %in% p_site) %&gt;%
+                  arrange(when)
+   n_this_emean = nrow(this_emean)
+
+   # Extract time, and turn it into a difference in months since the first time
+   year_first  = year (this_emean$when[1])
+   month_first = month(this_emean$when[1])
+   time_first  = this_emean$when[1]
+
+   # Extract time, and turn it into a difference in months
+   tsince = as.numeric(difftime(this_emean$when,time_first,units=&quot;days&quot;))
+   
+   # In case file exists, it will be re-created.
+   cat0(&quot;   - Write averages by month and year to &quot;,mlai_base,&quot;.&quot;)
+   if (file.exists(mlai_file)) file.remove(mlai_file)
+   
+   # Add dimensions: longitude, latitude, and time. We do not automatically create the 
+   # dimension variable for time because R would create it in double precision.  Instead,
+   # we append variable time manually.
+   xx  = ncdim_def( name=&quot;lon&quot;   ,units=&quot;&quot;,vals=1L               ,create_dimvar=FALSE)
+   yy  = ncdim_def( name=&quot;lat&quot;   ,units=&quot;&quot;,vals=1L               ,create_dimvar=FALSE)
+   tt  = ncdim_def( name=&quot;time&quot;  ,units=&quot;&quot;,vals=seq_along(tsince),create_dimvar=FALSE)
+   ss  = ncdim_def( name=&quot;scalar&quot;,units=&quot;&quot;,vals=1L               ,create_dimvar=FALSE)
+   
+   # List of dimensions, useful for setting variables.   
+   nc_xy  = list   (xx,yy)
+   nc_xyt = list(xx,yy,tt)
+   nc_t   = list      (tt)
+   nc_s   = list(ss)
+   xy     = c(1,1)
+   xyt    = c(1,1,n_this_emean)
+   
+   # Start list with variables. First we put the coordinates
+   nc_vlist        = list()
+   nc_vlist$LONGXY = ncvar_def( name     = &quot;LONGXY&quot;
+                              , units    = &quot;degrees_east&quot;
+                              , dim      = nc_xy
+                              , missval  = undef_out
+                              , longname = &quot;longitude&quot;
+                              )#end ncvar_def
+   nc_vlist$LATIXY = ncvar_def( name     = &quot;LATIXY&quot;
+                              , units    = &quot;degrees_north&quot;
+                              , dim      = nc_xy
+                              , missval  = undef_out
+                              , longname = &quot;latitude&quot;
+                              )#end ncvar_def
+   nc_vlist$EDGEW  = ncvar_def( name     = &quot;EDGEW&quot;
+                              , units    = &quot;degrees_east&quot;
+                              , dim      = nc_s
+                              , missval  = undef_out
+                              , longname = &quot;western edge in atmospheric data&quot;
+                              )#end ncvar_def
+   nc_vlist$EDGEE  = ncvar_def( name     = &quot;EDGEE&quot;
+                              , units    = &quot;degrees_east&quot;
+                              , dim      = nc_s
+                              , missval  = undef_out
+                              , longname = &quot;eastern edge in atmospheric data&quot;
+                              )#end ncvar_def
+   nc_vlist$EDGES  = ncvar_def( name     = &quot;EDGES&quot;
+                              , units    = &quot;degrees_north&quot;
+                              , dim      = nc_s
+                              , missval  = undef_out
+                              , longname = &quot;southern edge in atmospheric data&quot;
+                              )#end ncvar_def
+   nc_vlist$EDGEN  = ncvar_def( name     = &quot;EDGEN&quot;
+                              , units    = &quot;degrees_north&quot;
+                              , dim      = nc_s
+                              , missval  = undef_out
+                              , longname = &quot;northern edge in atmospheric data&quot;
+                              )#end ncvar_def
+   nc_vlist$time   = ncvar_def( name     = &quot;time&quot;
+                              , units    = paste0( &quot;days since &quot;,as.character(time_first)
+                                                 , &quot; 00:00:00 UTC&quot;
+                                                 )#end paste0
+                              , dim      = nc_t
+                              , missval  = undef_out
+                              , longname = &quot;observation time&quot;
+                              )#end ncvar_def
+   
+   # Include LAI and fPAR.
+   nc_vlist$LAI    = ncvar_def( name     = &quot;LAI&quot;
+                              , units    = &quot;m2/m2&quot;
+                              , dim      = nc_xyt
+                              , missval  = undef_out
+                              , longname = &quot;Leaf area index&quot;
+                              )#end ncvar_def
+   nc_vlist$FPAR   = ncvar_def( name     = &quot;FPAR&quot;
+                              , units    = &quot;1&quot;
+                              , dim      = nc_xyt
+                              , missval  = undef_out
+                              , longname = &quot;Fraction of photosynthetically active radiation&quot;
+                              )#end ncvar_def
+
+   # Create file
+   nc_conn = nc_create(filename=mlai_file,vars=nc_vlist,verbose=FALSE)
+   
+   #---~---
+   # Put coordinates, tower height and attributes to the netcdf
+   #---~---
+   # Longitude, append time-invariant tag
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;LONGXY&quot;,vals=array(data=outlon     ,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;LONGXY&quot;,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+   # Latitude, append time-invariant tag
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;LATIXY&quot;,vals=array(data=outlat     ,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;LATIXY&quot;,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+   # Western edge, append time-invariant tag
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGEW&quot; ,vals=edge_w)
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEW&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+   # Eastern edge, append time-invariant tag
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGEE&quot; ,vals=edge_e)
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEE&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+   # Southern edge, append time-invariant tag
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGES&quot; ,vals=edge_s)
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGES&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+   # Northern edge, append time-invariant tag
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;EDGEN&quot; ,vals=edge_n)
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;EDGEN&quot; ,attname=&quot;mode&quot;    ,attval=&quot;time-invariant&quot;)
+   # Time, append calendar type.
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;time&quot;  ,vals=tsince)
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;time&quot;  ,attname=&quot;calendar&quot;,attval=&quot;gregorian&quot;)
+   # Put LAI to the netcdf
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;LAI&quot;  ,vals=array(data=this_emean$lai_qmid,dim=xyt))
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;LAI&quot;  ,attname=&quot;mode&quot;,attval=&quot;time-dependent&quot;)
+   # Put FPAR to the netcdf
+   dummy = ncvar_put(nc=nc_conn,varid=&quot;FPAR&quot;  ,vals=array(data=this_emean$fpar_qmid,dim=xyt))
+   dummy = ncatt_put(nc=nc_conn,varid=&quot;FPAR&quot;  ,attname=&quot;mode&quot;,attval=&quot;time-dependent&quot;)
+
+   # Add title specific for this month/year.
+   nc_title   = paste0( &quot;Averages by month and year for &quot;,p_site)
+   att_global = modifyList( x = att_template, val = list( title = nc_title ))
+   
+   
+   # Loop through global attributes
+   for (l in seq_along(att_global)){
+      # Current attribute information
+      att_name  = names(att_global)[l]
+      att_value = att_global[[l]]
+      
+      # Add attribute 
+      dummy = ncatt_put(nc=nc_conn,varid=0,attname=att_name,attval=att_value)
+   }#end for (l in seq_along(att_global))
+   
+   
+   # Close the file
+   dummy = nc_close(nc_conn)
+}#end for (p in sequence(n_poi_list))</code></pre>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

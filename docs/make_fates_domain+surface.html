@@ -14,7 +14,7 @@
 
 <title>Generating ELM/CLM domain and surface files for a single point</title>
 
-<script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
@@ -253,7 +253,7 @@ $(document).ready(function () {
   <a href="make_fates_domain+surface.html">Surface/Domain files</a>
 </li>
 <li>
-  <a href="create_case_hlm-fates.html">Set up single-site runs</a>
+  <a href="create_case_hlm-fates.html">Run single-site simulations</a>
 </li>
 <li>
   <a href="fates_plot_monthly.html">Single-site visualisation with R</a>
@@ -262,7 +262,10 @@ $(document).ready(function () {
   <a href="make_fates_tower_summary.html">Make tower-based benchmark file</a>
 </li>
 <li>
-  <a href="fates_tower_compare_monthly.html">Evaluate FATES against tower</a>
+  <a href="c6_modis-lai_poi.html">MODIS LAI files</a>
+</li>
+<li>
+  <a href="fates_tower_compare_monthly.html">Evaluate FATES against tower and MODIS</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -425,12 +428,11 @@ dummy       = dir.create(site_path  ,recursive=TRUE,showWarnings=FALSE)
 
 # Domain file.  In case the file exists, remove it.
 output_domain   = file.path(site_path,paste0(&quot;domain.lnd.&quot;,site_tag,&quot;_navy.nc&quot;))
-if (file.exists(output_domain)) file.remove(output_domain)</code></pre>
-<pre><code>## [1] TRUE</code></pre>
-<pre class="r"><code># Surface data file
+if (file.exists(output_domain)) file.remove(output_domain)
+
+# Surface data file
 output_surfdata = file.path(site_path,paste0(&quot;surfdata_&quot;,site_tag,&quot;.nc&quot;))
 if (file.exists(output_surfdata)) file.remove(output_surfdata)</code></pre>
-<pre><code>## [1] TRUE</code></pre>
 </div>
 <div id="domain-file" class="section level2">
 <h2>Domain file</h2>
