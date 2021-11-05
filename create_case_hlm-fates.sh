@@ -452,6 +452,7 @@ export SIMUL_PATH="${SIMUL_ROOT}/${CASE_NAME}"
 
 #--- Namelist for the host land model.
 export USER_NL_HLM="${CASE_PATH}/user_nl_${hlm}"
+export USER_NL_DATM="${CASE_PATH}/user_nl_datm"
 export USER_NL_MOSART="${CASE_PATH}/user_nl_mosart"
 #---~---
 
@@ -637,8 +638,9 @@ case "${RESOL}" in
    # Append surface data file to the namelist.
    HLM_SURDAT_FILE="${SITE_PATH}/${HLM_USRDAT_SURDAT}"
    
-   echo "fsurdat = '${HLM_SURDAT_FILE}'" >> ${USER_NL_HLM}
-   echo "frivinp_rtm = ' '"              >> ${USER_NL_MOSART}
+   echo "fsurdat     = '${HLM_SURDAT_FILE}'"    >> ${USER_NL_HLM}
+   echo "taxmode     = 'cycle','cycle','cycle'" >> ${USER_NL_DATM}
+   echo "frivinp_rtm = ' '"                     >> ${USER_NL_MOSART}
    ;;
 esac
 #---~---

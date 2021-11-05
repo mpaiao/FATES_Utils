@@ -98,7 +98,7 @@ Here we set up the case handling:
 overwrite_case = TRUE
 
 # Should the job be submitted?
-case_submit = FALSE
+case_submit = TRUE
 
 # Should we wait until the simulation finishes?
 case_wait = FALSE
@@ -172,16 +172,22 @@ Variable `site_use` lets you pick which site to use. This is an integer variable
 The actual scripts are available on [GitHub](https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing).
 
 ```{r, label='site-list'}
-site_info = tidyr::tribble( ~site_id, ~case             , ~site_name                           ,  ~start_date,      ~stop_n,  ~datm_first, ~datm_last
-                                    , ~calendar         ,~parameter_set                                      ,  ~inv_suffix
-                          ,        0, "ParacouTest"     , "1x1pt-paracouGUF_v1.6_c20210913"    , "2004-01-01",            4,         2004,       2019
-                                    , "NO_LEAP"         , "fates_params_2trop_koven_opt224+api16_c210722.cdl", "nopft_info"
-                          ,        1, "ParacouNewPhen"  , "1x1pt-paracouGUF_v1.6_c20210913"    , "2004-01-01",           16,         2004,       2019
-                                    , "NO_LEAP"         , "fates_params_2trop_koven_opt224+api16_c210722.cdl", "nopft_info"
-                          ,        2, "TanguroNewPhen"  , "1x1pt-tanguroMT-BR_v1.2_c20210913"  , "2008-01-01",           12,         2008,       2018
-                                    , "NO_LEAP"         , "fates_params_2trop_koven_opt224+api16_c210722.cdl", "nopft_info"
-                          ,        3, "PetrolinaNewPhen", "1x1pt-petrolinaPE-BR_v1.2_c20210913", "2004-01-01",           12,         2004,       2012
-                                    , "NO_LEAP"         , "fates_params_2trop_koven_opt224+api16_c210722.cdl", "nopft_info"
+site_info = tidyr::tribble( ~site_id, ~case               , ~site_name                           ,   ~start_date,          ~stop_n,  ~datm_first, ~datm_last
+                                    , ~calendar           ,~parameter_set                                       ,      ~inv_suffix
+                          ,        0, "ParacouTest"       , "1x1pt-paracouGUF_v1.6_c20210913"    ,  "2004-01-01",                4,         2004,       2019
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "nopft_info"
+                          ,        1, "ParacouNewPhen"    , "1x1pt-paracouGUF_v1.6_c20210913"    ,  "2004-01-01",               16,         2004,       2019
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "nopft_info"
+                          ,        2, "TanguroNewPhen"    , "1x1pt-tanguroMT-BR_v1.2_c20210913"  ,  "2008-01-01",               12,         2008,       2018
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "nopft_info"
+                          ,        3, "PetrolinaNewPhen"  , "1x1pt-petrolinaPE-BR_v1.2_c20210913",  "2004-01-01",               12,         2004,       2012
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "nopft_info"
+                          ,        4, "ParacouEvergreen"  , "1x1pt-paracouGUF_v1.6_c20210913"    ,  "2004-01-01",               16,         2004,       2019
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "evergreen_info"
+                          ,        5, "TanguroEvergreen"  , "1x1pt-tanguroMT-BR_v1.2_c20210913"  ,  "2008-01-01",               12,         2008,       2018
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "evergreen_info"
+                          ,        6, "PetrolinaEvergreen", "1x1pt-petrolinaPE-BR_v1.2_c20210913",  "2004-01-01",               12,         2004,       2012
+                                    , "NO_LEAP"           , "fates_params_2trop_koven_opt224+api16_c210722.cdl" , "evergreen_info"
                           )#end tidyr::tribble
 
 # Select ID from above to decide which site to pick
@@ -259,6 +265,8 @@ prm_settings = tidyr::tribble( ~variable                     , ~pft,    ~value
                              , "fates_alloc_storage_cushion" ,    2,       2.4
                              , "fates_leaf_vcmax25top"       ,    1,  30.94711
                              , "fates_leaf_vcmax25top"       ,    2,  46.42066
+                             , "fates_seed_suppl"            ,    1,     0.000
+                             , "fates_seed_suppl"            ,    2,     0.000
                              )#end tidyr::tribble
 ```
 
@@ -280,7 +288,7 @@ Tibble object `hlm_variables` should be a tribble with the following columns:
 # Additional settings for host land model (EXCEPT variables, see below)
 hlm_settings = tidyr::tribble( ~variable          , ~value
                              , "hist_empty_htapes", ".true."
-                             , "fates_parteh_mode", "     1"
+                             , "fates_parteh_mode", "     0"
                              )#end tidyr::tribble
 
 # List of variables to include in the output.
@@ -525,7 +533,8 @@ simul_path = file.path(simul_root,case_name)
 # Set namelist for the host land model.
 user_nl_hlm = file.path(case_path,paste0("user_nl_",hlm))
 
-# Set namelist for MOSART
+# Set additional namelists
+user_nl_datm   = file.path(case_path,"user_nl_datm"  )
 user_nl_mosart = file.path(case_path,"user_nl_mosart")
 
 ```
@@ -712,6 +721,14 @@ if (resol %in% c("ELM_USRDAT","CLM_USRDAT")){
    hlm_surdat_file = file.path(site_path,hlm_usrdat_surdat)
    dummy           = write( x        = paste0("fsurdat = '",hlm_surdat_file,"'")
                           , file     = user_nl_hlm
+                          , ncolumns = 1
+                          , append   = TRUE
+                          , sep      = ""
+                          )#end write  
+
+   # Append time axis mode to the user namelist
+   dummy           = write( x        = paste0("taxmode = 'cycle','cycle','cycle'")
+                          , file     = user_nl_datm
                           , ncolumns = 1
                           , append   = TRUE
                           , sep      = ""

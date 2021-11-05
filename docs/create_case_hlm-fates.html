@@ -366,7 +366,7 @@ mach    = &quot;eschweilera&quot; # Machine used for preparing the case</code></
 overwrite_case = TRUE
 
 # Should the job be submitted?
-case_submit = FALSE
+case_submit = TRUE
 
 # Should we wait until the simulation finishes?
 case_wait = FALSE</code></pre>
@@ -420,16 +420,22 @@ site_base_path = file.path(home_path,&quot;Data&quot;,&quot;FATES_DataSets&quot;
 <li><em>Optional</em>. The forest structure control data, which should contain the full paths to ED2-style pss (patch) and css (cohort) files. This file base name should be <code>&lt;site_name&gt;_&lt;inv_suffix&gt;.txt</code>, or blank in case inventories should not be used. Check the <a href="https://github.com/EDmodel/ED2/wiki/Initial-conditions">ED2 Wiki</a> for details on how to generate the files.</li>
 </ol>
 <p>The actual scripts are available on <a href="https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing">GitHub</a>.</p>
-<pre class="r"><code>site_info = tidyr::tribble( ~site_id, ~case             , ~site_name                           ,  ~start_date,      ~stop_n,  ~datm_first, ~datm_last
-                                    , ~calendar         ,~parameter_set                                      ,  ~inv_suffix
-                          ,        0, &quot;ParacouTest&quot;     , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    , &quot;2004-01-01&quot;,            4,         2004,       2019
-                                    , &quot;NO_LEAP&quot;         , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot;, &quot;nopft_info&quot;
-                          ,        1, &quot;ParacouNewPhen&quot;  , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    , &quot;2004-01-01&quot;,           16,         2004,       2019
-                                    , &quot;NO_LEAP&quot;         , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot;, &quot;nopft_info&quot;
-                          ,        2, &quot;TanguroNewPhen&quot;  , &quot;1x1pt-tanguroMT-BR_v1.2_c20210913&quot;  , &quot;2008-01-01&quot;,           12,         2008,       2018
-                                    , &quot;NO_LEAP&quot;         , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot;, &quot;nopft_info&quot;
-                          ,        3, &quot;PetrolinaNewPhen&quot;, &quot;1x1pt-petrolinaPE-BR_v1.2_c20210913&quot;, &quot;2004-01-01&quot;,           12,         2004,       2012
-                                    , &quot;NO_LEAP&quot;         , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot;, &quot;nopft_info&quot;
+<pre class="r"><code>site_info = tidyr::tribble( ~site_id, ~case               , ~site_name                           ,   ~start_date,          ~stop_n,  ~datm_first, ~datm_last
+                                    , ~calendar           ,~parameter_set                                       ,      ~inv_suffix
+                          ,        0, &quot;ParacouTest&quot;       , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    ,  &quot;2004-01-01&quot;,                4,         2004,       2019
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
+                          ,        1, &quot;ParacouNewPhen&quot;    , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    ,  &quot;2004-01-01&quot;,               16,         2004,       2019
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
+                          ,        2, &quot;TanguroNewPhen&quot;    , &quot;1x1pt-tanguroMT-BR_v1.2_c20210913&quot;  ,  &quot;2008-01-01&quot;,               12,         2008,       2018
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
+                          ,        3, &quot;PetrolinaNewPhen&quot;  , &quot;1x1pt-petrolinaPE-BR_v1.2_c20210913&quot;,  &quot;2004-01-01&quot;,               12,         2004,       2012
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
+                          ,        4, &quot;ParacouEvergreen&quot;  , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    ,  &quot;2004-01-01&quot;,               16,         2004,       2019
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;evergreen_info&quot;
+                          ,        5, &quot;TanguroEvergreen&quot;  , &quot;1x1pt-tanguroMT-BR_v1.2_c20210913&quot;  ,  &quot;2008-01-01&quot;,               12,         2008,       2018
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;evergreen_info&quot;
+                          ,        6, &quot;PetrolinaEvergreen&quot;, &quot;1x1pt-petrolinaPE-BR_v1.2_c20210913&quot;,  &quot;2004-01-01&quot;,               12,         2004,       2012
+                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;evergreen_info&quot;
                           )#end tidyr::tribble
 
 # Select ID from above to decide which site to pick
@@ -491,6 +497,8 @@ append_git_hash = FALSE</code></pre>
                              , &quot;fates_alloc_storage_cushion&quot; ,    2,       2.4
                              , &quot;fates_leaf_vcmax25top&quot;       ,    1,  30.94711
                              , &quot;fates_leaf_vcmax25top&quot;       ,    2,  46.42066
+                             , &quot;fates_seed_suppl&quot;            ,    1,     0.000
+                             , &quot;fates_seed_suppl&quot;            ,    2,     0.000
                              )#end tidyr::tribble</code></pre>
 <p>Additional settings for the host land model namelist. This is done in two steps, one to define most variables (<code>hlm_settings</code>), and the second to define variables (<code>hlm_variables</code>) for the output. Both are defined as tibbles (using <code>tidyr::tribble</code>). Similar to previous structures, <code>hlm_settings</code> should have two columns (<code>variable</code> and <code>value</code>). Both of them should be characters (even if the value should be numeric), and in case the value in ELM-FATES or CLM-FATES should be a character, then use single quotes inside double quotes (e.g., <code>"'Character Value'"</code>).</p>
 <p>Tibble object <code>hlm_variables</code> should be a tribble with the following columns:</p>
@@ -507,7 +515,7 @@ append_git_hash = FALSE</code></pre>
 <pre class="r"><code># Additional settings for host land model (EXCEPT variables, see below)
 hlm_settings = tidyr::tribble( ~variable          , ~value
                              , &quot;hist_empty_htapes&quot;, &quot;.true.&quot;
-                             , &quot;fates_parteh_mode&quot;, &quot;     1&quot;
+                             , &quot;fates_parteh_mode&quot;, &quot;     0&quot;
                              )#end tidyr::tribble
 
 # List of variables to include in the output.
@@ -726,7 +734,8 @@ simul_path = file.path(simul_root,case_name)
 # Set namelist for the host land model.
 user_nl_hlm = file.path(case_path,paste0(&quot;user_nl_&quot;,hlm))
 
-# Set namelist for MOSART
+# Set additional namelists
+user_nl_datm   = file.path(case_path,&quot;user_nl_datm&quot;  )
 user_nl_mosart = file.path(case_path,&quot;user_nl_mosart&quot;)</code></pre>
 <p>To avoid overwriting simulations, we always ask before if it is fine to delete a previous case setting.</p>
 <pre class="r"><code># Check with user what to do in case directories exist.
@@ -906,6 +915,14 @@ cat(&quot; + Set up the case.\n&quot;)</code></pre>
                           , sep      = &quot;&quot;
                           )#end write  
 
+   # Append time axis mode to the user namelist
+   dummy           = write( x        = paste0(&quot;taxmode = &#39;cycle&#39;,&#39;cycle&#39;,&#39;cycle&#39;&quot;)
+                          , file     = user_nl_datm
+                          , ncolumns = 1
+                          , append   = TRUE
+                          , sep      = &quot;&quot;
+                          )#end write  
+
    # Append MOSART input file to the user namelist
    dummy           = write( x        = paste0(&quot;frivinp_rtm = &#39; &#39;&quot;)
                           , file     = user_nl_mosart
@@ -1054,7 +1071,9 @@ cat(&quot; + Preview namelists.\n&quot;)</code></pre>
 ##    - replacing prior value of variable fates_alloc_storage_cushion, for PFT 1, which was 1.2, with new value of 1.2.
 ##    - replacing prior value of variable fates_alloc_storage_cushion, for PFT 2, which was 1.2, with new value of 2.4.
 ##    - replacing prior value of variable fates_leaf_vcmax25top, for PFT 1, which was [30.94711], with new value of 30.94711.
-##    - replacing prior value of variable fates_leaf_vcmax25top, for PFT 2, which was [30.94711], with new value of 46.42066.</code></pre>
+##    - replacing prior value of variable fates_leaf_vcmax25top, for PFT 2, which was [30.94711], with new value of 46.42066.
+##    - replacing prior value of variable fates_seed_suppl, for PFT 1, which was 0.001, with new value of 0.0.
+##    - replacing prior value of variable fates_seed_suppl, for PFT 2, which was 0.001, with new value of 0.0.</code></pre>
 <p>Add other variables to the namelist of the host land model.</p>
 <pre class="r"><code>if (is_tibble(hlm_settings)){
    # Loop through the options to update.
@@ -1093,7 +1112,7 @@ cat(&quot; + Preview namelists.\n&quot;)</code></pre>
 }#end if (is_tibble(hlm_settings))</code></pre>
 <pre><code>##  + Update host land model settings.
 ##    - Append variable hist_empty_htapes = .true. to user_nl_clm.
-##    - Append variable fates_parteh_mode =      1 to user_nl_clm.</code></pre>
+##    - Append variable fates_parteh_mode =      0 to user_nl_clm.</code></pre>
 <p>Check whether or not the user provided a list of variables. The code will select them based on whether or not FATES is being called, and whether the host land model is ELM or CLM.</p>
 <pre class="r"><code>if (is_tibble(hlm_variable)){
 
@@ -1167,8 +1186,7 @@ if (case_submit &amp;&amp; case_wait){
    cat(&quot; + Case is ready to be submitted. You can copy the following to your terminal. \n&quot;)
    cat(&quot; (cd &quot;,case_path,&quot;; ./case.submit)\n&quot;,sep=&quot;&quot;)
 }#end if (case_submit) </code></pre>
-<pre><code>##  + Case is ready to be submitted. You can copy the following to your terminal. 
-##  (cd /Users/marcoslongo/Documents/LocalData/FATES/SingleRuns/Cases/S0000_ParacouTest_CLM_FATES; ./case.submit)</code></pre>
+<pre><code>##  + Submit case.  Note that it will run in the background.</code></pre>
 </div>
 
 
