@@ -4,6 +4,17 @@ author: "Marcos Longo"
 date: "15-Jul-2021"
 ---
 
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+
 # Introduction
 
 This R Markdown document guides how to build a set of output figures and metrics to evaluate FATES simulations at a single 
@@ -55,34 +66,37 @@ It is possible to select the simulation to process using the variable case_idx
 
 **Note**. Regardless of `tstampa`, we will always read in the very first file to retrieve some data that are only written in the first output.
 
-```{r, label='case-settings'}
+```{r, label='case-settings',message=FALSE, results='hide'}
 
 # Define the data structure
-case_info = tidyr::tribble( ~idx, ~name                                , ~model       , ~desc                          
-                                , ~site                                , ~tstampa     , ~tstampz
-                          ,    0, "D0000_ParacouTest_CLM_FATES"        , "CLM-FATES"  , "Paracou Test"                  
-                                , "1x1pt-paracouGUF_v1.6_c20210913"    , NA_character_, NA_character_
-                          ,    1, "S0001_ParacouNewPhen_CLM_FATES"     , "CLM-FATES"  , "Paracou: New Phenology"
-                                , "1x1pt-paracouGUF_v1.6_c20210913"    , NA_character_, NA_character_
-                          ,    2, "S0002_TanguroNewPhen_CLM_FATES"     , "CLM-FATES"  , "Tanguro: New Phenology"
-                                , "1x1pt-tanguroMT-BR_v1.2_c20210913"  , NA_character_, NA_character_
-                          ,    3, "S0003_PetrolinaNewPhen_CLM_FATES"   , "CLM-FATES"  , "Petrolina: New Phenology"
-                                , "1x1pt-petrolinaPE-BR_v1.2_c20210913", NA_character_, NA_character_
+case_info = tidyr::tribble( ~idx, ~name                                      , ~model       , ~tstampa     , ~tstampz     , ~colour  , ~desc                                      , ~site
+                          ,    0, "S0000_ParacouTest_CLM_FATES"              , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "Paracou Test"                             , "1x1pt-paracouGUF_v1.6_c20210913"
+                          ,    1, "S0001_ParacouNewPhen_CLM_FATES"           , "CLM-FATES"  , NA_character_, NA_character_, "#1F78B4", "PFT: EG+DD; Alloc: Simple; Thresh: SMP"   , "1x1pt-paracouGUF_v1.6_c20210913"
+                          ,    2, "S0002_TanguroNewPhen_CLM_FATES"           , "CLM-FATES"  , NA_character_, NA_character_, "#1F78B4", "PFT: EG+DD; Alloc: Simple; Thresh: SMP"   , "1x1pt-tanguroMT-BR_v1.2_c20210913"
+                          ,    3, "S0003_PetrolinaNewPhen_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#1F78B4", "PFT: EG+DD; Alloc: Simple; Thresh: SMP"   , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
+                          ,    4, "S0004_ParacouEvergreen_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#B2DF8A", "PFT: EG Only; Alloc: Simple; Thresh: SMP" , "1x1pt-paracouGUF_v1.6_c20210913"
+                          ,    5, "S0005_TanguroEvergreen_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#B2DF8A", "PFT: EG Only; Alloc: Simple; Thresh: SMP" , "1x1pt-tanguroMT-BR_v1.2_c20210913"
+                          ,    6, "S0006_PetrolinaEvergreen_CLM_FATES"       , "CLM-FATES"  , NA_character_, NA_character_, "#B2DF8A", "PFT: EG Only; Alloc: Simple; Thresh: SMP" , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
+                          ,    7, "S0007_ParacouOldCAllocEGDD_CLM_FATES"     , "CLM-FATES"  , NA_character_, NA_character_, "#FF7F00", "PFT: EG+DD; Alloc: Default; Thresh: SMP"  , "1x1pt-paracouGUF_v1.6_c20210913"
+                          ,    8, "S0008_TanguroOldCAllocEGDD_CLM_FATES"     , "CLM-FATES"  , NA_character_, NA_character_, "#FF7F00", "PFT: EG+DD; Alloc: Default; Thresh: SMP"  , "1x1pt-tanguroMT-BR_v1.2_c20210913"
+                          ,    9, "S0009_PetrolinaOldCAllocEGDD_CLM_FATES"   , "CLM-FATES"  , NA_character_, NA_character_, "#FF7F00", "PFT: EG+DD; Alloc: Default; Thresh: SMP"  , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
+                          ,   10, "S0010_ParacouOldCAllocEGOnly_CLM_FATES"   , "CLM-FATES"  , NA_character_, NA_character_, "#FB9A99", "PFT: EG Only; Alloc: Default; Thresh: SMP", "1x1pt-paracouGUF_v1.6_c20210913"
+                          ,   11, "S0011_TanguroOldCAllocEGOnly_CLM_FATES"   , "CLM-FATES"  , NA_character_, NA_character_, "#FB9A99", "PFT: EG Only; Alloc: Default; Thresh: SMP", "1x1pt-tanguroMT-BR_v1.2_c20210913"
+                          ,   12, "S0012_PetrolinaOldCAllocEGOnly_CLM_FATES" , "CLM-FATES"  , NA_character_, NA_character_, "#FB9A99", "PFT: EG Only; Alloc: Default; Thresh: SMP", "1x1pt-petrolinaPE-BR_v1.2_c20210913"
+                          ,   13, "S0013_ParacouOldThresh_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "PFT: EG+DD; Alloc: Simple; Thresh: SWC"   , "1x1pt-paracouGUF_v1.6_c20210913"
+                          ,   14, "S0014_TanguroOldThresh_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "PFT: EG+DD; Alloc: Simple; Thresh: SWC"   , "1x1pt-tanguroMT-BR_v1.2_c20210913"
+                          ,   15, "S0015_PetrolinaOldThresh_CLM_FATES"       , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "PFT: EG+DD; Alloc: Simple; Thresh: SWC"   , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
                           )#end tribble
 
-# Use case_idx to select which simulation to process
-case_idx  = 1
+# Use case_sel to select which simulations to process
+idx_case  = 1
+case_site = c("1x1pt-paracouGUF_v1.6_c20210913","1x1pt-tanguroMT-BR_v1.2_c20210913","1x1pt-petrolinaPE-BR_v1.2_c20210913")[idx_case]
+case_pref = c("Paracou","Tanguro","Petrolina")[idx_case]
+case_sel  = (case_info$site %in% case_site) & (! grepl(pattern="S0000",x=case_info$name))
 
-# Copy the names to scalars.
-case_idx     = match(case_idx,case_info$idx)
-case_name    = case_info$name   [case_idx]
-case_model   = case_info$model  [case_idx]
-case_desc    = paste0(case_info$desc[case_idx]," (",case_model,")")
-case_site    = case_info$site   [case_idx]
-case_tstampa = case_info$tstampa[case_idx]
-case_tstampz = case_info$tstampz[case_idx]
-
-
+# Select simulations to process.
+case_info    = case_info[case_sel,,drop=FALSE]
+n_case_info  = nrow(case_info)
 
 ```
 
@@ -96,22 +110,21 @@ We then set some global paths:
  - *comp_monmean_path*. Where tower vs. FATES mean annual cycle will be saved.
  - *taylor_biasvar_path*. Where Taylor diagrams and bias-variance diagrams will be saved.
 
-```{r, label='path-settings'}
+```{r, label='path-settings',message=FALSE, results='hide'}
 home_path  = path.expand("~")
 hesm_main  = file.path(home_path,"Documents/LocalData/FATES/SingleRuns/Simulations")
 site_main  = file.path(home_path,"Data/FATES_DataSets")
 util_path  = file.path(home_path,"Util/RUtils")
-plot_main  = file.path(hesm_main,"Figures",case_name)
+plot_main  = file.path(hesm_main,"Figures","Evaluation",case_pref)
 ```
 
 
 Settings for time series comparisons.  These control the colours and transparency levels for site measurements/estimates and model predictions.
 
-```{r, label='set-colour-comp'}
+```{r, label='set-colour-comp',message=FALSE, results='hide'}
 
 # Set colours for site measurements/estimates and model predictions.
 site_colour = "#000000"
-hlm_colour  = "#1B9E77"
 
 # Define lower and upper bound for interannual variability ribbon around the mean.
 sdev_ribbon  = 1.                  # Standard-deviation equivalent for ribbon 
@@ -125,8 +138,8 @@ General plot options for `ggplot`
 ```{r, label='set-ggplot'}
 gg_device  = c("pdf") # Output devices to use (Check ggsave for acceptable formats)
 gg_depth   = 300      # Plot resolution (dpi)
-gg_ptsz    = 15       # Font size
-gg_width   = 11.0     # Plot width (units below)
+gg_ptsz    = 16       # Font size
+gg_width   = 14.0     # Plot width (units below)
 gg_height  = 8.5      # Plot height (units below)
 gg_units   = "in"     # Units for plot size
 gg_screen  = TRUE     # Show plots on screen as well?
@@ -142,22 +155,13 @@ __Note:__ Changes beyond this point are only needed if you are developing the no
 ## Initial settings.
 
 First, we load the list of host land model variables that we may consider for the comparison. 
-```{r, label='load-everything'}
+```{r, label='load-everything',message=FALSE, results='hide'}
 source(file.path(util_path,"load.everything.r"),chdir=TRUE)
 ```
 
 We then make sure to set up the derived paths and files.
 
-```{r, label='set-derived-paths'}
-# Case path.  Do not change this unless you used non-standard case output for ELM/CLM.
-case_path = file.path(hesm_main,case_name)
-
-#---~---
-#    Vector with all possible ELM/CLM paths containing NetCDF history files.  Do not change
-# this unless you know what you are doing.
-#---~---
-simul_path = c( file.path(case_path,"run"), file.path(case_path,"lnd","hist"))
-
+```{r, label='set-derived-paths',message=FALSE, results='hide'}
 
 # Output path for time series.
 comparison_path     = file.path(plot_main,"comparison"    )
@@ -215,56 +219,7 @@ if (length(mlai_base) > 0){
 
 
 Next, we find the correct simulation path. We search for files in the typical paths in which ELM-FATES or CLM-FATES simulations would be located.
-
-```{r, label='initial-settings',message=FALSE,results='hide'}
-
-cat0(" + Search FATES output.")
-
-
-hlm_midfix = c("elm.h0","clm2.h0")
-nc_base    = paste0(case_name,".",hlm_midfix,"\\.....-..\\.nc")
-nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
-                      , rep(x = nc_base   , each  = length(simul_path))
-                      )#end file.path
-nc_success = FALSE
-for (d in seq_along(nc_file)){
-   nc_path = dirname(nc_file[d])
-   nc_base = basename(nc_file[d])
-   nc_list = list.files(path=nc_path,pattern=nc_base)
-   if (length(nc_list) > 0){
-      # When finding the files, update nc_success find the first and last time.
-      nc_success = TRUE
-
-      # Find file name and the length of each file
-      nc_nfile = length(nc_list)
-      nc_nchar = nchar(nc_list[1])
-
-      # Find all times
-      nc_year   = as.numeric(substring(nc_list,nc_nchar-9,nc_nchar-6))
-      nc_month  = as.numeric(substring(nc_list,nc_nchar-4,nc_nchar-3))
-      nc_tstamp = make_datetime(year=nc_year,month=nc_month)
-
-      # Find the first and last time available.
-      i1st       = which.min(nc_tstamp)
-      ilst       = which.max(nc_tstamp)
-      nc_t1st    = nc_tstamp[i1st]
-      nc_tlst    = nc_tstamp[ilst]
-      tstamp_1st = sprintf("%2.2i/%2.2i/%4.4i",month(nc_t1st),day(nc_t1st),year(nc_t1st))
-      tstamp_lst = sprintf("%2.2i/%2.2i/%4.4i",month(nc_tlst),day(nc_tlst),year(nc_tlst))
-
-      # Save the path and "midfix" that worked.
-      simul_path = nc_path
-      nc_zero    = file.path(simul_path,nc_list[1])
-      sel_midfix = mapply(FUN=grepl,pattern=as.list(hlm_midfix),MoreArgs=list(x=nc_base))
-      hlm_midfix = hlm_midfix[sel_midfix]
-   }#end if (length(nc_list) > 0)
-}#end for (d in seq_along(nc_file))
-```
-
-
-
-
-We set the times for which we will retrieve simulation results. A few noteworthy variables.
+We also set the times for which we will retrieve simulation results. A few noteworthy variables.
 
 * **tstamp0**. First simulation time. This is always the actual first output file of the simulation, because the first output always has additional variables that are useful for analyses.
 * **tstampa**. First time used for output. If `case_tstampa` was set as `NA_character_` at the beginning of the script, we will use the first available time.
@@ -272,41 +227,128 @@ We set the times for which we will retrieve simulation results. A few noteworthy
 * **tstamp**. The vector with all times that should be loaded.
 * **ntstamp**. The total count of time steps to load.
 
+```{r, label='initial-settings',message=FALSE,results='hide'}
+
+cat0(" + Search FATES output.")
+
+# List of HLM "mid-fixes" (like a prefix or suffix, but in the middle...)
+hlm_midfix_lookup = c("elm.h0","clm2.h0")
+
+
+# Expand variable case_info (or reset variables if they already exist.)
+case_info = case_info %>%
+            mutate( tstamp_1st = ""
+                  , tstamp_lst = ""
+                  , year0      = NA_integer_
+                  , month0     = NA_integer_
+                  , yeara      = NA_integer_
+                  , montha     = NA_integer_
+                  , yearz      = NA_integer_
+                  , monthz     = NA_integer_
+                  , hlm_midfix = "" 
+                  , simul_path = "" 
+                  , nc_zero    = "" )
+
+# Extract scalars. 
+for (i in sequence(n_case_info)){
+   # Extract scalars
+   case_name    = case_info$name   [i]
+   case_model   = case_info$model  [i]
+   case_desc    = paste0(case_info$desc[i]," (",case_model,")")
+   case_site    = case_info$site   [i]
+   case_tstampa = case_info$tstampa[i]
+   case_tstampz = case_info$tstampz[i]
+   cat0("   - ",case_name,".")
+
+   # Case path and possible simulation paths.  Do not change this unless you used non-standard case output for ELM/CLM.
+   case_path = file.path(hesm_main,case_name)
+   simul_path = c( file.path(case_path,"run"), file.path(case_path,"lnd","hist"))
+
+   #---~---
+   #    Vector with all possible ELM/CLM paths containing NetCDF history files.  Do not change
+   # this unless you know what you are doing.
+   #---~---
+   nc_base    = paste0(case_name[1],".",hlm_midfix_lookup,"\\.....-..\\.nc")
+   nc_file    = file.path( rep(x = simul_path, times = length(nc_base   ))
+                         , rep(x = nc_base   , each  = length(simul_path))
+                         )#end file.path
+   nc_success = FALSE
+   for (d in seq_along(nc_file)){
+      nc_path = dirname(nc_file[d])
+      nc_base = basename(nc_file[d])
+      nc_list = list.files(path=nc_path,pattern=nc_base)
+      if (length(nc_list) > 0){
+         # When finding the files, update nc_success find the first and last time.
+         nc_success = TRUE
+         
+         # Find file name and the length of each file
+         nc_nfile = length(nc_list)
+         nc_nchar = nchar(nc_list[1])
+         
+         # Find all times
+         nc_year   = as.numeric(substring(nc_list,nc_nchar-9,nc_nchar-6))
+         nc_month  = as.numeric(substring(nc_list,nc_nchar-4,nc_nchar-3))
+         nc_tstamp = make_datetime(year=nc_year,month=nc_month)
+         
+         # Find the first and last time available.
+         i1st                    = which.min(nc_tstamp)
+         ilst                    = which.max(nc_tstamp)
+         nc_t1st                 = nc_tstamp[i1st]
+         nc_tlst                 = nc_tstamp[ilst]
+         case_info$tstamp_1st[i] = sprintf("%2.2i/%2.2i/%4.4i",month(nc_t1st),day(nc_t1st),year(nc_t1st))
+         case_info$tstamp_lst[i] = sprintf("%2.2i/%2.2i/%4.4i",month(nc_tlst),day(nc_tlst),year(nc_tlst))
+         case_info$year0     [i] = year(nc_t1st)
+         case_info$month0    [i] = month(nc_t1st)
+
+                  
+         # Save the path and "midfix" that worked.
+         case_info$simul_path[i] = nc_path
+         case_info$nc_zero   [i] = file.path(nc_path,nc_list[1])
+         sel_midfix              = mapply(FUN=grepl,pattern=as.list(hlm_midfix_lookup),MoreArgs=list(x=nc_base))
+         case_info$hlm_midfix[i] = hlm_midfix_lookup[sel_midfix]
+         
+         if (is.na(case_tstampa)){
+            case_info$yeara  [i] = year(nc_t1st)
+            case_info$montha [i] = month(nc_t1st)
+         }else{
+            tstampa              = as.integer(unlist(strsplit(case_tstampa,split="/")))
+            case_info$yeara  [i] = tstampa[3]
+            case_info$montha [i] = tstampa[1]
+         }#end if (is.character(tstampa))
+         if (is.na(case_tstampz)){
+            case_info$yearz  [i] = year(nc_tlst)
+            case_info$monthz [i] = month(nc_tlst)
+         }else{
+            tstampz              = as.integer(unlist(strsplit(case_tstampz,split="/")))
+            case_info$yearz  [i] = tstampz[3]
+            case_info$monthz [i] = tstampz[1]
+         }#end if (is.character(tstampz))
+         
+         
+      }#end if (length(nc_list) > 0)
+   }#end for (d in seq_along(nc_file))
+}#end for for (i in sequence(n_case_info))
+
+```
+
+
+Find time settings common to all simulations.  We always select the time intersection to make the best 
+
+
 ```{r, label='time-settings',message=FALSE,results='hide'}
 
-# Extract date information from string
-if (! "tstamp0" %in% ls()){
-   tstamp0 = as.integer(unlist(strsplit(tstamp_1st,split="/")))
-   year0   = tstamp0[3]
-   month0  = tstamp0[1]
-}#end if (is.character(tstampa))
-if (is.na(case_tstampa)){
-   tstampa = as.integer(unlist(strsplit(tstamp_1st,split="/")))
-   yeara   = tstampa[3]
-   montha  = tstampa[1]
-}else{
-   tstampa = as.integer(unlist(strsplit(case_tstampa,split="/")))
-   yeara   = tstampa[3]
-   montha  = tstampa[1]
-}#end if (is.character(tstampa))
-if (is.na(case_tstampz)){
-   tstampz = as.integer(unlist(strsplit(tstamp_lst,split="/")))
-   yearz   = tstampz[3]
-   monthz  = tstampz[1]
-}else{
-   tstampz = as.integer(unlist(strsplit(case_tstampz,split="/")))
-   yearz   = tstampz[3]
-   monthz  = tstampz[1]
-}#end if (is.character(tstampz))
+# Create lubridate object for initial and final time. We select the time intersection
+tstampa = max(make_datetime( year=case_info$yeara,month=case_info$montha,day=1L))
+yeara   = year (tstampa)
+montha  = month(tstampa)
+tstampz = min(make_datetime( year=case_info$yearz,month=case_info$monthz,day=1L))
+yearz   = year (tstampz)
+monthz  = month(tstampz)
 
 # Useful variables to build time stamps.
 nmontha   = 12 - montha + 1          # Number of months in yeara
 nmidyears = max(0,yearz - yeara - 1) # Number of years in between yeara and yearz
 nmonthz   = monthz                   # Number of months in yearz
-
-# Create lubridate object for initial and final time
-tstampa = make_datetime( year=yeara,month=montha,day=1L)
-tstampz = make_datetime( year=yearz,month=monthz,day=1L)
 
 # Create month and year vector
 if (yeara == yearz){
@@ -343,7 +385,7 @@ First we retrieve the site measurements and estimates of ecosystem productivity 
 
 For additional information on which variables to be loaded and which units to use in the output, check the `hlm1dvar` settings in  [RUtils/hlm_varlist.r](https://github.com/mpaiao/FATES_Utils/blob/master/RUtils/hlm_varlist.r).
 
-```{r, label='load-eddy'}
+```{r, label='load-eddy',message=FALSE, results='hide'}
 if ("nc_eddy" %in% ls()){dummy = nc_close(nc_eddy); rm(nc_eddy)}
 
 # Open NetCDF connection and retrieve variable names
@@ -366,7 +408,7 @@ eddy_time   = eddy_time0 + days(nc_eddy$dim$time$vals)
 n_eddy_time = nc_eddy$dim$time$len
 
 # Initialise a tibble that will host all data
-eddy1d = tibble( time = eddy_time)
+eddy1d = tibble( time = eddy_time, source = 0L)
 
 # Find conversion factors for monthly variables.
 cmon.day = days_in_month(eddy1d$time)
@@ -409,7 +451,7 @@ rm(nc_eddy)
 If available, we retrieve MODIS-derived data.  Currently only LAI is loaded, but other variables may be included in the future as well.
 For additional information on which variables to be loaded and which units to use in the output, check the `fatesvar` settings in  [RUtils/fates_varlist.r](https://github.com/mpaiao/FATES_Utils/blob/master/RUtils/fates_varlist.r).
 
-```{r, label='load-mlai'}
+```{r, label='load-mlai',message=FALSE, results='hide'}
 if (file.exists(mlai_file)){
    
    if ("nc_mlai" %in% ls()){dummy = nc_close(nc_mlai); rm(nc_mlai)}
@@ -434,7 +476,7 @@ if (file.exists(mlai_file)){
    n_mlai_time = nc_mlai$dim$time$len
    
    # Initialise a tibble that will host all data
-   mlai1d = tibble( time = mlai_time)
+   mlai1d = tibble( time = mlai_time, source = 0L)
    
    # Find conversion factors for monthly variables.
    cmon.day = days_in_month(mlai1d$time)
@@ -463,8 +505,8 @@ if (file.exists(mlai_file)){
    rm(nc_mlai)
 
    # Merge the two objects
-   site1d      = full_join(x=eddy1d,y=mlai1d,by=c("time")) %>% 
-                 arrange(time)
+   site1d      = full_join(x=eddy1d,y=mlai1d,by=c("time","source")) %>% 
+                 arrange(time,source)
    n_site_time = nrow(site1d)
 }else{
    # MODIS data not found. Turn eddy1d into site1d.
@@ -478,7 +520,7 @@ if (file.exists(mlai_file)){
 
 The time span for site simulations and tower may not match.  In this case, we identify the overlapping time interval, and trim both the site and model assessment to this period in which both are available.  We always keep track of the actual first time of the model, though, because the first history file contains additional data that may be useful when we adapt the code to compare soil state variables.
 
-```{r, label='time-intersect'}
+```{r, label='time-intersect',message=FALSE, results='hide'}
 
 # Find the minimum interval that has overlaps with both site and model.
 tstampa = max(c(min(tstamp),min(site1d$time)))
@@ -502,8 +544,22 @@ Here we perform the following tasks, using the actual first history file from th
 * Retrieve soil information (which will be useful when comparing the model against soil measurements).
 * Retrieve size and PFT indices for the `_SCPF` variables (which will be useful in the future for comparing the model against census measurements).
 
-```{r, label='load-hlm-data'}
+```{r, label='load-hlm-data',message=FALSE, results='hide'}
 if ("nc_info" %in% ls()){dummy = nc_close(nc_info); rm(nc_info)}
+
+
+
+# Select the first case to retrieve general information on files
+i            = 1
+case_name    = case_info$name   [i]
+case_model   = case_info$model  [i]
+case_desc    = paste0(case_info$desc[i]," (",case_model,")")
+case_site    = case_info$site   [i]
+case_tstampa = case_info$tstampa[i]
+case_tstampz = case_info$tstampz[i]
+nc_zero      = case_info$nc_zero[i]
+
+
 
 # We always read the first actual simulation time because it has more information.
 # Open NetCDF connection and retrieve variable names
@@ -566,10 +622,12 @@ nhlm1d    = length(nc_hlm1d)
 
 # Initialise 1D variables available at the HLM
 cat0("   - Initialise tibble for the host land model.")
-hlm1d = tibble(time = tstamp)
+hlm1d = tibble( time   = rep(tstamp,times=n_case_info)
+              , source = rep(sequence(n_case_info),each=ntstamp)
+              )#end tibble
 for (h in seq_along(nc_hlm1d)){
    h_vnam          = tolower(nc_hlm1d[h])
-   hlm1d[[h_vnam]] = rep(NA,times=ntstamp)
+   hlm1d[[h_vnam]] = rep(NA,times=ntstamp*n_case_info)
 }#end for (h in seq_along(nc_hlm1d))
 
 
@@ -596,29 +654,65 @@ if (! all(c(lon_fine,lat_fine))){
    stop(" Model coordinates must be within the site grid extent.")
 }#end if (! all(c(lon_fine,lat_fine)))
 
-
-
-# Load soil layers.  This is currently not used, but could be used for soil comparisons.
-cat0("   - Load soil information")
-slayer = tibble( zsoi   = c(unlist(ncvar_get(nc=nc_info,varid='ZSOI'  )))
-               , dzsoi  = c(unlist(ncvar_get(nc=nc_info,varid='DZSOI' )))
-               , bsw    = c(unlist(ncvar_get(nc=nc_info,varid='BSW'   )))
-               , hksat  = c(unlist(ncvar_get(nc=nc_info,varid='HKSAT' )))
-               , sucsat = c(unlist(ncvar_get(nc=nc_info,varid='SUCSAT')))
-               , watsat = c(unlist(ncvar_get(nc=nc_info,varid='WATSAT')))
-               )#end data.table
-
-#---~---
-#    Load size and PFT indices. This is currently not used, but could be used for 
-# census comparisons.
-#---~---
-cat0("   - Load indices for size- and pft-dependent variables.")
-index_scpf = tibble( scls   = ncvar_get(nc=nc_info,varid='fates_scmap_levscpf'  )
-                   , pft    = ncvar_get(nc=nc_info,varid='fates_pftmap_levscpf' )
-                   )#end data.table
-
 # Close connection
 dummy   = nc_close(nc_info)
+
+```
+
+
+
+We also read the soil information and the indices for PFT and size classes. Because these quantities may vary across simulations depending on the scientific question, we load all of them and save in lists. Currently this is not used but could be important in the future, if soil variables or census variables are compared.
+
+```{r, label='load-soil-dim-data',message=FALSE, results='hide'}
+# For soil layers and size-pft indices, we save a list for each simulation, as the PFT definitions and soil depth may vary across simulations.
+slayer     = list()
+index_scpf = list()
+for (i in sequence(n_case_info)){
+   # Select the first case to retrieve general information on files
+   case_name    = case_info$name   [i]
+   case_model   = case_info$model  [i]
+   case_desc    = paste0(case_info$desc[i]," (",case_model,")")
+   case_site    = case_info$site   [i]
+   case_tstampa = case_info$tstampa[i]
+   case_tstampz = case_info$tstampz[i]
+   nc_zero      = case_info$nc_zero[i]
+   cat0(" + Load additional information: ",case_name,".")
+   
+   # We always read the first actual simulation time because it has more information.
+   # Open NetCDF connection and retrieve variable names
+   nc_info  = nc_open(filename=nc_zero)
+   nc_nvars = nc_info$nvars
+   nc_ndims = nc_info$ndims
+   nc_dlist = rep(NA_character_,times=nc_ndims)
+   nc_vlist = rep(NA_character_,times=nc_nvars)
+   for (d in sequence(nc_ndims)) nc_dlist[d] = nc_info$dim[[d]]$name
+   for (v in sequence(nc_nvars)) nc_vlist[v] = nc_info$var[[v]]$name
+   
+   
+   # Load soil layers.  This is currently not used, but could be used for soil comparisons.
+   cat0("   - Load soil information")
+   slayer[[case_name]] = tibble( zsoi   = c(unlist(ncvar_get(nc=nc_info,varid='ZSOI'  )))
+                               , dzsoi  = c(unlist(ncvar_get(nc=nc_info,varid='DZSOI' )))
+                               , bsw    = c(unlist(ncvar_get(nc=nc_info,varid='BSW'   )))
+                               , hksat  = c(unlist(ncvar_get(nc=nc_info,varid='HKSAT' )))
+                               , sucsat = c(unlist(ncvar_get(nc=nc_info,varid='SUCSAT')))
+                               , watsat = c(unlist(ncvar_get(nc=nc_info,varid='WATSAT')))
+                               )#end data.table
+
+   #---~---
+   #    Load size and PFT indices. This is currently not used, but could be used for 
+   # census comparisons.
+   #---~---
+   cat0("   - Load indices for size- and pft-dependent variables.")
+   index_scpf[[case_name]] = tibble( scls   = ncvar_get(nc=nc_info,varid='fates_scmap_levscpf'  )
+                                   , pft    = ncvar_get(nc=nc_info,varid='fates_pftmap_levscpf' )
+                                   )#end tibble
+
+   # Close connection
+   dummy   = nc_close(nc_info)
+   
+}#end for (i in sequence(n_case_info))
+
 
 ```
 
@@ -629,104 +723,124 @@ We now go through every monthly output file to retrieve the averages by month an
 4. Organise the data into a `tibble` object.
 
 ```{r, label='load-times', message=FALSE,results='hide'}
-cat0(" + Load model output.")
 if ("nc_hlm" %in% ls()){dummy = nc_close(nc_hlm); rm(nc_hlm)}
-for (w in sequence(ntstamp)){
-   # Extract times and build file name
-   w_month  = month(tstamp[w])
-   w_year   = year (tstamp[w])
-   w_ymlab  = sprintf("%4.4i-%2.2i",w_year,w_month)
-   nc_base  = paste0(case_name,".",hlm_midfix,"." ,w_ymlab,".nc")
-   nc_file  = file.path(simul_path,nc_base)
-   cat0("   - Retrieve file ",nc_base,".")
 
-   
-   # Find conversion factors for monthly variables.
-   cmon.day = days_in_month(tstamp[w])
-   cmon.hr  = day.hr  * cmon.day
-   cmon.min = day.min * cmon.day
-   cmon.sec = day.sec * cmon.day
+for (i in sequence(n_case_info)){
+   # Select the first case to retrieve general information on files
+   case_name    = case_info$name      [i]
+   case_model   = case_info$model     [i]
+   case_desc    = paste0(case_info$desc[i]," (",case_model,")")
+   case_site    = case_info$site      [i]
+   case_tstampa = case_info$tstampa   [i]
+   case_tstampz = case_info$tstampz   [i]
+   nc_zero      = case_info$nc_zero   [i]
+   simul_path   = case_info$simul_path[i]
+   hlm_midfix   = case_info$hlm_midfix[i]
+   cat0(" + Load model output: ",case_name,".")
 
-  
-   # Open NetCDF connection and retrieve variable names
-   nc_hlm   = nc_open(filename=nc_file)
 
-   # Read 1D variables  
-   for (v in sequence(nhlm1d-etr_last-er_last)){
-      # Retrieve variable
-      nc_nvnow            = nc_hlm1d[v]
-      nc_can_scpf         = paste0(nc_nvnow,"_CANOPY_SCPF")
-      nc_und_scpf         = paste0(nc_nvnow,"_UNDERSTORY_SCPF")
-      nc_can_scls         = paste0(nc_nvnow,"_CANOPY_SCLS")
-      nc_und_scls         = paste0(nc_nvnow,"_UNDERSTORY_SCLS")
-      nc_pref             = tolower(x=nc_nvnow)
-
-      # Map variable to variable table, get the addition and multiplication factors.
-      h                   = match(nc_pref,hlm1dvar$vnam)
-      h_vnam              = hlm1dvar$vnam[h]
-      h_add0              = eval(parse(text=hlm1dvar$add0[h]))
-      h_mult              = eval(parse(text=hlm1dvar$mult[h]))
+   for (w in sequence(ntstamp)){
+      # Extract times and build file name
+      w_month  = month(tstamp[w])
+      w_year   = year (tstamp[w])
+      w_ymlab  = sprintf("%4.4i-%2.2i",w_year,w_month)
+      nc_base  = paste0(case_name,".",hlm_midfix,"." ,w_ymlab,".nc")
+      nc_file  = file.path(simul_path,nc_base)
+      cat0("   - Retrieve file ",nc_base,".")
       
-      if (nc_nvnow %in% nc_vlist){
-         # Read variable as is.
-         nc_dat              = ncvar_get(nc=nc_hlm,varid=nc_nvnow)
-         hlm1d[[h_vnam]][w]  = h_add0 + h_mult * nc_dat
-      }else if(all(c(nc_can_scpf,nc_und_scpf) %in% nc_vlist)){
-         # Build variable from the size- and PFT- arrays.
-         nc_can              = ncvar_get(nc=nc_hlm,varid=nc_can_scpf)
-         nc_und              = ncvar_get(nc=nc_hlm,varid=nc_und_scpf)
-         hlm1d[[h_vnam]][w]  = h_add0 + h_mult * sum(nc_can+nc_und)
-      }else if(all(c(nc_can_scls,nc_und_scls) %in% nc_vlist)){
-         # Build variable from the size- and PFT- arrays.
-         nc_can              = ncvar_get(nc=nc_hlm,varid=nc_can_scls)
-         nc_und              = ncvar_get(nc=nc_hlm,varid=nc_und_scls)
-         hlm1d[[h_vnam]][w]  = h_add0 + h_mult * sum(nc_can+nc_und)
-      }else{
-         cat0("--------------------------------------------------")
-         cat0(" The following variable is not available: ",nc_nvnow,".")
-         cat0(" The attempts to add canopy and under storey also failed..")
-         stop(" Missing variable.")
-      }#end if (is.na(h))
-   }#for (h in sequence(nhlm1d-etr_last-et_last))
+      
+      # Find conversion factors for monthly variables.
+      cmon.day = days_in_month(tstamp[w])
+      cmon.hr  = day.hr  * cmon.day
+      cmon.min = day.min * cmon.day
+      cmon.sec = day.sec * cmon.day
+      
+      
+      # Open NetCDF connection and retrieve variable names
+      nc_hlm   = nc_open(filename=nc_file)
+      
+      # Read 1D variables  
+      for (v in sequence(nhlm1d-etr_last-er_last)){
+         # Retrieve variable
+         nc_nvnow            = nc_hlm1d[v]
+         nc_can_scpf         = paste0(nc_nvnow,"_CANOPY_SCPF")
+         nc_und_scpf         = paste0(nc_nvnow,"_UNDERSTORY_SCPF")
+         nc_can_scls         = paste0(nc_nvnow,"_CANOPY_SCLS")
+         nc_und_scls         = paste0(nc_nvnow,"_UNDERSTORY_SCLS")
+         nc_pref             = tolower(x=nc_nvnow)
+         
+         # Map variable to variable table, get the addition and multiplication factors.
+         h                   = match(nc_pref,hlm1dvar$vnam)
+         h_vnam              = hlm1dvar$vnam[h]
+         h_add0              = eval(parse(text=hlm1dvar$add0[h]))
+         h_mult              = eval(parse(text=hlm1dvar$mult[h]))
 
-   # Find total ET.
-   if (etr_last){
-      hlm1d$qevtr[w] = hlm1d$qvege[w] + hlm1d$qvegt[w] + hlm1d$qsoil[w]
-   }#end if (etr_last)
+         # Find line for current time and simulation.
+         iw                  = which( ( hlm1d$time %eq% tstamp[w]) & (hlm1d$source %eq% i) )
 
-   # Find total ET.
-   if (er_last){
-      hlm1d$er[w] = hlm1d$ar[w] + hlm1d$hr[w]
-   }#end if (er_last)
-
-   # Close connection
-   dummy   = nc_close(nc_hlm)
-}#end for (w in sequence(nstamp))
+         # Decide how to populate the variable
+         if (nc_nvnow %in% nc_vlist){
+            # Read variable as is.
+            nc_dat               = ncvar_get(nc=nc_hlm,varid=nc_nvnow)
+            hlm1d[[h_vnam]][iw]  = h_add0 + h_mult * nc_dat
+         }else if(all(c(nc_can_scpf,nc_und_scpf) %in% nc_vlist)){
+            # Build variable from the size- and PFT- arrays.
+            nc_can               = ncvar_get(nc=nc_hlm,varid=nc_can_scpf)
+            nc_und               = ncvar_get(nc=nc_hlm,varid=nc_und_scpf)
+            hlm1d[[h_vnam]][iw]  = h_add0 + h_mult * sum(nc_can+nc_und)
+         }else if(all(c(nc_can_scls,nc_und_scls) %in% nc_vlist)){
+            # Build variable from the size- and PFT- arrays.
+            nc_can               = ncvar_get(nc=nc_hlm,varid=nc_can_scls)
+            nc_und               = ncvar_get(nc=nc_hlm,varid=nc_und_scls)
+            hlm1d[[h_vnam]][iw]  = h_add0 + h_mult * sum(nc_can+nc_und)
+         }else{
+            cat0("--------------------------------------------------")
+            cat0(" The following variable is not available: ",nc_nvnow,".")
+            cat0(" The attempts to add canopy and under storey also failed..")
+            stop(" Missing variable.")
+         }#end if (is.na(h))
+      }#for (h in sequence(nhlm1d-etr_last-et_last))
+      
+      # Find total ET.
+      if (etr_last){
+         hlm1d$qevtr[iw] = hlm1d$qvege[iw] + hlm1d$qvegt[iw] + hlm1d$qsoil[iw]
+      }#end if (etr_last)
+      
+      # Find total ET.
+      if (er_last){
+         hlm1d$er[iw] = hlm1d$ar[iw] + hlm1d$hr[iw]
+      }#end if (er_last)
+      
+      # Close connection
+      dummy   = nc_close(nc_hlm)
+   }#end for (w in sequence(nstamp))
+   
+}#end for (i in sequence(n_case_info))
 ```
 
 We now compare the variables from the site measurements and the model, and keep only the variables present in both data sets.
-```{r,label='intersect-variables'}
+```{r,label='intersect-variables',message=FALSE, results='hide'}
 cat0(" + Find the variables common to both site and model.")
-
 # Find common variables
 var_both = intersect(names(site1d),names(hlm1d))
-var_both = var_both[! var_both %in% "time"]
+var_both = var_both[! var_both %in% c("time","source")]
 
 # Restrict variables for both site and model
-site1d = site1d %>% select( all_of(c("time",var_both)))
-hlm1d  = hlm1d  %>% select( all_of(c("time",var_both)))
+site1d = site1d %>% select( all_of(c("time","source",var_both)))
+hlm1d  = hlm1d  %>% select( all_of(c("time","source",var_both)))
 
 ```
 
 
 Combine site and model into a single object (`emean`), then we calculate mean seasonality and the range (`mmean`).
-```{r, label='merge-summarise-data'}
+```{r, label='merge-summarise-data',message=FALSE, results='hide'}
 
 # Merge data sets, we set 1 for site measurements, and 2 for the host model.
 cat0(" + Merge data sets into a single tibble.")
-emean  = rbind( site1d %>% mutate(source = 0L)
-              , hlm1d  %>% mutate(source = 1L) ) %>%
-         select(all_of(c("time","source",var_both)))
+emean  = rbind( site1d, hlm1d) %>%
+         select(all_of(c("time","source",var_both))) %>%
+         filter( ( time %in% unique(site1d$time) )
+               & ( time %in% unique(hlm1d$time ) ) )
 
 # Find the mean seasonal cycle.
 mmean = emean                                                             %>%
@@ -777,8 +891,8 @@ cat0(" + Plot time series comparisons between site measurements/estimates and mo
 
 
 # Set legends
-leg_colours = c(site_colour,hlm_colour)
-leg_labels  = c("Site",case_model)
+leg_colours = c(site_colour,case_info$colour)
+leg_labels  = c("Site",paste0(case_info$model,": ",case_info$desc))
 
 gg_emean = list()
 for (v in seq_along(var_both)){
@@ -825,6 +939,7 @@ for (v in seq_along(var_both)){
                                                             )#end element_text
                           , axis.ticks.length = unit(-0.2,"char")
                           , axis.title.y      = element_text( size = gg_ptsz * 0.9)
+                          , legend.text       = element_text( size = gg_ptsz * 0.7)
                           )#end theme
 
   # Write plot settings to the list.
@@ -834,11 +949,11 @@ for (v in seq_along(var_both)){
 # Wrap plots then global settings and x axis.
 gg_patch = wrap_plots(gg_emean)
 gg_patch = gg_patch + guide_area() + plot_layout(guides="collect")
-gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_desc)
+gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_pref)
 
 # Save plots.
 for (d in sequence(ndevice)){
-   h_output = paste0("comparison_tseries-",case_name,".",gg_device[d])
+   h_output = paste0("comparison_tseries-",case_pref,".",gg_device[d])
    dummy    = ggsave( filename = h_output
                     , plot     = gg_patch
                     , device   = gg_device[d]
@@ -864,8 +979,8 @@ Then we plot the mean seasonal cycle for both site measurements/estimates and mo
 cat0(" + Plot the mean seasonal cycle of site measurements/estimates and model predictions.")
 
 # Set legends
-leg_colours = c(site_colour,hlm_colour)
-leg_labels  = c("Site",case_model)
+leg_colours = c(site_colour,case_info$colour)
+leg_labels  = c("Site",paste0(case_info$model,": ",case_info$desc))
 
 gg_emean = list()
 for (v in seq_along(var_both)){
@@ -933,6 +1048,7 @@ for (v in seq_along(var_both)){
                                                             )#end element_text
                           , axis.ticks.length = unit(-0.2,"char")
                           , axis.title.y      = element_text( size = gg_ptsz * 0.9)
+                          , legend.text       = element_text( size = gg_ptsz * 0.7)
                           )#end theme
 
   # Write plot settings to the list.
@@ -942,11 +1058,11 @@ for (v in seq_along(var_both)){
 # Wrap plots then global settings and x axis.
 gg_patch = wrap_plots(gg_emean)
 gg_patch = gg_patch + guide_area() + plot_layout(guides="collect")
-gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_desc)
+gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_pref)
 
 # Save plots.
 for (d in sequence(ndevice)){
-   h_output = paste0("comparison_meanseason-",case_name,".",gg_device[d])
+   h_output = paste0("comparison_meanseason-",case_pref,".",gg_device[d])
    dummy    = ggsave( filename = h_output
                     , plot     = gg_patch
                     , device   = gg_device[d]
@@ -970,29 +1086,41 @@ if (gg_screen) gg_patch
 
 We now generate a few summary diagrams that allow us to compare the model behaviour for all the variables in the same plot.  First, we must first combine all the variables in rows, and leave observations and models in separate columns.
 
-```{r, label='melt-taylor'}
+```{r, label='melt-taylor',message=FALSE, results='hide'}
 
 # Re-arrange site data for the Taylor diagram
-td_site = emean %>%
-          filter(source == 0) %>%
-          select( ! source) %>%
-          melt(id.vars="time",measure.vars=var_both,variable.factor=FALSE,value.name="site") %>%
-          as_tibble()
+td0_site = emean %>%
+           filter(source == 0) %>%
+           melt(id.vars=c("time","source"),measure.vars=var_both,variable.factor=FALSE,value.name="site") %>%
+           as_tibble()
+
+# Create tiblle with as many observations as models
+td_site = NULL
+for (i in sequence(n_case_info)){
+   td_site = rbind(td_site,  td0_site %>% mutate(source = i))
+}#end for (i in sequence(n_case_info))
+
 
 # Re-arrange model data for the Taylor diagram
-td_model = emean %>%
-          filter(source == 1) %>%
-          select( ! source) %>%
-          melt(id.vars="time",measure.vars=var_both,variable.factor=FALSE,value.name="model") %>%
-          as_tibble()
+td_model  = emean %>%
+            filter(source != 0) %>%
+            melt(id.vars=c("time","source"),measure.vars=var_both,variable.factor=FALSE,value.name="model") %>%
+            as_tibble()
+
 
 # Find factor names
 v_short = hlm1dvar$short[match(var_both,hlm1dvar$vnam)]
 
 # Combine both data sets.
-td_data = as_tibble(merge(x=td_site,y=td_model,by=c("time","variable"))) %>%
+td_data = as_tibble(merge(x=td_site,y=td_model,by=c("time","source","variable"))) %>%
           arrange(variable,time) %>%
           mutate( variable = factor(variable) )
+
+# Create tibble with model configurations
+td_config = td_data %>% 
+            mutate( source = factor(case_info$name[source],levels=case_info$name) ) %>%
+            pivot_wider(names_from="source",values_from="model")
+
 
 #    Split data into seasons, using a simple function. We use the month acronyms so it works
 # for both hemispheres.
@@ -1060,6 +1188,20 @@ This function returns a `patchwork` structure (compatible with `ggplot`).
 
 ```{r, label='plot-taylor',message=FALSE,results='hide',warning=FALSE}
 
+# Decide whether to plot by season or by model simulation
+if (n_case_info == 1){
+   # Select data
+   td_eval         = td_season
+   td_title        = "Season"
+   td_model        = c("DJF","MAM","JJA","SON")
+   td_label        = c(DJF="DJF",MAM="MAM",JJA="JJA",SON="SON")
+}else{
+   td_eval         = td_config
+   td_model        = case_info$name
+   td_title        = "Settings"
+   td_label        = paste0(case_info$model,": ",case_info$desc)
+   names(td_label) = case_info$name
+}#end if (n_case_info == 1)
 
 # Set labels for variables
 group_label        = hlm1dvar$short[match(var_both,hlm1dvar$vnam)]
@@ -1067,24 +1209,24 @@ names(group_label) = var_both
 group_label        = mapply(FUN=parse,text=as.list(group_label))
 
 # Generate Taylor diagrams (one per season).
-gg_good = gg_taylor( x                  = td_season
+gg_good = gg_taylor( x                  = td_eval
                    , obser              = "site"
-                   , model              = c("DJF","MAM","JJA","SON")
+                   , model              = td_model
                    , group              = "variable"
                    , panel              = NULL # "season"
-                   , model_opts         = list( title = "Season"
-                                              , label = c(DJF="DJF",MAM="MAM",JJA="JJA",SON="SON")
+                   , model_opts         = list( title = td_title
+                                              , label = td_label
                                               )#end list
                    , group_opts         = list( title = "Variable", label = group_label)
                    , colour_opts        = list(by="model")
-                   , main_title         = paste0("Taylor Diagram: ",case_desc)
+                   , main_title         = paste0("Taylor Diagram: ",case_pref)
                    , base_size          = gg_ptsz
-                   , extra_legend       = FALSE
+                   , extra_legend       = TRUE
                    )#end gg_taylor
 
 # Save plots.
 for (d in sequence(ndevice)){
-   h_output = paste0("taylor_diag-",case_name,".",gg_device[d])
+   h_output = paste0("taylor_diag-",case_pref,".",gg_device[d])
    dummy    = ggsave( filename = h_output
                     , plot     = gg_good
                     , device   = gg_device[d]
@@ -1160,30 +1302,45 @@ This function returns a `patchwork` structure (compatible with `ggplot`).
 # Temporary, load function
 source(file.path(util_path,"gg_biasvar.r"))
 
+if (n_case_info == 1){
+   # Select data
+   td_eval         = td_season
+   td_title        = "Season"
+   td_model        = c("DJF","MAM","JJA","SON")
+   td_label        = c(DJF="DJF",MAM="MAM",JJA="JJA",SON="SON")
+}else{
+   td_eval         = td_config
+   td_model        = case_info$name
+   td_title        = "Settings"
+   td_label        = paste0(case_info$model,": ",case_info$desc)
+   names(td_label) = case_info$name
+}#end if (n_case_info == 1)
+
+
 # Set labels for variables
 group_label        = hlm1dvar$short[match(var_both,hlm1dvar$vnam)]
 names(group_label) = var_both
 group_label        = mapply(FUN=parse,text=as.list(group_label))
 
 # Generate bias-variance diagrams (one per season).
-gg_good = gg_biasvar( x                  = td_season
+gg_good = gg_biasvar( x                  = td_eval
                     , obser              = "site"
-                    , model              = c("DJF","MAM","JJA","SON")
+                    , model              = td_model
                     , group              = "variable"
                     , panel              = NULL # "season"
-                    , model_opts         = list( title = "Season"
-                                               , label = c(DJF="DJF",MAM="MAM",JJA="JJA",SON="SON")
+                    , model_opts         = list( title = td_title
+                                               , label = td_label
                                                )#end list
                     , group_opts         = list( title = "Variable", label = group_label)
                     , colour_opts        = list(by="model")
-                    , main_title         = paste0("Bias-Variance Diagram: ",case_desc)
+                    , main_title         = paste0("Bias-Variance Diagram: ",case_pref)
                     , base_size          = gg_ptsz
                     , show_nsme          = FALSE
-                    , extra_legend       = FALSE
+                    , extra_legend       = TRUE
                     )#end gg_taylor
 # Save plots.
 for (d in sequence(ndevice)){
-   h_output = paste0("biasvar_diag-",case_name,".",gg_device[d])
+   h_output = paste0("biasvar_diag-",case_pref,".",gg_device[d])
    dummy    = ggsave( filename = h_output
                     , plot     = gg_good
                     , device   = gg_device[d]

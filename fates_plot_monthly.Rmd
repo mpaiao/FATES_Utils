@@ -4,6 +4,17 @@ author: "Marcos Longo"
 date: "11-Aug-2021"
 ---
 
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+
 # Introduction
 
 This R Markdown document guides how to build a set of output figures for a FATES simulation at a single 
@@ -63,11 +74,23 @@ It is possible to select the simulation to process using the variable case_idx
 ```{r, label='case-settings'}
 
 # Define the data structure
-case_info = tidyr::tribble( ~idx, ~name                                  , ~model     , ~desc                           , ~tstampa     , ~tstampz
-                          ,    0, "D0000_ParacouTest_CLM_FATES"          , "CLM-FATES", "Paracou Test"                  , NA_character_, NA_character_
-                          ,    1, "S0001_ParacouNewPhen_CLM_FATES"       , "CLM-FATES", "Paracou: New Phenology"        , NA_character_, NA_character_
-                          ,    2, "S0002_TanguroNewPhen_CLM_FATES"       , "CLM-FATES", "Tanguro: New Phenology"        , NA_character_, NA_character_
-                          ,    3, "S0003_PetrolinaNewPhen_CLM_FATES"     , "CLM-FATES", "Petrolina: New Phenology"      , NA_character_, NA_character_
+case_info = tidyr::tribble( ~idx, ~name                                     , ~model     , ~desc                                    , ~tstampa     , ~tstampz
+                          ,    0, "D0000_ParacouTest_CLM_FATES"             , "CLM-FATES", "Paracou Test"                           , NA_character_, NA_character_
+                          ,    1, "S0001_ParacouNewPhen_CLM_FATES"          , "CLM-FATES", "Paracou: Simple Allocation (EG+HD)"     , NA_character_, NA_character_
+                          ,    2, "S0002_TanguroNewPhen_CLM_FATES"          , "CLM-FATES", "Tanguro: Simple Allocation (EG+HD)"     , NA_character_, NA_character_
+                          ,    3, "S0003_PetrolinaNewPhen_CLM_FATES"        , "CLM-FATES", "Petrolina: Simple Allocation (EG+HD)"   , NA_character_, NA_character_
+                          ,    4, "S0004_ParacouEvergreen_CLM_FATES"        , "CLM-FATES", "Paracou: Simple Allocation (EG Only)"   , NA_character_, NA_character_
+                          ,    5, "S0005_TanguroEvergreen_CLM_FATES"        , "CLM-FATES", "Tanguro: Simple Allocation (EG Only)"   , NA_character_, NA_character_
+                          ,    6, "S0006_PetrolinaEvergreen_CLM_FATES"      , "CLM-FATES", "Petrolina: Simple Allocation (EG Only)" , NA_character_, NA_character_
+                          ,    7, "S0007_ParacouOldCAllocEGDD_CLM_FATES"    , "CLM-FATES", "Paracou: Default Allocation (EG+HD)"    , NA_character_, NA_character_
+                          ,    8, "S0008_TanguroOldCAllocEGDD_CLM_FATES"    , "CLM-FATES", "Tanguro: Default Allocation (EG+HD)"    , NA_character_, NA_character_
+                          ,    9, "S0009_PetrolinaOldCAllocEGDD_CLM_FATES"  , "CLM-FATES", "Petrolina: Default Allocation (EG+HD)"  , NA_character_, NA_character_
+                          ,   10, "S0010_ParacouOldCAllocEGOnly_CLM_FATES"  , "CLM-FATES", "Paracou: Default Allocation (EG Only)"  , NA_character_, NA_character_
+                          ,   11, "S0011_TanguroOldCAllocEGOnly_CLM_FATES"  , "CLM-FATES", "Tanguro: Default Allocation (EG Only)"  , NA_character_, NA_character_
+                          ,   12, "S0012_PetrolinaOldCAllocEGOnly_CLM_FATES", "CLM-FATES", "Petrolina: Default Allocation (EG Only)", NA_character_, NA_character_
+                          ,   13, "S0013_ParacouOldThresh_CLM_FATES"        , "CLM-FATES", "Paracou: SWC Threshold (EG+HD)"         , NA_character_, NA_character_
+                          ,   14, "S0014_TanguroOldThresh_CLM_FATES"        , "CLM-FATES", "Tanguro: SWC Threshold (EG+HD)"         , NA_character_, NA_character_
+                          ,   15, "S0015_PetrolinaOldThresh_CLM_FATES"      , "CLM-FATES", "Petrolina: SWC Threshold (EG+HD)"       , NA_character_, NA_character_
                           )#end tribble
 
 # Use case_idx to select which simulation to process
