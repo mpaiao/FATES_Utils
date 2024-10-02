@@ -31,13 +31,27 @@
 #------------------------------------------------------------------------------------------#
 #     Operators to test whether the values are within range or outside range.              #
 #                                                                                          #
-# x %wr% y -- TRUE when x is within range of y     (x exactly at bounds returns TRUE )     #
-# x %ir% y -- TRUE when x is inside range of y     (x exactly at bounds returns FALSE)     #
-# x %or% y -- TRUE when x is outside range of y    (x exactly at bounds returns FALSE)     #
-# x %nr% y -- TRUE when x is not inside range of y (x exactly at bounds returns TRUE )     #
+#  Operation  | TRUE when...             | If x == min(y) | If x == max(y)                 #
+# -------------------------------------------------------------------------                #
+#  x %wr% y   | x is within range of y   | TRUE           | TRUE                           #
+#  x %wl% y   | x is within range of y   | TRUE           | FALSE                          #
+#  x %wu% y   | x is within range of y   | FALSE          | TRUE                           #
+#  x %ir% y   | x is inside range of y   | FALSE          | FALSE                          #
+#  x %or% y   | x is outside range of y  | FALSE          | FALSE                          #
+#  x %ol% y   | x is outside range of y  | FALSE          | TRUE                           #
+#  x %ou% y   | x is outside range of y  | TRUE           | FALSE                          #
+#  x %nr% y   | x is outside range of y  | TRUE           | TRUE                           #
 #------------------------------------------------------------------------------------------#
 '%wr%' <<- function(x,y){
    ans = (! (is.na(x) | is.nan(x))) & ( x >= min(y,na.rm=TRUE) & x <= max(y,na.rm=TRUE) )
+   return(ans)
+}#end function
+'%wl%' <<- function(x,y){
+   ans = (! (is.na(x) | is.nan(x))) & ( x >= min(y,na.rm=TRUE) & x <  max(y,na.rm=TRUE) )
+   return(ans)
+}#end function
+'%wu%' <<- function(x,y){
+   ans = (! (is.na(x) | is.nan(x))) & ( x >  min(y,na.rm=TRUE) & x <= max(y,na.rm=TRUE) )
    return(ans)
 }#end function
 '%ir%' <<- function(x,y){
@@ -46,6 +60,14 @@
 }#end function
 '%or%' <<- function(x,y){
    ans = (! (is.na(x) | is.nan(x))) & ( x <  min(y,na.rm=TRUE) | x >  max(y,na.rm=TRUE) )
+   return(ans)
+}#end function
+'%ol%' <<- function(x,y){
+   ans = (! (is.na(x) | is.nan(x))) & ( x <  min(y,na.rm=TRUE) | x >= max(y,na.rm=TRUE) )
+   return(ans)
+}#end function
+'%ou%' <<- function(x,y){
+   ans = (! (is.na(x) | is.nan(x))) & ( x <= min(y,na.rm=TRUE) | x >  max(y,na.rm=TRUE) )
    return(ans)
 }#end function
 '%nr%' <<- function(x,y){

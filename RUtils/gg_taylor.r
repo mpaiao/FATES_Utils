@@ -132,7 +132,7 @@ gg_taylor =   function( x
                         , main_title     = "Taylor Diagram"
                         , extra_legend   = FALSE
                         , base_size      = 12
-                        , base_family    = if(Sys.info()["sysname"] %in% "Darwin"){"Helvetica"}else{"sans"}
+                        , base_family    = if(Sys.info()["sysname"] %in% "Darwin"){"Helvetica"}else{"Nimbus Sans L"}
                         , force_pos      = FALSE
                         ){ #end gg_taylor
 
@@ -616,7 +616,7 @@ gg_taylor =   function( x
    #---~---
    quarter    = seq(from=0,to= 90,by=1) * pi / 180.
    half       = seq(from=0,to=180,by=1) * pi / 180.
-   pos_corr   = force_pos || all(xsumm$corr %ge% 0.)
+   pos_corr   = force_pos || (! any(xsumm$corr %lt% 0.) )
    #---~---
 
 
@@ -772,8 +772,12 @@ gg_taylor =   function( x
    for (n in sequence(n_panel)){
       #--- Initialise ggplot
       gg_now = ggplot( data = xsplit[[n]], mapping = aes(x=x,y=y))
-      gg_now = gg_now + theme_minimal(base_family=base_family,base_size=base_size)
-      gg_now = gg_now + theme( line = element_blank(), rect = element_blank() )
+      gg_now = gg_now + theme_minimal( base_family = base_family
+                                     , base_size   = base_size
+                                     )#end theme_minimal
+      gg_now = gg_now + theme( line        = element_blank()
+                             , rect        = element_blank()
+                             )#end theme
       #---~---
 
       #--- Add local title in case more than one panel exists.
@@ -1001,7 +1005,7 @@ gg_taylor =   function( x
                                                         , size   = axis_opts$fontsize
                                                         )#end element_text
                       )#end geom_point 
-               )#end gg_noe
+               )#end gg_now
       #---~---
 
 

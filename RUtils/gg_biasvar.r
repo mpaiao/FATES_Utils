@@ -133,7 +133,7 @@ gg_biasvar =   function( x
                        , show_nsme      = FALSE
                        , extra_legend   = FALSE
                        , base_size      = 12
-                       , base_family    = if(Sys.info()["sysname"] %in% "Darwin"){"Helvetica"}else{"sans"}
+                       , base_family    = if(Sys.info()["sysname"] %in% "Darwin"){"Helvetica"}else{"Nimbus Sans L"}
                        ){ #end gg_taylor
 
 
@@ -182,6 +182,7 @@ gg_biasvar =   function( x
    shape_opts_def  = list( levels  = NULL
                          , solid   = TRUE
                          , size    = 3
+                         , stroke  = 1
                          )#end list
    #--- Panel.
    panel_opts_def  = list( label  = NULL
@@ -748,8 +749,12 @@ gg_biasvar =   function( x
    for (n in sequence(n_panel)){
       #--- Initialise ggplot
       gg_now = ggplot( data = xsplit[[n]], mapping = aes(x=x,y=y))
-      gg_now = gg_now + theme_minimal(base_family=base_family,base_size=base_size)
-      gg_now = gg_now + theme( line = element_blank(), rect = element_blank() )
+      gg_now = gg_now + theme_minimal( base_family = base_family
+                                     , base_size   = base_size
+                                     )#end theme_minimal
+      gg_now = gg_now + theme( line        = element_blank()
+                             , rect        = element_blank()
+                             )#end theme
       #---~---
 
       #--- Add local title in case more than one panel exists.
@@ -894,6 +899,7 @@ gg_biasvar =   function( x
                                                             , shape  = aes_shape
                                                             )#end aes
                                   , size        = shape_opts$size
+                                  , stroke      = shape_opts$stroke
                                   , show.legend =  (n == 1) && ((n_colour*n_shape) > 1)
                                   )#end geom_point
       #---~---
@@ -934,8 +940,8 @@ gg_biasvar =   function( x
                       , axis.title.y      = element_text( colour = axis_opts$y_colour
                                                         , size   = axis_opts$fontsize
                                                         )#end element_text
-                      )#end geom_point 
-               )#end gg_noe
+                      )#end theme
+               )#end gg_now
       #---~---
 
 

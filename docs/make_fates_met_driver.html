@@ -14,8 +14,8 @@
 
 <title>FATES met driver converter.</title>
 
-<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -57,11 +57,13 @@ if (window.hljs) {
 
 
 
+
 <style type="text/css">
 /* for pandoc --citeproc since 2.11 */
 div.csl-bib-body { }
 div.csl-entry {
   clear: both;
+  margin-bottom: 0em;
 }
 .hanging div.csl-entry {
   margin-left:2em;
@@ -104,6 +106,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -161,11 +166,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -194,8 +203,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -203,16 +212,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -256,7 +258,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -319,9 +321,14 @@ pre code {
 </style>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>This script reads in hourly meteorological data from towers or automatic weather stations, and generates the meteorological driver files for FATES. The input file must be a csv file containing the following variables:</p>
+<p>This script reads in hourly meteorological data from towers or
+automatic weather stations, and generates the meteorological driver
+files for FATES. The input file must be a csv file containing the
+following variables:</p>
 <ul>
-<li>Time. Either multiple vectors defining the time, or one column with full time information, which should contain the following variables (any order).
+<li>Time. Either multiple vectors defining the time, or one column with
+full time information, which should contain the following variables (any
+order).
 <ul>
 <li>year</li>
 <li>month</li>
@@ -331,7 +338,8 @@ pre code {
 </ul></li>
 <li>Atmospheric pressure</li>
 <li>Air temperature</li>
-<li>Humidity. One of the following must be provided (and this order of preference):
+<li>Humidity. One of the following must be provided (and this order of
+preference):
 <ul>
 <li>Specific humidity</li>
 <li>Vapour pressure</li>
@@ -342,7 +350,8 @@ pre code {
 <li>Incident solar irradiance</li>
 <li>Precipitation</li>
 </ul>
-<p>The example below shows how the data should look like (first 10 lines):</p>
+<p>The example below shows how the data should look like (first 10
+lines):</p>
 <pre><code>year,month,day,hour,min,atm.prss,atm.tmp,atm.rhv,atm.vels,atm.vdir,rshort.in,rlong.in,rain
 2004,1,1,0,0,999.5,24.41,97.87,2.9,58.8,0,443.76,0
 2004,1,1,1,0,999.5,24.63,96.97,2.55,65.1,0,444.67,0
@@ -355,7 +364,8 @@ pre code {
 2004,1,1,8,0,1000.5,23.54,98.73,1.95,96.9,33.97,433.63,0
 2004,1,1,9,0,1001.5,23.93,98.9,0.75,211.2,93.71,432.94,0
 2004,1,1,10,0,1002,24.67,98.28,0.3,206.8,239.25,419.64,0</code></pre>
-<p><strong>Important</strong>: All input data must be gap-filled beforehand. This script will not gap fill the data for you.</p>
+<p><strong>Important</strong>: All input data must be gap-filled
+beforehand. This script will not gap fill the data for you.</p>
 </div>
 <div id="reset-session" class="section level1">
 <h1>Reset session</h1>
@@ -383,7 +393,9 @@ invisible(gc())</code></pre>
 <h1>Main settings</h1>
 <div id="required-packages" class="section level2">
 <h2>Required packages</h2>
-<p>Load some packages. By default, we skip the warning messages, but it may be a good idea to visualise them if it is the first time running.</p>
+<p>Load some packages. By default, we skip the warning messages, but it
+may be a good idea to visualise them if it is the first time
+running.</p>
 <pre class="r"><code>isfine = c( data.table = require(data.table,quietly=TRUE,warn.conflicts=FALSE)
           , lubridate  = require(lubridate ,quietly=TRUE,warn.conflicts=FALSE)
           , ncdf4      = require(ncdf4     ,quietly=TRUE,warn.conflicts=FALSE)
@@ -392,7 +404,7 @@ invisible(gc())</code></pre>
           , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
           )#end c
 if (! all(isfine)){
-   cat0(&quot; List of required packages, and the success status loading them:\n&quot;)
+   cat (&quot; List of required packages, and the success status loading them:\n&quot;)
    print(isfine)
    stop(&quot; Some packages are missing and must be installed.&quot;)
 }</code></pre>
@@ -401,9 +413,12 @@ if (! all(isfine)){
 <h2>Paths</h2>
 <p>Set paths and files for input and output.</p>
 <ul>
-<li><strong>main_path</strong>. The main path for processing data. The output path will be generated here.</li>
-<li><strong>input_file</strong>. The csv file containing the gap-filled tower/AWS data (full path).</li>
-<li><strong>output_path</strong>. The main output path for the data. A sub-directory for this site will be created.</li>
+<li><strong>main_path</strong>. The main path for processing data. The
+output path will be generated here.</li>
+<li><strong>input_file</strong>. The csv file containing the gap-filled
+tower/AWS data (full path).</li>
+<li><strong>output_path</strong>. The main output path for the data. A
+sub-directory for this site will be created.</li>
 </ul>
 <pre class="r"><code>main_path   = file.path(path.expand(&quot;~&quot;),&quot;Documents&quot;,&quot;LocalData&quot;,&quot;TowerData&quot;,&quot;Paracou&quot;,&quot;make_single_site&quot;)
 input_file  = file.path(main_path,&quot;input_csv&quot;,&quot;gyf_met-driver_2004-2019.csv&quot;)
@@ -411,13 +426,19 @@ output_path = file.path(path.expand(&quot;~&quot;),&quot;Data&quot;,&quot;FATES_
 </div>
 <div id="author-information" class="section level2">
 <h2>Author information</h2>
-<p>Provide information about yourself. This will be included in the netCDF headers. In case you do not want to specify any of them, set them to <code>NA_character_</code></p>
+<p>Provide information about yourself. This will be included in the
+netCDF headers. In case you do not want to specify any of them, set them
+to <code>NA_character_</code></p>
 <ul>
-<li><strong>author_name</strong>. Person who is generating these files (typically it’s you).</li>
-<li><strong>author_email</strong>. Contact email (so people can reach out to you if problems arise).</li>
-<li><strong>datprov_name</strong>. Data provider name (who shared the met drivers with you).</li>
+<li><strong>author_name</strong>. Person who is generating these files
+(typically it’s you).</li>
+<li><strong>author_email</strong>. Contact email (so people can reach
+out to you if problems arise).</li>
+<li><strong>datprov_name</strong>. Data provider name (who shared the
+met drivers with you).</li>
 <li><strong>datprov_email</strong>. Data provider email.</li>
-<li><strong>data_usage_notes</strong>. Brief data usage note message.</li>
+<li><strong>data_usage_notes</strong>. Brief data usage note
+message.</li>
 </ul>
 <pre class="r"><code>author_name  = &quot;This Is You&quot;
 author_email = &quot;yourself@somewhere.gov&quot;
@@ -434,14 +455,19 @@ data_usage_notes = paste0( &quot; If you plan to use these data for any scientif
 <p>Provide some basic information about the tower:</p>
 <ul>
 <li><strong>xid</strong>. Unique Tower ID.</li>
-<li><strong>site_desc</strong>. Site description (to be appended to the netCDF headers)</li>
+<li><strong>site_desc</strong>. Site description (to be appended to the
+netCDF headers)</li>
 <li><strong>dat_version</strong>. Version of this data set.</li>
 <li><strong>site_lon</strong>. Site longitude (degrees east).</li>
 <li><strong>site_lat</strong>. Site latitude (degrees north).</li>
-<li><strong>site_alt</strong>. Site altitude (metres above sea level).</li>
-<li><strong>site_refhgt</strong>. Height reference for observations (e.g., the tower height above ground).</li>
-<li><strong>dxy</strong>. Intended grid size (we will generate a 1x1 pseudo-grid for FATES).</li>
-<li><strong>undef</strong>. A number to denote missing values. This is needed by NetCDF, but the data should not have any</li>
+<li><strong>site_alt</strong>. Site altitude (metres above sea
+level).</li>
+<li><strong>site_refhgt</strong>. Height reference for observations
+(e.g., the tower height above ground).</li>
+<li><strong>dxy</strong>. Intended grid size (we will generate a 1x1
+pseudo-grid for FATES).</li>
+<li><strong>undef</strong>. A number to denote missing values. This is
+needed by NetCDF, but the data should not have any</li>
 </ul>
 <pre class="r"><code>xid         = &quot;paracouGUF&quot;
 site_desc   = &quot;Guyaflux tower at Paracou, French Guiana&quot;
@@ -452,14 +478,41 @@ site_alt    =  30.000000
 site_refhgt =   58.0
 dxy         =   1.0
 undef       = -9999.99</code></pre>
-<p>Useful variables for time conversion: * <strong>UTC offset</strong>, if data are provided in local time. For example, if the location is in the Western Hemisphere and the time zone is UTC-3, then utc_off should be -3 (<strong>Important</strong>. If the input data are already in UTC, then set <code>utc_off</code> to zero). * <strong>Year offset</strong>, if year is provided with two digits. For example, if the data are for 2003-2016 but the years are in 03-16 format, set <code>year_off</code> to 2000. If the year is already provided in four digits, set it to zero.</p>
+<p>Useful variables for time conversion: * <strong>UTC offset</strong>,
+if data are provided in local time. For example, if the location is in
+the Western Hemisphere and the time zone is UTC-3, then utc_off should
+be -3 (<strong>Important</strong>. If the input data are already in UTC,
+then set <code>utc_off</code> to zero). * <strong>Year offset</strong>,
+if year is provided with two digits. For example, if the data are for
+2003-2016 but the years are in 03-16 format, set <code>year_off</code>
+to 2000. If the year is already provided in four digits, set it to
+zero.</p>
 <pre class="r"><code>utc_off  = -3
 year_off = 0</code></pre>
-<p>Next, we identify how time information is provided, by setting variable <code>date_colname</code>.<br />
-* If <code>date_colname=NA_character_</code>, then variable <code>dateinfo</code> must contain the names of the columns corresponding to year (<code>year</code>), month (<code>month</code>), day (<code>day</code>), hour (<code>hour</code>), and minute (<code>min</code>), respectively. If minute is absent, set it to <code>NA_character_</code>. * Otherwise, <code>date_colname</code> indicates the name of the column in the input data that has the time information (<em>case sensitive</em>). In this case, variable <code>dateinfo</code> should indicate the position of each piece of the time information, following the examples below. If minute is absent, set it to <code>NA_integer_</code></p>
+<p>Next, we identify how time information is provided, by setting
+variable <code>date_colname</code>.<br />
+* If <code>date_colname=NA_character_</code>, then variable
+<code>dateinfo</code> must contain the names of the columns
+corresponding to year (<code>year</code>), month (<code>month</code>),
+day (<code>day</code>), hour (<code>hour</code>), and minute
+(<code>min</code>), respectively. If minute is absent, set it to
+<code>NA_character_</code>. * Otherwise, <code>date_colname</code>
+indicates the name of the column in the input data that has the time
+information (<em>case sensitive</em>). In this case, variable
+<code>dateinfo</code> should indicate the position of each piece of the
+time information, following the examples below. If minute is absent, set
+it to <code>NA_integer_</code></p>
 <table>
+<colgroup>
+<col width="35%" />
+<col width="13%" />
+<col width="14%" />
+<col width="11%" />
+<col width="13%" />
+<col width="11%" />
+</colgroup>
 <thead>
-<tr class="header">
+<tr>
 <th><strong>Example of time string</strong></th>
 <th><strong>year</strong></th>
 <th><strong>month</strong></th>
@@ -469,7 +522,7 @@ year_off = 0</code></pre>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>06/29/2021 14:30:22</td>
 <td>3</td>
 <td>1</td>
@@ -477,7 +530,7 @@ year_off = 0</code></pre>
 <td>4</td>
 <td>5</td>
 </tr>
-<tr class="even">
+<tr>
 <td>06/29/2021 14:30</td>
 <td>3</td>
 <td>1</td>
@@ -485,7 +538,7 @@ year_off = 0</code></pre>
 <td>4</td>
 <td>5</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>29/06/2021 14:30</td>
 <td>3</td>
 <td>2</td>
@@ -493,7 +546,7 @@ year_off = 0</code></pre>
 <td>4</td>
 <td>5</td>
 </tr>
-<tr class="even">
+<tr>
 <td>2021-06-29 14:30</td>
 <td>1</td>
 <td>2</td>
@@ -501,7 +554,7 @@ year_off = 0</code></pre>
 <td>4</td>
 <td>5</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>06/29/2021 14</td>
 <td>3</td>
 <td>1</td>
@@ -523,10 +576,20 @@ dateinfo = c( year = &quot;year&quot;, month = &quot;month&quot;, day = &quot;da
 #
 # - If date_colname is a column in the input data.
 # dateinfo = c( year = 3, month = 1, day = 2, hour = 4, min = 5)</code></pre>
-<p>How to interpret the time stamp. Currently there are three options, as described below. To help illustrating the cases, we give examples of the beginning and end of average period of an example time stamp (2021-06-11 08:00) for an hourly average data where the high-frequency data were collected at 1-minute resolution.</p>
+<p>How to interpret the time stamp. Currently there are three options,
+as described below. To help illustrating the cases, we give examples of
+the beginning and end of average period of an example time stamp
+(2021-06-11 08:00) for an hourly average data where the high-frequency
+data were collected at 1-minute resolution.</p>
 <table>
+<colgroup>
+<col width="16%" />
+<col width="39%" />
+<col width="21%" />
+<col width="21%" />
+</colgroup>
 <thead>
-<tr class="header">
+<tr>
 <th><strong>imetavg</strong></th>
 <th><strong>Description</strong></th>
 <th><strong>Beginning</strong></th>
@@ -534,19 +597,19 @@ dateinfo = c( year = &quot;year&quot;, month = &quot;month&quot;, day = &quot;da
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>1</td>
 <td>End of averaging period</td>
 <td>2021-06-11 07:01</td>
 <td>2021-06-11 07:00</td>
 </tr>
-<tr class="even">
+<tr>
 <td>2</td>
 <td>Beginning of averaging period</td>
 <td>2021-06-11 08:00</td>
 <td>2021-06-11 08:59</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>3</td>
 <td>Middle of averaging period</td>
 <td>2021-06-11 07:31</td>
@@ -558,67 +621,74 @@ dateinfo = c( year = &quot;year&quot;, month = &quot;month&quot;, day = &quot;da
 </div>
 <div id="input-variables" class="section level2">
 <h2>Input variables</h2>
-<p>Here we will provide information about the meteorological driver variables. Our goal is to have the variables names and units as defined in the table below:</p>
+<p>Here we will provide information about the meteorological driver
+variables. Our goal is to have the variables names and units as defined
+in the table below:</p>
 <table>
+<colgroup>
+<col width="25%" />
+<col width="38%" />
+<col width="36%" />
+</colgroup>
 <thead>
-<tr class="header">
+<tr>
 <th><strong>FATES variable</strong></th>
 <th><strong>Description</strong></th>
 <th><strong>Units</strong></th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><strong>PSRF</strong></td>
 <td>Atmospheric pressure</td>
 <td>Pa</td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>TBOT</strong></td>
 <td>Air temperature</td>
 <td>K</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>QBOT</strong><sup>1</sup></td>
 <td>Specific humidity</td>
 <td>kg kg<sup>-1</sup></td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>RBOT</strong><sup>1</sup></td>
 <td>Vapour mixing ratio</td>
 <td>kg kg<sup>-1</sup></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>EBOT</strong><sup>1</sup></td>
 <td>Vapour pressure</td>
 <td>Pa</td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>RH</strong><sup>1</sup></td>
 <td>Relative humidity</td>
 <td>%</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>WIND</strong></td>
 <td>Wind speed</td>
 <td>m s<sup>-1</sup></td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>FSDS</strong></td>
 <td>Incident solar irradiance</td>
 <td>W m<sup>-2</sup></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>FLDS</strong><sup>2</sup></td>
 <td>Incident longwave irradiance</td>
 <td>W m<sup>-2</sup></td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>PRECTmms</strong></td>
 <td>Precipitation rate</td>
 <td>kg m<sup>-2</sup> s<sup>-1</sup> (mm s<sup>-1</sup>)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>ZBOT</strong><sup>3</sup></td>
 <td>Observational height</td>
 <td>m</td>
@@ -627,28 +697,47 @@ dateinfo = c( year = &quot;year&quot;, month = &quot;month&quot;, day = &quot;da
 </table>
 <p><strong>Notes</strong></p>
 <ol style="list-style-type: decimal">
-<li>Only one of the humidity variables must be provided. If more than one is provided, the script will use only the first one. The output will always contain both specific humidity (QBOT) and relative humidity (RH).</li>
-<li>Incident longwave irradiance (FLDS) is currently not required by ELM or CLM.<br />
-In case you have the data, we suggest to add it to the output as it could be useful for other purposes. Otherwise, delete/comment the list entry for FLDS in the following chunk.</li>
-<li>Observational height (ZBOT) is very rarely provided in the meteorological driver time series file as it is normally a fixed value reflecting the measurement height. In almost all cases, this variable will be set using <code>site_refhgt</code> instead.</li>
+<li>Only one of the humidity variables must be provided. If more than
+one is provided, the script will use only the first one. The output will
+always contain both specific humidity (QBOT) and relative humidity
+(RH).</li>
+<li>Incident longwave irradiance (FLDS) is currently not required by ELM
+or CLM.<br />
+In case you have the data, we suggest to add it to the output as it
+could be useful for other purposes. Otherwise, delete/comment the list
+entry for FLDS in the following chunk.</li>
+<li>Observational height (ZBOT) is very rarely provided in the
+meteorological driver time series file as it is normally a fixed value
+reflecting the measurement height. In almost all cases, this variable
+will be set using <code>site_refhgt</code> instead.</li>
 </ol>
-<p>First, we define some unit conversion constants for the chunk below</p>
+<p>First, we define some unit conversion constants for the chunk
+below</p>
 <pre class="r"><code>Pa_2_hPa  = 0.01     ; hPa_2_Pa  = 1. / Pa_2_hPa
 K_2_degC  = -273.15  ; degC_2_K  = - K_2_degC
 kg_2_g    = 1000.    ; g_2_kg    = 1. / kg_2_g
 sec_2_hr  = 1./3600. ; hr_2_sec  = 1. / sec_2_hr
 sec_2_day = 1./86400.; day_2_sec = 1. / sec_2_day
 frac_2_pc = 100.     ; pc_2_frac = 1. / frac_2_pc</code></pre>
-<p>Then use the <code>varinfo</code> list to standardise the output. This is a <code>tibble</code> object (defined with <code>tribble</code>), containing the following elements:</p>
+<p>Then use the <code>varinfo</code> list to standardise the output.
+This is a <code>tibble</code> object (defined with
+<code>tribble</code>), containing the following elements:</p>
 <ul>
-<li><em>vfates</em>. Variable name from the table above (don’t change this value).</li>
-<li><em>vlname</em>. Long name for variable (don’t change this value).</li>
-<li><em>vunits</em>. Units for the variable (same as the table above, don’t change this value).</li>
+<li><em>vfates</em>. Variable name from the table above (don’t change
+this value).</li>
+<li><em>vlname</em>. Long name for variable (don’t change this
+value).</li>
+<li><em>vunits</em>. Units for the variable (same as the table above,
+don’t change this value).</li>
 <li><em>vinput</em>. Variable name in the input file.</li>
 <li><em>add0</em>. Value to be added to the original input</li>
 <li><em>mult</em>. Value to be multiplied to the original input</li>
 </ul>
-<p>For <code>add0</code> and <code>mult</code>, except for trivial factors (<code>add0=0.</code> or <code>mult=1</code>), refrain from typing “magic numbers” here. Instead, use the unit conversion parameters described in the chunk above. In case the sought unit conversion is not available in the previous chunk, feel free to add more factors.</p>
+<p>For <code>add0</code> and <code>mult</code>, except for trivial
+factors (<code>add0=0.</code> or <code>mult=1</code>), refrain from
+typing “magic numbers” here. Instead, use the unit conversion parameters
+described in the chunk above. In case the sought unit conversion is not
+available in the previous chunk, feel free to add more factors.</p>
 <pre class="r"><code>varinfo = tribble( ~vfates   , ~vlname                                    , ~vunits, ~vinput    , ~add0   , ~mult
                  , &quot;PSRF&quot;    , &quot;surface pressure at the tower&quot;            , &quot;Pa&quot;   , &quot;atm.prss&quot; , 0.      , hPa_2_Pa
                  , &quot;TBOT&quot;    , &quot;temperature at the tower&quot;                 , &quot;K&quot;    , &quot;atm.tmp&quot;  , degC_2_K, 1.
@@ -659,7 +748,10 @@ frac_2_pc = 100.     ; pc_2_frac = 1. / frac_2_pc</code></pre>
                  # Longwave radiation. Comment the line below in case the variable is not available.
                  , &quot;FLDS&quot;    , &quot;incident long wave radiation at the tower&quot;, &quot;W/m2&quot; , &quot;rlong.in&quot; , 0.      , 1.
                  )#end tribble</code></pre>
-<p>Last, we check that at least one of the humidity variables is listed. In case multiple variables were provided, they will be all written to the netcdf. Specific humidity will be always written. If not provided, then we will calculate it and add it to the output.</p>
+<p>Last, we check that at least one of the humidity variables is listed.
+In case multiple variables were provided, they will be all written to
+the netcdf. Specific humidity will be always written. If not provided,
+then we will calculate it and add it to the output.</p>
 <pre class="r"><code>humid.vars = c(&quot;QBOT&quot;,&quot;RBOT&quot;,&quot;EBOT&quot;,&quot;RH&quot;)
 is.humid   = any(humid.vars %in% varinfo$vfates)
 if (! is.humid){
@@ -670,7 +762,9 @@ if (! is.humid){
    cat(&quot; - RH   (relative humidity).         Provided = &quot;,&quot;RH&quot;   %in% varinfo$vfates,&quot;\n&quot;)
    stop(&quot; Check that at least one of the humidity variables were provided.&quot;)
 }#end if</code></pre>
-<p>This concludes the initial settings. From this point on, you may not need to change anything, unless you are debugging or adding new features.</p>
+<p>This concludes the initial settings. From this point on, you may not
+need to change anything, unless you are debugging or adding new
+features.</p>
 </div>
 </div>
 <div id="data-processing" class="section level1">
@@ -680,7 +774,8 @@ if (! is.humid){
 <p>Read in the csv file.</p>
 <pre class="r"><code>metd_orig = read.csv(file=input_file,header=TRUE,comment.char=&quot;&quot;,stringsAsFactors=FALSE)
 metd_orig = tibble(metd_orig)</code></pre>
-<p>Standardise time. It must be a vector of type <code>lubritime</code>.</p>
+<p>Standardise time. It must be a vector of type
+<code>lubritime</code>.</p>
 <pre class="r"><code>if (is.na(date_colname)){
    # Create minute column in case it is missing.
    if (is.na(dateinfo[[&quot;min&quot;]])){
@@ -730,7 +825,8 @@ metd_orig = metd_orig %&gt;%
 </div>
 <div id="time-standardisation" class="section level2">
 <h2>Time standardisation</h2>
-<p>Find the time difference, and assess the first and last year with full data.</p>
+<p>Find the time difference, and assess the first and last year with
+full data.</p>
 <pre class="r"><code>#---- Time interval between observations.
 dtstamp = mean(diff(metd_orig$tstamp))
 
@@ -743,7 +839,8 @@ datsumm = group_by (.data=metd_orig,year,month) %&gt;%
           mutate   (expect = days_in_month(make_datetime(year=year,month=month)) * nperday) %&gt;%
           group_by (year) %&gt;%
           summarise(fine = all(count == expect))</code></pre>
-<pre><code>## `summarise()` has grouped output by &#39;year&#39;. You can override using the `.groups` argument.</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;year&#39;. You can override using the
+## `.groups` argument.</code></pre>
 <pre class="r"><code>#---- Find first and last complete years
 allfine = all(datsumm$fine)
 yeara   = min(datsumm$year[datsumm$fine])
@@ -752,7 +849,9 @@ yearz   = max(datsumm$year[datsumm$fine])
 #---- Find and last expected time
 tstampa = make_datetime( year=yeara  ,month=1,day=1)
 tstampz = make_datetime( year=yearz+1,month=1,day=1)</code></pre>
-<p>Correct data to be in UTC whilst accounting for the time stamp. For FATES, the time stamp should always correspond to the middle of the averaging window.</p>
+<p>Correct data to be in UTC whilst accounting for the time stamp. For
+FATES, the time stamp should always correspond to the middle of the
+averaging window.</p>
 <pre class="r"><code>if (imetavg == 1){
   dt.utc = make_difftime(hour=-utc_off) - 0.5 * dtstamp
 }else if (imetavg == 2){
@@ -764,8 +863,10 @@ tstampz = make_datetime( year=yearz+1,month=1,day=1)</code></pre>
 metdriver = metd_orig %&gt;% 
             mutate(tstamp = tstamp + dt.utc) %&gt;%
             select(!c(year,month,day,hour,min))</code></pre>
-<p>With the time zone shift, we may have a few data points off at the beginning or at the end.<br />
-As a simple solution, we just shift these hours to the beginning or the end of the simulation, just so every year/month has all the data.</p>
+<p>With the time zone shift, we may have a few data points off at the
+beginning or at the end.<br />
+As a simple solution, we just shift these hours to the beginning or the
+end of the simulation, just so every year/month has all the data.</p>
 <pre class="r"><code>metdriver = metdriver %&gt;% 
             mutate( tstamp  = case_when( tstamp &lt; tstampa ~ tstampz + difftime(tstamp,tstampa)
                                        , tstamp &gt; tstampz ~ tstampa + difftime(tstamp,tstampz)
@@ -775,7 +876,8 @@ As a simple solution, we just shift these hours to the beginning or the end of t
 </div>
 <div id="unit-standardisation-for-output" class="section level2">
 <h2>Unit standardisation for output</h2>
-<p>Simplify output so variables are in the correct units, and only variables needed for the output remain in the output.</p>
+<p>Simplify output so variables are in the correct units, and only
+variables needed for the output remain in the output.</p>
 <pre class="r"><code>met_fates = metdriver %&gt;% 
             select(c(tstamp,varinfo$vinput)) %&gt;%
             rename_at(vars(c(&quot;tstamp&quot;,varinfo$vinput)), ~ c(&quot;time&quot;,varinfo$vfates))</code></pre>
@@ -798,15 +900,63 @@ met_fates = met_fates %&gt;% mutate( time = tstamp) %&gt;% relocate(c(&quot;time
 </div>
 <div id="derive-humidity" class="section level1">
 <h1>Derive humidity</h1>
-<p>This step is only needed if specific humidity was not provided. In this case, we derive specific humidity (<span class="math inline">\(q_{v}\)</span>) [ <span class="math inline">\(\mathrm{kg_{v}\,kg_{a}^{-1}}\)</span>] using one the following relationships (in this order of preference), using the fact that specific humidity is the ratio of mass (or partial density) of water vapour <span class="math inline">\(\rho_{v}\)</span> [<span class="math inline">\(\mathrm{kg_{v}\,m^{-3}}\)</span>] and total mass (or density) of air (<span class="math inline">\(\rho_{a}\)</span>) [<span class="math inline">\(\mathrm{kg_{a}\,m^{-3}}\)</span>].</p>
+<p>This step is only needed if specific humidity was not provided. In
+this case, we derive specific humidity (<span
+class="math inline">\(q_{v}\)</span>) [ <span
+class="math inline">\(\mathrm{kg_{v}\,kg_{a}^{-1}}\)</span>] using one
+the following relationships (in this order of preference), using the
+fact that specific humidity is the ratio of mass (or partial density) of
+water vapour <span class="math inline">\(\rho_{v}\)</span> [<span
+class="math inline">\(\mathrm{kg_{v}\,m^{-3}}\)</span>] and total mass
+(or density) of air (<span class="math inline">\(\rho_{a}\)</span>)
+[<span class="math inline">\(\mathrm{kg_{a}\,m^{-3}}\)</span>].</p>
 <ul>
-<li><p><em>Mixing ratio</em> <span class="math inline">\(r_v\)</span> [ <span class="math inline">\(\mathrm{kg_{v}\,kg_{d}^{-1}}\)</span>] is defined as the ratio between partial density of water vapour <span class="math inline">\(\rho_{v}\)</span> and partial density of dry air (<span class="math inline">\(\rho_{d}\)</span>) [<span class="math inline">\(\mathrm{kg_{d}\,m^{-3}}\)</span>]. Assuming that <span class="math inline">\(\rho_{a} = \rho_{v} + \rho_{d}\)</span>, we can relate mixing ratio and specific humidity as: <span class="math display">\[\begin{align} &amp; q_{v} = \frac{r_{v}}{r_{v}+1} \end{align}.\]</span></p></li>
-<li><p>To convert from <em>water vapour pressure</em> <span class="math inline">\(e_{v}\)</span> [<span class="math inline">\(\mathrm{Pa}\)</span>] to <span class="math inline">\(q_v\)</span>, we use the ideal gas equation of a mixture of dry air and water vapour , and account for the difference in molar masses of water vapour (<span class="math inline">\(\mathcal{M}_v = 1.802 \times 10^{-2}\,\mathrm{kg\,mol^{-1}}\)</span>) and dry air (<span class="math inline">\(\mathcal{M}_d = 2.897 \times 10^{-2}\,\mathrm{kg\,mol^{-1}}\)</span>): <span class="math display">\[\begin{align}
-&amp; q_{v} = \frac{\varepsilon{}\,e_{v}}{p - \left(1 - \varepsilon{}\right)\,e_{v}}
-\end{align},\]</span> where <span class="math inline">\(p\)</span> [<span class="math inline">\(\mathrm{Pa}\)</span>] is the total air pressure and <span class="math inline">\(\varepsilon = \mathcal{M}_{v} / \mathcal{M}_{d}\)</span>.</p></li>
-<li><p><em>Relative humidity</em> (<span class="math inline">\(\mathrm{RH}\)</span>) [<span class="math inline">\(\%\)</span>] is defined as <span class="math inline">\(\mathrm{RH} = 100 \, e_{v}/e_{v}^{\star}\)</span>, where <span class="math inline">\(e_{v}^{\star}\)</span> is the vapour pressure at saturation, which depends on temperature <span class="math inline">\(T\)</span> [<span class="math inline">\(\mathrm{K}\)</span>]. To derive specific humidity, we use <span class="citation">(Bolton 1980)</span> empirical equation for <span class="math inline">\(e_{v}^{\star}\)</span> to derive <span class="math inline">\(e_{v}\)</span>: <span class="math display">\[\begin{align}
-&amp; e_{v} = 0.01 \, \mathrm{RH} \,e_{0}\,\exp{\left[ \frac{17.67\,\left( T - T_{0}\right)}{T - 29.65} \right]}
-\end{align},\]</span> where <span class="math inline">\(e_{0} = 611.66\,\mathrm{Pa}\)</span> is the vapour pressure of saturation at <span class="math inline">\(T_{0}=273.15\,\mathrm{K}\)</span>. We then convert <span class="math inline">\(e_{v}\)</span> to <span class="math inline">\(q_{v}\)</span> using the same equation described above.</p></li>
+<li><p><em>Mixing ratio</em> <span class="math inline">\(r_v\)</span> [
+<span class="math inline">\(\mathrm{kg_{v}\,kg_{d}^{-1}}\)</span>] is
+defined as the ratio between partial density of water vapour <span
+class="math inline">\(\rho_{v}\)</span> and partial density of dry air
+(<span class="math inline">\(\rho_{d}\)</span>) [<span
+class="math inline">\(\mathrm{kg_{d}\,m^{-3}}\)</span>]. Assuming that
+<span class="math inline">\(\rho_{a} = \rho_{v} + \rho_{d}\)</span>, we
+can relate mixing ratio and specific humidity as: <span
+class="math display">\[\begin{align} &amp; q_{v} = \frac{r_{v}}{r_{v}+1}
+\end{align}.\]</span></p></li>
+<li><p>To convert from <em>water vapour pressure</em> <span
+class="math inline">\(e_{v}\)</span> [<span
+class="math inline">\(\mathrm{Pa}\)</span>] to <span
+class="math inline">\(q_v\)</span>, we use the ideal gas equation of a
+mixture of dry air and water vapour , and account for the difference in
+molar masses of water vapour (<span class="math inline">\(\mathcal{M}_v
+= 1.802 \times 10^{-2}\,\mathrm{kg\,mol^{-1}}\)</span>) and dry air
+(<span class="math inline">\(\mathcal{M}_d = 2.897 \times
+10^{-2}\,\mathrm{kg\,mol^{-1}}\)</span>): <span
+class="math display">\[\begin{align}
+&amp; q_{v} = \frac{\varepsilon{}\,e_{v}}{p - \left(1 -
+\varepsilon{}\right)\,e_{v}}
+\end{align},\]</span> where <span class="math inline">\(p\)</span>
+[<span class="math inline">\(\mathrm{Pa}\)</span>] is the total air
+pressure and <span class="math inline">\(\varepsilon = \mathcal{M}_{v} /
+\mathcal{M}_{d}\)</span>.</p></li>
+<li><p><em>Relative humidity</em> (<span
+class="math inline">\(\mathrm{RH}\)</span>) [<span
+class="math inline">\(\%\)</span>] is defined as <span
+class="math inline">\(\mathrm{RH} = 100 \, e_{v}/e_{v}^{\star}\)</span>,
+where <span class="math inline">\(e_{v}^{\star}\)</span> is the vapour
+pressure at saturation, which depends on temperature <span
+class="math inline">\(T\)</span> [<span
+class="math inline">\(\mathrm{K}\)</span>]. To derive specific humidity,
+we use <span class="citation">(Bolton 1980)</span> empirical equation
+for <span class="math inline">\(e_{v}^{\star}\)</span> to derive <span
+class="math inline">\(e_{v}\)</span>: <span
+class="math display">\[\begin{align}
+&amp; e_{v} = 0.01 \, \mathrm{RH} \,e_{0}\,\exp{\left[
+\frac{17.67\,\left( T - T_{0}\right)}{T - 29.65} \right]}
+\end{align},\]</span> where <span class="math inline">\(e_{0} =
+611.66\,\mathrm{Pa}\)</span> is the vapour pressure of saturation at
+<span class="math inline">\(T_{0}=273.15\,\mathrm{K}\)</span>. We then
+convert <span class="math inline">\(e_{v}\)</span> to <span
+class="math inline">\(q_{v}\)</span> using the same equation described
+above.</p></li>
 </ul>
 <pre class="r"><code>#---~---
 # Define some thermodynamic constants.
@@ -870,7 +1020,10 @@ varinfo = varinfo %&gt;%
 </div>
 <div id="define-height" class="section level1">
 <h1>Define height</h1>
-<p>The reference height must be defined as a time series, even though in almost all cases the reference height will be a constant. In the unlikely case that the variable was provided in the met driver, we leave it unchanged, otherwise we add a dummy variable.</p>
+<p>The reference height must be defined as a time series, even though in
+almost all cases the reference height will be a constant. In the
+unlikely case that the variable was provided in the met driver, we leave
+it unchanged, otherwise we add a dummy variable.</p>
 <pre class="r"><code># Create a dummy time series for height
 if (! (&quot;ZBOT&quot; %in% names(met_fates)) ){
    met_fates = met_fates %&gt;% mutate(ZBOT = 0. * TBOT + site_refhgt)
@@ -944,7 +1097,10 @@ att_template = list( title          = &quot;To be replaced when looping through 
                    , data_provider  = paste0(datprov_name,&quot; &lt;&quot;,datprov_email,&quot;&gt;&quot;)
                    , usage_notes    = data_usage_notes
                    )#end list</code></pre>
-<p>Loop through every group, and generate the output file. Because ELM and CLM may expect met drivers to be consistent with leap/normal years when recycling drivers, we suppress February 29 data and use the <code>noleap</code> calendar.</p>
+<p>Loop through every group, and generate the output file. Because ELM
+and CLM may expect met drivers to be consistent with leap/normal years
+when recycling drivers, we suppress February 29 data and use the
+<code>noleap</code> calendar.</p>
 <pre class="r"><code>for (m in sequence(nmet)){
    # Copy the subset to a local variable.  Make sure to remove February 29 entirely.
    met_this = met_output[[m]] %&gt;%
@@ -1127,9 +1283,12 @@ att_template = list( title          = &quot;To be replaced when looping through 
 </div>
 <div id="references" class="section level1 unnumbered">
 <h1 class="unnumbered">References</h1>
-<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="refs" class="references csl-bib-body hanging-indent"
+entry-spacing="0">
 <div id="ref-bolton1980mwr" class="csl-entry">
-Bolton, David. 1980. <span>“The Computation of Equivalent Potential Temperature.”</span> <em>Mon. Wea. Rev.</em> <a href="https://doi.org/10.1175/1520-0493(1980)108&lt;1046:TCOEPT&gt;2.0.CO;2">https://doi.org/10.1175/1520-0493(1980)108&lt;1046:TCOEPT&gt;2.0.CO;2</a>.
+Bolton, David. 1980. <span>“The Computation of Equivalent Potential
+Temperature.”</span> <em>Mon. Wea. Rev.</em> <a
+href="https://doi.org/10.1175/1520-0493(1980)108%3C1046:TCOEPT%3E2.0.CO;2">https://doi.org/10.1175/1520-0493(1980)108&lt;1046:TCOEPT&gt;2.0.CO;2</a>.
 </div>
 </div>
 </div>

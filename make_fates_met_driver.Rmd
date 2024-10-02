@@ -109,7 +109,7 @@ isfine = c( data.table = require(data.table,quietly=TRUE,warn.conflicts=FALSE)
           , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
           )#end c
 if (! all(isfine)){
-   cat0(" List of required packages, and the success status loading them:\n")
+   cat (" List of required packages, and the success status loading them:\n")
    print(isfine)
    stop(" Some packages are missing and must be installed.")
 }

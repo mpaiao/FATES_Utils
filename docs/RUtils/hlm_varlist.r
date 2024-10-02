@@ -69,11 +69,18 @@ hlm1dvar      = tribble( ~vnam                      , ~desc                     
                        , "disturbance_rate_fire"    , "Fire disturbance rate"              , "lambda[F*i*r*e]"         , FALSE  , "0."  , "frac2pc*yr.day", "pcoyr"      , "clm+elm", FALSE
                        , "disturbance_rate_logging" , "Logging disturbance rate"           , "lambda[L*o*g*g*i*n*g]"   , FALSE  , "0."  , "frac2pc*yr.day", "pcoyr"      , "clm+elm", FALSE
                        , "disturbance_rate_treefall", "Tree fall disturbance rate"         , "lambda[T*r*e*e*f*a*l*l]" , FALSE  , "0."  , "frac2pc*yr.day", "pcoyr"      , "clm+elm", FALSE
-                       , "ed_biomass"               , "Total biomass"                      , "B*i*o*m*a*s*s"           , FALSE  , "0."  , "g2kg"          , "kgcom2"     , "clm+elm", FALSE
                        , "eflx_lh_tot"              , "Total latent heat flux"             , "lambda*E"                , TRUE   , "0."  , "1."            , "wom2"       , "clm+elm", FALSE
                        , "elai"                     , "Exposed one-sided leaf area index"  , "L*A*I[E*x*p]"            , FALSE  , "0."  , "1."            , "m2lom2"     , "clm+elm", FALSE
                        , "er"                       , "Ecosystem respiration"              , "R[e*c*o]"                , TRUE   , "0."  , "day.sec"       , "gcom2oday"  , "clm+elm", FALSE
                        , "esai"                     , "Exposed one-sided stem area index"  , "S*A*I[E*x*p]"            , FALSE  , "0."  , "1."            , "m2lom2"     , "clm+elm", FALSE
+                       , "fates_autoresp"           , "Autotrophic respiration"            , "R[a*u*t*o]"              , TRUE   , "0."  , "kg2g*day.sec"  , "gcom2oday"  , "clm+elm", FALSE
+                       , "fates_ecoresp"            , "Ecosystem respiration"              , "R[e*c*o]"                , TRUE   , "0."  , "kg2g*day.sec"  , "gcom2oday"  , "clm+elm", FALSE
+                       , "fates_gpp"                , "Gross primary productivity"         , "G*P*P"                   , TRUE   , "0."  , "kg2g*day.sec"  , "gcom2oday"  , "clm+elm", FALSE
+                       , "fates_het_resp"           , "Heterotrophic respiration"          , "R[H*e*t]"                , TRUE   , "0."  , "kg2g*day.sec"  , "gcom2oday"  , "clm+elm", FALSE
+                       , "fates_lai"                , "Leaf area index"                    , "L*A*I"                   , TRUE   , "0."  , "1."            , "m2lom2"     , "clm+elm", FALSE
+                       , "fates_nep"                , "Net ecosystem productivity"         , "N*E*P"                   , TRUE   , "0."  , "kg2g*day.sec"  , "gcom2oday"  , "clm+elm", FALSE
+                       , "fates_vegc"               , "Total biomass"                      , "B*i*o*m*a*s*s"           , FALSE  , "0."  , "1."            , "kgcom2"     , "clm+elm", FALSE
+                       , "fates_vegc_aboveground"   , "Above-ground biomass"               , "A*G*B"                   , TRUE   , "0."  , "1."            , "kgcom2"     , "clm+elm", FALSE
                        , "fgr"                      , "Ground flux"                        , "G"                       , TRUE   , "0."  , "1."            , "wom2"       , "clm+elm", FALSE
                        , "fire"                     , "Upward longwave radiation"          , "Q[L*W]^symbol(\"\\335\")", TRUE   , "0."  , "1."            , "wom2"       , "clm+elm", FALSE
                        , "fire_area"                , "Burnt area"                         , "A[B*u*r*n*t]"            , TRUE   , "0."  , "1."            , "oneoday"    , "clm+elm", TRUE
@@ -196,7 +203,7 @@ nhlm1dvar = nrow(hlm1dvar)
 
 #----- List of HLM variables that are "1D"
 hlm2dsoi      = tribble( ~vnam            , ~desc                     , ~short          , ~assess, ~add0 , ~mult       , ~unit    , ~hlm     , ~csch   , ~mirror,     ~trans
-                       , "smp"            , "Soil matric potential"   , "Psi[S*o*i*l]"  , FALSE  , "0."  , "mm.2.mpa"  , "mpa"    , "clm+elm", "YlGnBu",   FALSE,   "neglog"
+                       , "smp"            , "Soil matric potential"   , "Psi[S*o*i*l]"  , FALSE  , "0."  , "mm.2.mpa"  , "mpa"    , "clm+elm", "YlGnBu",   FALSE, "neglog10"
                        , "tsoi"           , "Soil temperature"        , "T[S*o*i*l]"    , FALSE  , "-t00",       "1."  , "degC"   , "clm+elm",  "magma",   FALSE, "identity"
                        )#end tribble
 #---~---
@@ -257,6 +264,9 @@ tstheme = tribble( ~thnam        , ~thdesc                         , ~thunit    
                  , "exposed_ai"  , "Exposed one-sided area indices", "m2om2"    , TRUE    , "identity"
                       , paste( "elai"   , "esai"   , sep="+")
                       , paste( "#33A02C", "#FB9A99", sep="+")
+                 , "fates_c_flux" , "Carbon fluxes"                 , "gcom2oday", FALSE   , "identity"
+                      , paste( "fates_nep", "fates_gpp", "fates_autoresp", "fates_het_resp", sep="+")
+                      , paste( "#CAB2D6"  , "#33A02C"  , "#A6CEE3"       , "#FB9A99"       , sep="+")
                  , "humidity"    , "Specific humidity"             , "gwokg"    , FALSE   , "identity"
                       , paste( "qbot"   , "qaf"    , "q2m"    , sep="+")
                       , paste( "#1F78B4", "#A6CEE3", "#9A78B8", sep="+")

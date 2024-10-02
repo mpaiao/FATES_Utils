@@ -19,8 +19,8 @@ This script relies on data downloaded through [AppEEARS](https://lpdaacsvc.cr.us
 
 **Product**   | **Layer**           | **Description**                                 | **Spatial Resolution** | **Temporal Resolution**
 ------------- | ------------------- | ----------------------------------------------- | ---------------------- | ------------------------
-**MCD12Q1**   | **LC_Type1**        | Annual IGBP land cover classificat0ion	        | 500 m                  | 1 year
-**MCD12Q1**   | **QC**              | Quality flags for land cover classificat0ion     | 500 m                  | 1 year
+**MCD12Q1**   | **LC_Type1**        | Annual IGBP land cover classification	        | 500 m                  | 1 year
+**MCD12Q1**   | **QC**              | Quality flags for land cover classification     | 500 m                  | 1 year
 **MCD15A2H**  | **Lai_500m**        | Leaf area index                                 | 500 m                  | 8 days
 **MCD15A2H**  | **LaiStdDev_500m**  | Standard deviation of leaf area index           | 500 m                  | 8 days
 **MCD15A2H**  | **Fpar_500m**       | Fraction of Photosynthetically Active Radiation | 500 m                  | 8 days
@@ -72,7 +72,7 @@ Set paths and files for input and output.
 ```{r, label='path-settings'}
 home_path   = path.expand("~")
 util_path   = file.path(home_path,"Util","RUtils")
-main_path   = file.path(home_path,"Data","MODIS_LAI")
+main_path   = file.path(home_path,"Data","MODIS_LAI","SouthAmerica")
 input_path  = file.path(main_path,"InputData")
 output_path = file.path(main_path,"MCD15A2H_Site")
 plot_path   = file.path(main_path,"Figures")
@@ -84,10 +84,11 @@ Set the sites to process images. We put the information in a tibble object `poi_
 
 * **site**. Site name (it must match the name of the sub-directory of `input_path`.  Normally this is the same name given to the data retrieval from AppEEARS)
 * **output**. Output identifier, FATES style. This is useful for adding the data to existing folders.
-* **lon**. Longitude of the point of interest.  The LAI output will pool data from multiple pixels centred around this longitude (defined by `sample_radius`).
-* **lat**. Latitude of the point of interest.  The LAI output will pool data from multiple pixels centred around this latitude.(defined by `sample_radius`).
+* **lon**. Longitude of the point of interest.  The LAI output will pool data from multiple pixels centred around this longitude (defined by `radius`).
+* **lat**. Latitude of the point of interest.  The LAI output will pool data from multiple pixels centred around this latitude.(defined by `radius`).
 * **dxy**. Intended grid size (we will generate a 1x1-point pseudo-grid for FATES).
 * **geographic**. Coordinate system used for this site.  If `TRUE`, we assum geographic coordinates (i.e., longitude and latitude).  If `FALSE`, we assume MODIS sinusoidal.
+* **radius**. Sampling radius, in kilometres. The ideal radius should allow a broad sample size without covering an area so large that local characteristics of the site are lost. Homogeneous, cloud-free regions can be effectively sampled with a small radius (~ 5 km or so), whereas regions with frequent cloud cover and substantial deforestation may require larger radius (~ 20 km or so).
 * **igbp_include**. A character with the classes to include in the sample (represented by letters, case insensitive). Use the table below to guide the selection.
 * **colour**. A character with the colour to be used for each site.
 
@@ -114,12 +115,18 @@ LC_Type1 Class | Description                           | igbp_include letter
  17            | Water Bodies                          | q
 |
 
+**Important**. This code is known to take a lot of memory, and it may be wiser to process a single site at a time (by commenting out the other sites). Ideas on how to avoid this memory runaway are welcome.
+
 ```{r, label='poi-list'}
 # List of polygons to process.
-poi_list = tidyr::tribble( ~site      , ~output                              , ~lon   ,    ~lat, ~dxy, ~geographic, ~igbp_include,   ~colour
-                         , "Paracou"  , "1x1pt-paracouGUF_v1.6_c20210913"    , -52.912,   5.282,  1.0,        TRUE,          "bd", "#8DA0CB"
-                         , "Tanguro"  , "1x1pt-tanguroMT-BR_v1.2_c20210913"  , -52.409, -13.081,  1.0,        TRUE,          "bd", "#66C2A5"
-                         , "Petrolina", "1x1pt-petrolinaPE-BR_v1.2_c20210913", -40.370,  -9.165,  1.0,        TRUE,      "bdfghi", "#FC8D62"
+poi_list = tidyr::tribble( ~site          , ~output                                , ~lon   ,    ~lat, ~dxy, ~geographic, ~radius, ~igbp_include,   ~colour
+#                         , "BarroColorado", "1x1pt-bciPAN_v5.0_c20240616"          , -79.846,   9.153,  1.0,        TRUE,     18.,          "bd", "#6A3D9A"
+                         , "Paracou"      , "1x1pt-paracouGUF_v1.8_c20220114"      , -52.912,   5.282,  1.0,        TRUE,     18.,          "bd", "#1F78B4"
+#                         , "Tapajos"      , "1x1pt-tapajosPABR_v1.0_c20231201"     , -54.959,  -2.857,  1.0,        TRUE,     15.,          "bd", "#62A3B4"
+#                         , "Tanguro"      , "1x1pt-tanguroMT-BR_v1.2_c20210913"    , -52.409, -13.081,  1.0,        TRUE,     12.,          "bd", "#A6CEE3"
+#                         , "SerraTalhada" , "1x1pt-serratalhadaPEBR_v1.0_c20220114", -38.384,  -7.968,  1.0,        TRUE,      6.,      "bdfghi", "#FDBF6F"
+#                         , "ESECSerido"   , "1x1pt-esecseridoRNBR_v1.0_c20220119"  , -37.251,  -6.578,  1.0,        TRUE,      6.,      "bdfghi", "#FF7F00"
+#                         , "Petrolina"    , "1x1pt-petrolinaPE-BR_v1.2_c20210913"  , -40.370,  -9.165,  1.0,        TRUE,      9.,      "bdfghi", "#E31A1C"
                          )#end tribble
 
 # Number of polygons to process
@@ -140,14 +147,13 @@ undef_out   = -9999.99
 
 Additional settings for data processing:
 
-* **sample_radius**. The maximum radial distance to the reference point that shall be used for the sampling.
+* **qcfine_mcdf15a2h**. List of quality flag categories in `FparLai_QC` considered acceptable for MCD15A2H.
+* **exfine_mcdf15a2h**. List of quality flag categories in `FparExtra_QC` considered acceptable for MCD15A2H.
+* **qcfine_mcd12q1**. List of quality flag categories in `QC` considered acceptable for MCD12Q1.
 * **ci_range**. Range of data to show for time series.
 * **alpha_ribbon**. Opaqueness level for ribbon (0 means transparent, 1 means fully opaque).
 
 ```{r, label='appeears-settings'}
-# Set maximum distance from the point of interest that we will consider for sampling [in kilometres]
-sample_radius = 20.
-
 # Which quality flags to consider data high quality
 qcfine_mcd15a2h  = c(0,2,32,34) # Fine classes: FparLai_QC (MCD15A2H)
 exfine_mcd15a2h = c(0,128)      # Fine classes: FparExtra_QC (MCD15A2H)
@@ -235,6 +241,7 @@ for (p in sequence(n_poi_list)){
    p_lon        = poi_list$lon       [p]
    p_lat        = poi_list$lat       [p]
    p_geographic = poi_list$geographic[p]
+   p_radius     = poi_list$radius    [p]
    p_igbp       = match(unlist(strsplit(poi_list$igbp_include[p],split="")),letters)
    p_input_path = file.path(input_path,p_site)
    cat0(" + Retrieve data from ",p_site,".")
@@ -347,12 +354,12 @@ for (p in sequence(n_poi_list)){
    # Retrieve the LAI, FPAR, and QC fields   
    cat0("     > Load MCD15A2H variables.")
    p_datum = p_datum %>% 
-             mutate( lai     = c(ncvar_get(nc=nc_conn,varid="Lai_500m"       )[,nc_yswap,])
-                   , lai_sd  = c(ncvar_get(nc=nc_conn,varid="LaiStdDev_500m" )[,nc_yswap,])
-                   , fpar    = c(ncvar_get(nc=nc_conn,varid="Fpar_500m"      )[,nc_yswap,])
-                   , fpar_sd = c(ncvar_get(nc=nc_conn,varid="FparStdDev_500m")[,nc_yswap,])
-                   , qcflag  = c(ncvar_get(nc=nc_conn,varid="FparLai_QC"     )[,nc_yswap,])
-                   , qcextra = c(ncvar_get(nc=nc_conn,varid="FparExtra_QC"   )[,nc_yswap,])
+             mutate( lai           = c(ncvar_get(nc=nc_conn,varid="Lai_500m"       )[,nc_yswap,])
+                   , lai_sd        = c(ncvar_get(nc=nc_conn,varid="LaiStdDev_500m" )[,nc_yswap,])
+                   , fpar          = c(ncvar_get(nc=nc_conn,varid="Fpar_500m"      )[,nc_yswap,])
+                   , fpar_sd       = c(ncvar_get(nc=nc_conn,varid="FparStdDev_500m")[,nc_yswap,])
+                   , qcflag        = c(ncvar_get(nc=nc_conn,varid="FparLai_QC"     )[,nc_yswap,])
+                   , qcextra       = c(ncvar_get(nc=nc_conn,varid="FparExtra_QC"   )[,nc_yswap,])
                    )#end mutate
    
    # Close the connection.
@@ -409,23 +416,23 @@ for (p in sequence(n_poi_list)){
    # because poor-quality data seem to be mostly biased low, so using medians should mitigate 
    # this effect.
    cat0("     > Find pixel-based medians by month and year.")
-   p_emean = p_datum                                                 %>%
-             group_by(year,month,ixy)                                %>%
-             summarise( lon     = mean(lon ,na.rm=TRUE)
-                      , lat     = mean(lat ,na.rm=TRUE)
-                      , dist    = mean(dist,na.rm=TRUE)
-                      , lai     = median(lai ,na.rm=TRUE)
-                      , lai_sd  = sqrt(median(lai_sd^2 ,na.rm=TRUE))
-                      , fpar    = median(fpar,na.rm=TRUE)
-                      , fpar_sd = sqrt(median(fpar_sd^2,na.rm=TRUE))
-                      , igbp    = median(igbp,na.rm=TRUE)          ) %>%
-             ungroup()                                               %>%
-             mutate   ( lc_use  = igbp %in% p_igbp )                 %>%
+   p_emean = p_datum                                                               %>%
+             group_by(year,month,ixy)                                              %>%
+             summarise( lon           = mean(lon                   ,na.rm=TRUE)
+                      , lat           = mean(lat                   ,na.rm=TRUE)
+                      , dist          = mean(dist                  ,na.rm=TRUE)
+                      , lai           = median(lai                 ,na.rm=TRUE)
+                      , lai_sd        = sqrt(median(lai_sd^2       ,na.rm=TRUE))
+                      , fpar          = median(fpar                ,na.rm=TRUE)
+                      , fpar_sd       = sqrt(median(fpar_sd^2      ,na.rm=TRUE))
+                      , igbp          = median(igbp                ,na.rm=TRUE)  ) %>%
+             ungroup()                                                             %>%
+             mutate   ( lc_use  = igbp %in% p_igbp )                               %>%
              mutate   ( site  = p_site
                       , lon0  = p_lon
-                      , lat0  = p_lat )                              %>%
-             select(site,lon0,lat0,ixy,year,month,lon,lat,dist
-                   ,lai,lai_sd,fpar,fpar_sd,igbp,lc_use      )       %>%
+                      , lat0  = p_lat )                                            %>%
+             select( site,lon0,lat0,ixy,year,month,lon,lat,dist
+                   , lai,lai_sd, fpar,fpar_sd,igbp,lc_use )                        %>%
              arrange(ixy,year,month)
    
    
@@ -434,9 +441,12 @@ for (p in sequence(n_poi_list)){
    cat0("     > Close connection.")
    dummy = nc_close(nc = nc_conn)
 
-   
    # Append data to the global data 
    emean = rbind( emean, p_emean)
+   
+   # Remove data to try to save memory
+   dummy = rm(p_datum,p_emean)
+   dummy = gc()
 }#end for (p in sequence(n_poi_list))
 ```
 
@@ -452,52 +462,52 @@ quant_upr = 0.5 + 0.5 * ci_range
 
 # Filter data and find the time series for each site.
 cat0(" + Find time series by site.")
-poi_emean = emean                                                                               %>%
-            filter ( ( dist <= sample_radius ) & lc_use )                                       %>%
-            mutate ( lai_wgt  = ifelse(test=lai_sd  %gt% 0., yes = 1./lai_sd^2 , no = 0.)
-                   , fpar_wgt = ifelse(test=fpar_sd %gt% 0., yes = 1./fpar_sd^2, no = 0.) )     %>%
-            group_by (site,year,month)                                                          %>%
-            summarise( lai_qmid   = median(x=lai,na.rm=TRUE)
-                     , lai_sdev   = sqrt( median(x=lai_sd^2,na.rm=TRUE) )
-                     , lai_n      = sum( is.finite(lai) & is.finite(lai_sd) )
-                     , fpar_qmid  = median(x=fpar,na.rm=TRUE)
-                     , fpar_sdev  = sqrt(median(x=fpar_sd^2,na.rm=TRUE))
-                     , fpar_n     = sum( is.finite(fpar) & is.finite(fpar_sd) )           )     %>%
-            ungroup()                                                                           %>%
-            mutate   ( lai_qlwr   = pmax(0., qnorm(p=quant_lwr,mean=lai_qmid ,sd=lai_sdev) )
-                     , lai_qupr   = qnorm(p=quant_upr,mean=lai_qmid ,sd=lai_sdev)
-                     , fpar_qlwr  = pmax(0., qnorm(p=quant_lwr,mean=fpar_qmid,sd=fpar_sdev) )
-                     , fpar_qupr  = pmin(1., qnorm(p=quant_upr,mean=fpar_qmid,sd=fpar_sdev) ) ) %>%
-            mutate ( when = make_date(year=year,month=month))                                   %>%
-            select_at(all_of( c("site","when"
-                               ,"lai_qlwr","lai_qmid","lai_qupr","lai_sdev","lai_n"
-                               ,"fpar_qlwr","fpar_qmid","fpar_qupr","fpar_sdev","fpar_n")))   %>%
-            arrange(site,when)
+poi_emean = emean                                                                           %>%
+   filter ( ( dist %le% p_radius ) & lc_use )                                               %>%
+   mutate ( lai_wgt  = ifelse(test=lai_sd  %gt% 0., yes = 1./lai_sd^2 , no = 0.)
+          , fpar_wgt = ifelse(test=fpar_sd %gt% 0., yes = 1./fpar_sd^2, no = 0.) )          %>%
+   group_by (site,year,month)                                                               %>%
+   summarise( lai_qmid        = median(x=lai,na.rm=TRUE)
+            , lai_sdev        = sqrt( median(x=lai_sd^2,na.rm=TRUE) )
+            , lai_n           = sum( is.finite(lai) & is.finite(lai_sd) )
+            , fpar_qmid       = median(x=fpar,na.rm=TRUE)
+            , fpar_sdev       = sqrt(median(x=fpar_sd^2,na.rm=TRUE))
+            , fpar_n          = sum( is.finite(fpar) & is.finite(fpar_sd) )      )          %>%
+   ungroup()                                                                                %>%
+   mutate   ( lai_qlwr        = pmax(0., qnorm(p=quant_lwr,mean=lai_qmid ,sd=lai_sdev) )
+            , lai_qupr        = qnorm(p=quant_upr,mean=lai_qmid ,sd=lai_sdev)
+            , fpar_qlwr       = pmax(0., qnorm(p=quant_lwr,mean=fpar_qmid,sd=fpar_sdev) )
+            , fpar_qupr       = pmin(1., qnorm(p=quant_upr,mean=fpar_qmid,sd=fpar_sdev) ) ) %>%
+   mutate ( when = make_date(year=year,month=month))                                        %>%
+   select_at(all_of( c("site","when"
+                      ,"lai_qlwr","lai_qmid","lai_qupr","lai_sdev","lai_n"
+                      ,"fpar_qlwr","fpar_qmid","fpar_qupr","fpar_sdev","fpar_n" ) ) )       %>%
+   arrange(site,when)
 
 cat0(" + Find mean annual cycle by site.")
-poi_mmean = poi_emean                                                                           %>%
-            mutate( month    = month(when)
-                  , lai_wgt  = ifelse(test=lai_sdev  %gt% 0., yes = 1./lai_sdev^2 , no = 0.)
-                  , fpar_wgt = ifelse(test=fpar_sdev %gt% 0., yes = 1./fpar_sdev^2, no = 0.) )  %>%
-            group_by (site,month)                                                               %>%
-            summarise( lai_qmid   = mean(x=lai_qmid,na.rm=TRUE)
-                     , lai_sdev   = sqrt( mean(x=lai_sdev^2,na.rm=TRUE) )
-                     , lai_n      = sum( is.finite(lai_qmid) & is.finite(lai_sdev) )
-                     , fpar_qmid  = mean(x=fpar_qmid,na.rm=TRUE)
-                     , fpar_sdev  = sqrt(mean(x=fpar_sdev^2,na.rm=TRUE))
-                     , fpar_n     = sum( is.finite(fpar_qmid) & is.finite(fpar_sdev) )     )    %>%
-            ungroup()                                                                           %>%
-            mutate   ( lai_qlwr   = pmax(0., qnorm(p=quant_lwr,mean=lai_qmid ,sd=lai_sdev) )
-                     , lai_qupr   = qnorm(p=quant_upr,mean=lai_qmid ,sd=lai_sdev)
-                     , fpar_qlwr  = pmax(0., qnorm(p=quant_lwr,mean=fpar_qmid,sd=fpar_sdev) )
-                     , fpar_qupr  = pmin(1., qnorm(p=quant_upr,mean=fpar_qmid,sd=fpar_sdev) ) ) %>%
-            arrange(site,month)
+poi_mmean = poi_emean                                                                        %>%
+   mutate( month          = month(when)
+         , lai_wgt        = ifelse(test=lai_sdev  %gt% 0., yes = 1./lai_sdev^2 , no = 0.)
+         , fpar_wgt       = ifelse(test=fpar_sdev %gt% 0., yes = 1./fpar_sdev^2, no = 0.) )  %>%
+   group_by (site,month)                                                                     %>%
+   summarise( lai_qmid         = mean(x=lai_qmid,na.rm=TRUE)
+            , lai_sdev         = sqrt( mean(x=lai_sdev^2,na.rm=TRUE) )
+            , lai_n            = sum( is.finite(lai_qmid) & is.finite(lai_sdev) )
+            , fpar_qmid        = mean(x=fpar_qmid,na.rm=TRUE)
+            , fpar_sdev        = sqrt(mean(x=fpar_sdev^2,na.rm=TRUE))
+            , fpar_n           = sum( is.finite(fpar_qmid) & is.finite(fpar_sdev) )     )    %>%
+   ungroup()                                                                                 %>%
+   mutate   ( lai_qlwr   = pmax(0., qnorm(p=quant_lwr,mean=lai_qmid ,sd=lai_sdev) )
+            , lai_qupr   = qnorm(p=quant_upr,mean=lai_qmid ,sd=lai_sdev)
+            , fpar_qlwr  = pmax(0., qnorm(p=quant_lwr,mean=fpar_qmid,sd=fpar_sdev) )
+            , fpar_qupr  = pmin(1., qnorm(p=quant_upr,mean=fpar_qmid,sd=fpar_sdev) )  )      %>%
+   arrange(site,month)
 ```
 
 
 # Output plots
 
-First, we plot the time series of LAI for the three sites.
+First, we plot the time series of LAI for all sites.
 
 ```{r, label='plot-emean'}
 cat0(" + Plot the time series of LAI for all sites by month and year.")
@@ -555,7 +565,7 @@ gg_emean = gg_emean + theme( axis.text.x       = element_text( size   = gg_ptsz
 
 # Save plots.
 for (d in sequence(ndevice)){
-   e_output = paste0("emean_lai_mcd15a2h_v006.",gg_device[d])
+   e_output = paste0("emean_lai_mcd15a2h_v061.",gg_device[d])
    dummy    = ggsave( filename = e_output
                     , plot     = gg_emean
                     , device   = gg_device[d]
@@ -632,7 +642,7 @@ gg_mmean = gg_mmean + theme( axis.text.x       = element_text( size   = gg_ptsz
 
 # Save plots.
 for (d in sequence(ndevice)){
-   m_output = paste0("mmean_lai_mcd15a2h_v006.",gg_device[d])
+   m_output = paste0("mmean_lai_mcd15a2h_v061.",gg_device[d])
    dummy    = ggsave( filename = m_output
                     , plot     = gg_mmean
                     , device   = gg_device[d]
@@ -675,8 +685,8 @@ att_template = list( title          = "To be replaced when looping through month
                    , data_info      = paste0(" Data downloaded through AppEEARS"
                                             ," (https://lpdaac.usgs.gov/tools/appeears/)."
                                             ," MODIS (Collection 6) products used:"
-                                            ," MCD15A2H (https://doi.org/10.5067/MODIS/MCD15A2H.006);"
-                                            ," MCD12Q1 (https://doi.org/10.5067/MODIS/MCD12Q1.006)."
+                                            ," MCD15A2H (https://doi.org/10.5067/MODIS/MCD15A2H.061);"
+                                            ," MCD12Q1 (https://doi.org/10.5067/MODIS/MCD12Q1.061)."
                                             )#end paste0
                    )#end list
 ```
@@ -794,19 +804,31 @@ for (p in sequence(n_poi_list)){
                               , longname = "observation time"
                               )#end ncvar_def
    
-   # Include LAI and fPAR.
-   nc_vlist$LAI    = ncvar_def( name     = "LAI"
-                              , units    = "m2/m2"
-                              , dim      = nc_xyt
-                              , missval  = undef_out
-                              , longname = "Leaf area index"
-                              )#end ncvar_def
-   nc_vlist$FPAR   = ncvar_def( name     = "FPAR"
-                              , units    = "1"
-                              , dim      = nc_xyt
-                              , missval  = undef_out
-                              , longname = "Fraction of photosynthetically active radiation"
-                              )#end ncvar_def
+   # Include LAI and fPAR (we duplicate so it works with both the host land model and FATES.
+   nc_vlist$LAI        = ncvar_def( name     = "LAI"
+                                  , units    = "m2/m2"
+                                  , dim      = nc_xyt
+                                  , missval  = undef_out
+                                  , longname = "Leaf area index (HLM)"
+                                  )#end ncvar_def
+   nc_vlist$FPAR       = ncvar_def( name     = "FPAR"
+                                  , units    = "1"
+                                  , dim      = nc_xyt
+                                  , missval  = undef_out
+                                  , longname = "Fraction of photosynthetically active radiation (HLM)"
+                                  )#end ncvar_def
+   nc_vlist$FATES_LAI  = ncvar_def( name     = "FATES_LAI"
+                                  , units    = "m2/m2"
+                                  , dim      = nc_xyt
+                                  , missval  = undef_out
+                                  , longname = "Leaf area index (FATES)"
+                                  )#end ncvar_def
+   nc_vlist$FATES_FPAR = ncvar_def( name     = "FATES_FPAR"
+                                  , units    = "1"
+                                  , dim      = nc_xyt
+                                  , missval  = undef_out
+                                  , longname = "Fraction of photosynthetically active radiation (FATES)"
+                                  )#end ncvar_def
 
    # Create file
    nc_conn = nc_create(filename=mlai_file,vars=nc_vlist,verbose=FALSE)
@@ -815,32 +837,38 @@ for (p in sequence(n_poi_list)){
    # Put coordinates, tower height and attributes to the netcdf
    #---~---
    # Longitude, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="LONGXY",vals=array(data=outlon     ,dim=xy))
-   dummy = ncatt_put(nc=nc_conn,varid="LONGXY",attname="mode"    ,attval="time-invariant")
+   dummy = ncvar_put(nc=nc_conn,varid="LONGXY"    ,vals=array(data=outlon     ,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid="LONGXY"    ,attname="mode"    ,attval="time-invariant")
    # Latitude, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="LATIXY",vals=array(data=outlat     ,dim=xy))
-   dummy = ncatt_put(nc=nc_conn,varid="LATIXY",attname="mode"    ,attval="time-invariant")
+   dummy = ncvar_put(nc=nc_conn,varid="LATIXY"    ,vals=array(data=outlat     ,dim=xy))
+   dummy = ncatt_put(nc=nc_conn,varid="LATIXY"    ,attname="mode"    ,attval="time-invariant")
    # Western edge, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="EDGEW" ,vals=edge_w)
-   dummy = ncatt_put(nc=nc_conn,varid="EDGEW" ,attname="mode"    ,attval="time-invariant")
+   dummy = ncvar_put(nc=nc_conn,varid="EDGEW"     ,vals=edge_w)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGEW"     ,attname="mode"    ,attval="time-invariant")
    # Eastern edge, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="EDGEE" ,vals=edge_e)
-   dummy = ncatt_put(nc=nc_conn,varid="EDGEE" ,attname="mode"    ,attval="time-invariant")
+   dummy = ncvar_put(nc=nc_conn,varid="EDGEE"     ,vals=edge_e)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGEE"     ,attname="mode"    ,attval="time-invariant")
    # Southern edge, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="EDGES" ,vals=edge_s)
-   dummy = ncatt_put(nc=nc_conn,varid="EDGES" ,attname="mode"    ,attval="time-invariant")
+   dummy = ncvar_put(nc=nc_conn,varid="EDGES"     ,vals=edge_s)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGES"     ,attname="mode"    ,attval="time-invariant")
    # Northern edge, append time-invariant tag
-   dummy = ncvar_put(nc=nc_conn,varid="EDGEN" ,vals=edge_n)
-   dummy = ncatt_put(nc=nc_conn,varid="EDGEN" ,attname="mode"    ,attval="time-invariant")
+   dummy = ncvar_put(nc=nc_conn,varid="EDGEN"     ,vals=edge_n)
+   dummy = ncatt_put(nc=nc_conn,varid="EDGEN"     ,attname="mode"    ,attval="time-invariant")
    # Time, append calendar type.
-   dummy = ncvar_put(nc=nc_conn,varid="time"  ,vals=tsince)
-   dummy = ncatt_put(nc=nc_conn,varid="time"  ,attname="calendar",attval="gregorian")
+   dummy = ncvar_put(nc=nc_conn,varid="time"      ,vals=tsince)
+   dummy = ncatt_put(nc=nc_conn,varid="time"      ,attname="calendar",attval="gregorian")
    # Put LAI to the netcdf
-   dummy = ncvar_put(nc=nc_conn,varid="LAI"  ,vals=array(data=this_emean$lai_qmid,dim=xyt))
-   dummy = ncatt_put(nc=nc_conn,varid="LAI"  ,attname="mode",attval="time-dependent")
+   dummy = ncvar_put(nc=nc_conn,varid="LAI"       ,vals=array(data=this_emean$lai_qmid,dim=xyt))
+   dummy = ncatt_put(nc=nc_conn,varid="LAI"       ,attname="mode",attval="time-dependent")
    # Put FPAR to the netcdf
-   dummy = ncvar_put(nc=nc_conn,varid="FPAR"  ,vals=array(data=this_emean$fpar_qmid,dim=xyt))
-   dummy = ncatt_put(nc=nc_conn,varid="FPAR"  ,attname="mode",attval="time-dependent")
+   dummy = ncvar_put(nc=nc_conn,varid="FPAR"      ,vals=array(data=this_emean$fpar_qmid,dim=xyt))
+   dummy = ncatt_put(nc=nc_conn,varid="FPAR"      ,attname="mode",attval="time-dependent")
+   # Put LAI to the netcdf
+   dummy = ncvar_put(nc=nc_conn,varid="FATES_LAI" ,vals=array(data=this_emean$lai_qmid,dim=xyt))
+   dummy = ncatt_put(nc=nc_conn,varid="FATES_LAI" ,attname="mode",attval="time-dependent")
+   # Put FPAR to the netcdf
+   dummy = ncvar_put(nc=nc_conn,varid="FATES_FPAR",vals=array(data=this_emean$fpar_qmid,dim=xyt))
+   dummy = ncatt_put(nc=nc_conn,varid="FATES_FPAR",attname="mode",attval="time-dependent")
 
    # Add title specific for this month/year.
    nc_title   = paste0( "Averages by month and year for ",p_site)

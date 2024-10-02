@@ -14,8 +14,8 @@
 
 <title>Create case for ELM-FATES or CLM-FATES</title>
 
-<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -58,6 +58,7 @@ if (window.hljs) {
 
 
 
+
 <link rel="stylesheet" href="styles.css" type="text/css" />
 
 
@@ -82,6 +83,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -139,11 +143,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -172,8 +180,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -181,16 +189,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -234,7 +235,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -281,912 +282,1772 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Create case for ELM-FATES or CLM-FATES</h1>
 <h4 class="author">Marcos Longo</h4>
-<h4 class="date">31-Oct-2021</h4>
+<h4 class="date">03-Oct-2022</h4>
 
 </div>
 
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>This R Markdown script generates a case for a single-point simulation for a user-defined site. It assumes all the site-specific data files (<code>site_name</code>) are located in the <code>site_base_path</code> folder (see below).</p>
-<p>This script does not take any arguments. Instead, the beginning of the script has many variables to control the simulation settings.</p>
-<p><em>Note</em>. This Rmd file replaces the need for a shell script; In case you prefer a shell script, check <a href="https://github.com/mpaiao/FATES_Utils/blob/master/create_case_hlm-fates.sh">create_case_hlm-fates.sh</a> instead.</p>
+<p>The <a
+href="https://github.com/mpaiao/FATES_Utils/blob/master/create_case_hlm-fates.sh">create_case_hlm-fates.sh</a>
+script generates a case for a single-point simulation for a user-defined
+site. It assumes all the site-specific data files
+(<code>SITE_NAME</code>) are located in the <code>SITE_BASE_PATH</code>
+folder.</p>
+<p><em>Important</em>. Use the actual script for setting up the case.
+The R Markdown file is for documentation only. Once I figure out how to
+write shell scripts (as opposed to shell chunks) within R Markdown, this
+message will be removed.</p>
 </div>
-<div id="reset-session" class="section level1">
-<h1>Reset session</h1>
-<p>Use this chunk to fully reset R.</p>
-<pre class="r"><code># Unload all packages except for the R default ones
-plist = names(sessionInfo()$otherPkgs)
-if (length(plist) &gt; 0){
-   dummy = sapply(X=paste0(&quot;package:&quot;,plist),FUN=detach,character.only=TRUE,unload=TRUE)
-}#end if (length(plist) &gt; 0)
-
-
-# Remove all variables
-rm(list=ls())
-
-# Reset warnings
-options(warn=0)
-
-# Close all plots
-invisible(graphics.off())
-
-# Clean up
-invisible(gc())</code></pre>
+<div id="argument-reading" class="section level1">
+<h1>Argument reading</h1>
+<p>This script can take a few arguments for quick set up. Otherwise, the
+beginning of the script has many variables to control the simulation
+settings. Either way, it is better to go through the beginning of the
+script to familiarise with the options, and to make sure that the
+argument settings are what you really think they are.</p>
+<p>List of optional keys (which must be followed by the actual
+arguments):</p>
+<ul>
+<li><code>-s</code> or <code>--site</code>. Index of known site, from
+the list defined in variable <code>SITE_INFO</code></li>
+<li><code>-c</code> or <code>--config</code>. Index of known
+configuration, from the list defined in variable
+<code>CONFIG_INFO</code></li>
+<li><code>-r</code> or <code>--runtime</code>. Run time for jobs (Format
+<code>"[DD-]HH:MM:SS"</code>, DD is optional)</li>
+</ul>
+<pre class="bash"><code>SITE_USE=&quot;&quot;
+CONFIG_USE=&quot;&quot;
+RUN_TIME=&quot;&quot;
+#--- Parse arguments
+while [[ ${#} -gt 0 ]]
+do
+   ARG=&quot;${1}&quot;
+   case ${ARG} in
+   -s|--site)
+      export SITE_USE=&quot;${2}&quot;
+      shift 2
+      ;;
+   -c|--config)
+      export CONFIG_USE=&quot;${2}&quot;
+      shift 2
+      ;;
+   -r|--runtime)
+      export RUN_TIME=&quot;${2}&quot;
+      shift 2
+      ;;
+   *)
+      #---~---
+      #   Unknown option, stop the script.
+      #---~---
+      echo &quot; Unknown option ${1}. Check script for instructions.&quot;
+      exit 99
+      #---~---
+      ;;
+   esac
+done</code></pre>
 </div>
-<div id="main-settings" class="section level1">
-<h1>Main settings</h1>
-<div id="required-packages" class="section level2">
-<h2>Required packages</h2>
-<p>Load some packages. By default, we skip the warning messages, but it may be a good idea to visualise them if it is the first time running.</p>
-<pre class="r"><code>isfine = c( git2r      = require(git2r     ,quietly=TRUE,warn.conflicts=FALSE)
-          , lubridate  = require(lubridate ,quietly=TRUE,warn.conflicts=FALSE)
-          , ncdf4      = require(ncdf4     ,quietly=TRUE,warn.conflicts=FALSE)
-          , reshape2   = require(reshape2  ,quietly=TRUE,warn.conflicts=FALSE)
-          , reticulate = require(reticulate,quietly=TRUE,warn.conflicts=FALSE)
-          , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
-          )#end c
-if (! all(isfine)){
-   cat(&quot; List of required packages, and the success status loading them:\n&quot;)
-   print(isfine)
-   stop(&quot; Some packages are missing and must be installed.&quot;)
-}
-
-# Make sure there is a python environment associated with R. If not, install it (it will take a 
-# while but this is only needed once).
-if (! py_available()){
-   py_available(TRUE)
-}#end if (! py_available())
-
-# Import python libraries (same as in modify_fates_paramfile.py). This is needed for the python
-# script to run from within R/
-dummy = py_install(&quot;scipy&quot;)
-dummy = py_install(&quot;numpy&quot;)</code></pre>
-</div>
-</div>
-<div id="main-settings." class="section level1">
-<h1>Main settings.</h1>
+<div id="main-setings." class="section level1">
+<h1>Main setings.</h1>
 <p>First we define which model to run and where to run:</p>
 <ul>
-<li><strong>hesm</strong>. The host earth system model. Acceptable options are <code>"E3SM"</code>, <code>"CESM"</code>, or <code>"CTSM"</code>.</li>
-<li><strong>project</strong>. This is the project associated with the job run, mostly useful in cluster systems.</li>
-<li><strong>mach</strong>. The machine used for preparing the case. This must be one of the supported machines, or you may want to generate specifications for your own machine. More information on how to set up the machine available <a href="https://esmci.github.io/cime/versions/ufs_release_v1.0/html/users_guide/porting-cime.html">here</a>.</li>
+<li><code>HESM</code>. Host “Earth System Model”. (E3SM, CESM,
+CTSM)</li>
+<li><code>PROJECT</code>. Project (may not be needed)</li>
+<li><code>MACH</code>. Machine used for preparing the case</li>
 </ul>
-<pre class="r"><code># Main settings.
-hesm    = &quot;CTSM&quot;        # Host &quot;Earth System Model&quot;. (E3SM, CESM, CTSM)
-project = &quot;ngeet&quot;       # Project (may not be needed)
-mach    = &quot;eschweilera&quot; # Machine used for preparing the case</code></pre>
-<p>Here we set up the case handling:</p>
+<pre class="bash"><code>export HESM=&quot;E3SM&quot;
+export MACH=&quot;eschweilera&quot;</code></pre>
+<p>Job submission settings. These settings depend on the machine select,
+and may not be used.</p>
+<p>Configuration relevant for all submissions:</p>
 <ul>
-<li><strong>overwrite_case</strong>. In case the case already exists, should the script delete the existing case and make a new one? (<code>TRUE</code> deletes old case, <code>FALSE</code> issue an error and halt script.)</li>
-<li><strong>case_submit</strong>. Should the R script start the job run? If <code>TRUE</code>, the script will create the case and run it; if <code>FALSE</code>, the case and simulation directories will be created, but the model will not run. You will need to go to the case directory and run <code>case.submit</code> through the terminal.</li>
-<li><strong>case_wait</strong>. If <code>case_submit = TRUE</code>, should the R script wait until the job finishes? If <code>TRUE</code> the script will save the screen output in a local variable and will lock the terminal (or RStudio…) until the run finishes. This may be useful only when debugging, otherwise, it makes more sense to set it to <code>FALSE</code>.</li>
+<li><p><code>AUTO_SUBMIT</code>. Submit the job upon successful
+creation? (true or false)</p></li>
+<li><p><code>IS_INTERACTIVE</code>. Should the jib be submitted
+interactively (as opposed to submitted as a batch job)? (true or
+false)</p></li>
+<li><p><code>PROJECT</code>. Project account to be used for this
+submission. Set it to empty (<code>PROJECT=""</code>) in case this is
+not applicable.</p></li>
+<li><p><code>PARTITION</code>. Specify the partition for the job to be
+run. Set it to empty (<code>PARTITION=""</code>) to use the
+default.</p></li>
+<li><p><code>RUN_TIME</code>. Run time for job, in HH:MM:SS format. Make
+sure this does not exceed maximum allowed.</p></li>
+<li><p><code>CPUS_PER_TASK</code>. Number of CPUS requested for each
+task. Set it to 1 unless using multi-threading (shared memory
+parallelisation, OpenMP).</p></li>
 </ul>
-<pre class="r"><code># Overwrite existing case
-overwrite_case = TRUE
-
-# Should the job be submitted?
-case_submit = TRUE
-
-# Should we wait until the simulation finishes?
-case_wait = FALSE</code></pre>
+<pre class="bash"><code>export AUTO_SUBMIT=false
+export IS_INTERACTIVE=true
+export PROJECT=&quot;m2420&quot;
+export PARTITION=&quot;regular&quot;
+export RUN_TIME=&quot;23:59:59&quot;
+export CPUS_PER_TASK=1</code></pre>
 <p>The settings below are useful for debugging the code:</p>
 <ul>
-<li><strong>debug_level</strong>. The higher the number, the more information will be provided (at the expense of running slower). 0 means no debugging (typical setting for scientific analysis), 6 means very strict debugging (useful when developing the code).</li>
-<li><strong>use_fates</strong>. Logical flag (<code>true</code> or <code>false</code>). This option allows running the native host land model (CLM or ELM) without FATES, which may be useful for some debugging.</li>
+<li><code>DEBUG_LEVEL</code>. The higher the number, the more
+information will be provided (at the expense of running slower). 0 means
+no debugging (typical setting for scientific analysis), 6 means very
+strict debugging (useful when developing the code).</li>
+<li><code>USE_FATES</code>. Logical flag (<code>true</code> or
+<code>false</code>). This option allows running the native host land
+model (CLM or ELM) without FATES, which may be useful for some
+debugging.</li>
 </ul>
-<pre class="r"><code>debug_level = 0     # Debugging level
-use_fates   = TRUE  # Use FATES (TRUE) or just the host land model (FALSE)</code></pre>
-<p>Set paths:</p>
+<pre class="bash"><code>export DEBUG_LEVEL=0
+export USE_FATES=true</code></pre>
+<p>Path settings:</p>
 <ul>
-<li><strong>home_path</strong>. The home directory (useful for building paths).</li>
-<li><strong>work_path</strong>: The main working path (typically <code>&lt;host_model&gt;/cime/scripts</code>)</li>
-<li><strong>case_root</strong>: The main path where to create the directory for this case.</li>
-<li><strong>simul_root</strong>: The main path where to create the directory for the simulation output.</li>
-<li><strong>grid_base_path</strong>: The main path with gridded input files.</li>
-<li><strong>site_base_path</strong>: The main path with site-specific input files.</li>
+<li><code>WORK_PATH</code>. The main working path (typically
+<host_model>/cime/scripts)</li>
+<li><code>BASE_PATH</code>. The main path where cases and simulations
+are written.</li>
+<li><code>CASE_ROOT</code>. The main path where to create the directory
+for this case.</li>
+<li><code>SIMUL_ROOT</code>. The main path where to create the directory
+for the simulation output.</li>
 </ul>
-<p><em>Note</em>. In all cases, use <code>XXXX</code> in the part you want to be replaced with either E3SM or CTSM.</p>
-<pre class="r"><code>home_path  = path.expand(&quot;~&quot;) # Home path.
-work_path  = file.path(home_path,&quot;Models&quot;,&quot;XXXX&quot;,&quot;cime&quot;,&quot;scripts&quot;)
-case_root  = file.path(home_path,&quot;Documents&quot;,&quot;LocalData&quot;,&quot;FATES&quot;,&quot;SingleRuns&quot;,&quot;Cases&quot;)
-simul_root = file.path(home_path,&quot;Documents&quot;,&quot;LocalData&quot;,&quot;FATES&quot;,&quot;SingleRuns&quot;,&quot;Simulations&quot;)
-
-# Paths containing data sets.
-grid_base_path = file.path(home_path,&quot;Documents&quot;,&quot;LocalData&quot;,&quot;FATES&quot;,&quot;InputData&quot;) # Gridded data
-site_base_path = file.path(home_path,&quot;Data&quot;,&quot;FATES_DataSets&quot;)                     # Site-specific data</code></pre>
-<p>Assign the compilation settings. It is fine to leave this blank, in which case the script will use default settings.</p>
-<pre class="r"><code>comp      = &quot;&quot;</code></pre>
-<p>Set the grid resolution (variable <code>resol</code>). This must be a standard ELM/CLM grid resolution. In case you want to use the site information, set <code>resol="YYY_USRDAT"</code>. The host model will be replaced later in the script.</p>
-<pre class="r"><code>resol = &quot;YYY_USRDAT&quot; # Grid resolution</code></pre>
-<p>The following chunk contains variables that will pick the site (in case <code>resol="YYY_USRDAT"</code>), and help setting the case name (regardless of the site). If this is not a single-site run, most of these settings will be ignored. Most information comes from <code>site_info</code>, a tibble object with the following variables:</p>
-<ul>
-<li><strong>site_id</strong>. A unique site id. Typically a sequential order (but the code checks it.)</li>
-<li><strong>case</strong>. A short name for the site, which can be used for defining a case name, for example (see below).</li>
-<li><strong>ei64_name</strong>. The full site name, typically the sub-directory where all the site-specific data are stored.</li>
-<li><strong>start_date</strong>. The start date for simulating the site. Useful if running FATES over site-specific time periods (e.g. tower data overlap).</li>
-<li><strong>stop_n</strong>. Number of years to run the model for this site. Useful if running FATES over site-specific time periods (e.g. tower data overlap).</li>
-<li><strong>datm_first</strong>. First year with meteorological driver. This is normally fixed unless new versions of the data become available.</li>
-<li><strong>datm_last</strong>. Last year with meteorological driver. This is normally fixed unless new versions of the data become available.</li>
-<li><strong>calendar</strong>. Which calendar type should we use? This must be consistent with the meteorological drivers. Options are <code>"NO_LEAP"</code>, for non-leap years and <code>"GREGORIAN"</code>, for Gregorian calendar. Note that <code>"GREGORIAN"</code> calendar requires meteorological drivers that extend to entire simulation time span (i.e., no recycling), otherwise, the simulation will likely crash in one of the Februaries outside the meteorological driver range.</li>
-<li><strong>inv_suffix</strong>. Suffix for the forest inventory plot initialisation instructions. The base file name with instructions should be like: <code>&lt;site_name&gt;_&lt;inv_suffix&gt;.txt</code>. In case you do not want to use inventory initialisation, leave this blank (<code>""</code>).</li>
-<li><strong>parameter_set</strong>. Base name of the file containing the model parameters. In case none is available, set this to blank (<code>""</code>).</li>
-</ul>
-<p>Variable <code>site_use</code> lets you pick which site to use. This is an integer variable that must correspond to one of the <code>site_id</code> listed in <code>site_info</code>. Last, you must define a base directory (<code>site_base_path</code>). If using a standard data file structure, this is the directory where all site data are located, one sub-directory per site. The names of these sub-directories match <code>site_name</code>. Each site-specific path (i.e. `<site_base_path>/<site_name>should contain:</p>
+<p><em>Note</em>. In all cases, use <code>XXXX</code> in the part you
+want to be replaced with either E3SM or CTSM.</p>
+<pre class="bash"><code>case &quot;${MACH}&quot; in
+eschweilera)
+   export WORK_PATH=&quot;${HOME}/Models/XXXX/cime/scripts&quot;
+   export BASE_PATH=&quot;${HOME}/Documents/LocalData/FATES&quot;
+   export CASE_ROOT=&quot;${BASE_PATH}/SingleRuns/Cases&quot;
+   export SIMUL_ROOT=&quot;${BASE_PATH}/SingleRuns/Simulations&quot;
+   ;;
+*)
+   export WORK_PATH=&quot;${HOME}/Models/XXXX/cime/scripts&quot;
+   export CASE_ROOT=&quot;${HOME}/SingleRuns/Cases&quot;
+   export SIMUL_ROOT=&quot;${SCRATCH}/SingleRuns/Simulations&quot;
+   ;;
+esac</code></pre>
+<p>Define a base directory using SITE_BASE_PATH. If using a standard
+data file structure, this is the directory where all site data are
+located, one sub-directory per site. The names of these sub-directories
+match site_name. Each site-specific path
+(i.e. <code>&lt;SITE_BASE_PATH&gt;/&lt;SITE_INFO%site_name&gt;</code>
+should contain:</p>
 <ol style="list-style-type: decimal">
-<li>A sub-directory <code>CLM1PT</code> containing the meteorological drivers. Check documentation for script <a href="make_fates_met_driver.html">make_fates_met_driver.Rmd</a> for more details.</li>
-<li>The domain and surface data specific for this site. Check documentation for script <a href="make_fates_domain+surface.html">make_fates_domain+surface.Rmd</a> for further information.</li>
-<li><em>Optional</em>. A FATES parameter file. This file is assumed to be in the <code>&lt;site_name&gt;</code> sub-directory. In case none is provided (i.e., <code>&lt;parameter_set&gt;=""</code>), the case will use the default parameter file. Beware that the default is not optimised and may yield bad results.</li>
-<li><em>Optional</em>. The forest structure control data, which should contain the full paths to ED2-style pss (patch) and css (cohort) files. This file base name should be <code>&lt;site_name&gt;_&lt;inv_suffix&gt;.txt</code>, or blank in case inventories should not be used. Check the <a href="https://github.com/EDmodel/ED2/wiki/Initial-conditions">ED2 Wiki</a> for details on how to generate the files.</li>
+<li>A sub-directory <code>CLM1PT</code> containing the meteorological
+drivers. Check documentation for script <a
+href="make_fates_met_driver.html">make_fates_met_driver.Rmd</a> for more
+details.</li>
+<li>The domain and surface data specific for this site. Check
+documentation for script <a
+href="make_fates_domain+surface.html">make_fates_domain+surface.Rmd</a>
+for further information.</li>
+<li><em>Optional</em>. A FATES parameter file, which is defined by
+variable <code>fates_param_base</code>, defined a bit below in the
+chunk. This file is assumed to be in the <code>&lt;site_name&gt;</code>
+sub-directory. In case none is provided (i.e.,
+<code>&lt;fates_param_base&gt;=""</code>), the case will use the default
+parameter file. Beware that the default is not optimised and may yield
+bad results.</li>
+<li><em>Optional</em>. The forest structure control data, which should
+contain the full paths to ED2-style pss (patch) and css (cohort) files.
+This file base name should be
+<code>&lt;site_name&gt;_&lt;inv_suffix&gt;.txt</code>, or blank in case
+inventories should not be used. Check the ED2 Wiki (<a
+href="https://github.com/EDmodel/ED2/wiki/Initial-conditions"
+class="uri">https://github.com/EDmodel/ED2/wiki/Initial-conditions</a>)
+for details on how to generate the files.</li>
 </ol>
-<p>The actual scripts are available on <a href="https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing">GitHub</a>.</p>
-<pre class="r"><code>site_info = tidyr::tribble( ~site_id, ~case               , ~site_name                           ,   ~start_date,          ~stop_n,  ~datm_first, ~datm_last
-                                    , ~calendar           ,~parameter_set                                       ,      ~inv_suffix
-                          ,        0, &quot;ParacouTest&quot;       , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    ,  &quot;2004-01-01&quot;,                4,         2004,       2019
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
-                          ,        1, &quot;ParacouNewPhen&quot;    , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    ,  &quot;2004-01-01&quot;,               16,         2004,       2019
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
-                          ,        2, &quot;TanguroNewPhen&quot;    , &quot;1x1pt-tanguroMT-BR_v1.2_c20210913&quot;  ,  &quot;2008-01-01&quot;,               12,         2008,       2018
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
-                          ,        3, &quot;PetrolinaNewPhen&quot;  , &quot;1x1pt-petrolinaPE-BR_v1.2_c20210913&quot;,  &quot;2004-01-01&quot;,               12,         2004,       2012
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;nopft_info&quot;
-                          ,        4, &quot;ParacouEvergreen&quot;  , &quot;1x1pt-paracouGUF_v1.6_c20210913&quot;    ,  &quot;2004-01-01&quot;,               16,         2004,       2019
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;evergreen_info&quot;
-                          ,        5, &quot;TanguroEvergreen&quot;  , &quot;1x1pt-tanguroMT-BR_v1.2_c20210913&quot;  ,  &quot;2008-01-01&quot;,               12,         2008,       2018
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;evergreen_info&quot;
-                          ,        6, &quot;PetrolinaEvergreen&quot;, &quot;1x1pt-petrolinaPE-BR_v1.2_c20210913&quot;,  &quot;2004-01-01&quot;,               12,         2004,       2012
-                                    , &quot;NO_LEAP&quot;           , &quot;fates_params_2trop_koven_opt224+api16_c210722.cdl&quot; , &quot;evergreen_info&quot;
-                          )#end tidyr::tribble
+<p>The actual scripts are available on GitHub: <a
+href="https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing"
+class="uri">https://github.com/mpaiao/ED2_Support_Files/tree/master/pss%2Bcss_processing</a>.</p>
+<pre class="bash"><code>export SITE_BASE_PATH=&quot;${HOME}/Data/FATES_DataSets&quot;</code></pre>
+<p>Set the cases. These variables will control compilation settings and
+the case name for this simulation.<br />
+It is fine to leave these blank, in which case the script will use
+default settings.</p>
+<pre class="bash"><code>export COMP=&quot;&quot;
+export CASE_PREFIX=&quot;&quot;</code></pre>
+<p>Set variable <code>APPEND_GIT_HASH</code> to decide whether
+(<code>true</code>) or not (<code>false</code>) to append the current
+git commit hash to the case names. Appending the hash can be useful for
+reproducibility and is encouraged for scientific work. If just testing
+or debugging the code, setting it to false makes the case name shorter
+and more friendly.</p>
+<pre class="bash"><code>export APPEND_GIT_HASH=false</code></pre>
+<p>Set the grid resolution (variable <code>RESOL</code>). This must be a
+standard ELM/CLM grid resolution. In case you want to use the site
+information, set <code>RESOL=YYY_USRDAT</code>. The host model will be
+replaced later in the script.</p>
+<pre class="bash"><code>export RESOL=&quot;YYY_USRDAT&quot; # Grid resolution</code></pre>
+<p>Site information (<code>SITE_INFO</code>). In case <code>RESOL</code>
+is set to <code>YYY_USRDAT</code>, this allows the user to pick one of
+their favourite sites, and load the pre-defined settings for each of
+them. This should be an array with each line containing the following
+elements:</p>
+<ul>
+<li><code>site_id</code>. A unique site id. Typically a sequential order
+(but the code checks it). Do not use zero or negative numbers,
+though.</li>
+<li><code>site_desc</code>. A descriptive but short name for site (no
+spaces, please).</li>
+<li><code>site_name</code>. The full site name, typically the
+sub-directory where all the site-specific data are stored.</li>
+<li><code>datm_first</code>. First year with meteorological driver. This
+is normally fixed unless new versions of the data become available.</li>
+<li><code>datm_last</code>. Last year with meteorological driver. This
+is normally fixed unless new versions of the data become available.</li>
+<li><code>calendar</code>. Which calendar type should we use? This must
+be consistent with the meteorological drivers. Options are
+<code>"NO_LEAP"</code>, for non-leap years and <code>"GREGORIAN"</code>,
+for Gregorian calendar. Note that <code>"GREGORIAN"</code> calendar
+requires meteorological drivers that extend to entire simulation time
+span (i.e., no recycling), otherwise, the simulation will likely crash
+in one of the Februaries outside the meteorological driver range.</li>
+</ul>
+<pre class="bash"><code>#                  site_id  site_desc            site_name                               datm_first  datm_last  calendar
+export SITE_INFO=(&quot;      1  BarroColorado        1x1pt-bciPAN_v5.0_c20240616                   2003       2016   NO_LEAP&quot;
+                  &quot;      2  Paracou              1x1pt-paracouGUF_v1.8_c20220114               2004       2019   NO_LEAP&quot;
+                  &quot;      3  Tapajos              1x1pt-tapajosPABR_v1.0_c20231201              1999       2020   NO_LEAP&quot;
+                  &quot;      4  Tanguro              1x1pt-tanguroMTBR_v1.2_c20210913              2008       2018   NO_LEAP&quot;
+                  &quot;      5  SerraTalhada         1x1pt-serratalhadaPEBR_v1.0_c20220114         2008       2021   NO_LEAP&quot;
+                  &quot;      6  ESECSerido           1x1pt-esecseridoRNBR_v1.0_c20220119           2008       2021   NO_LEAP&quot;
+                  &quot;      7  Petrolina            1x1pt-petrolinaPEBR_v1.2_c20210913            2004       2012   NO_LEAP&quot;)
 
-# Select ID from above to decide which site to pick
-site_use = 0
+#---~---
+#    Variable SITE_USE lets you pick which site to use. This is an integer variable that
+# must correspond to one of the site_id listed in SITE_INFO.
+#---~---
+if [[ &quot;${SITE_USE}&quot; == &quot;&quot; ]]
+then
+   export SITE_USE=1
+fi
+#---~---
+</code></pre>
+<p>Configuration information. This allows setting multiple FATES
+configurations. Note that this is different from changing parameter
+values or running parameter sensitivity experiments. Variable
+<code>CONFIG_INFO</code> in this current setting contains the following
+elements, but this may need to be edited (along with the places in the
+script where <code>CONFIG_INFO</code> is used) depending on the
+simulation tests.</p>
+<ul>
+<li><code>config_id</code>. A unique configuration ID. Typically a
+sequential order (but the code checks it). Do not use zero or negative
+numbers, though.</li>
+<li><code>config_desc</code>. Suffix to append to site name that
+summarises configuration.</li>
+<li><code>inv_suffix</code>. Suffix for the forest inventory plot
+initialisation instructions. The base file name with instructions should
+be like: <code>&lt;site_name&gt;_&lt;inv_suffix&gt;.txt</code>. In case
+you do not want to use inventory initialisation, set this to NA.</li>
+<li><code>fates_hydro</code>. Use plant hydrodynamics?
+<code>.true.</code> turns it on, <code>.false.</code> turns it off.</li>
+<li><code>fates_st3</code>. Used Static Stand Structure (ST3)? If TRUE,
+FATES will disable changes in vegetation structure and leaf area index
+(effectively halting competition amongst PFTs), but it will still
+compute gross primary productivity, evapotranspiration, etc.</li>
+<li><code>yeara</code>. First year of the simulation. The actual meaning
+depends on the sign.
+<ul>
+<li><em>Positive</em>. Calendar year (e.g., 2022)</li>
+<li><em>Zero/Negative</em>. Year relative to the first year of the
+meteorological cycle. The absolute value of yeara will determine how
+many years BEFORE the first met driver year the model run. (e.g., -5
+means start five years before the first met driver year).</li>
+</ul></li>
+<li><code>yearz</code>. Last year of the simulation. The actual meaning
+depends on the sign.
+<ul>
+<li><em>Positive</em>. Calendar year (e.g., 2022)</li>
+<li><em>Zero/Negative</em>. Year relative to the first year of the
+meteorological cycle. The absolute value of yeara will determine how
+many years AFTER the first met driver year the model run. (e.g., -5
+means stop five years after the last met driver year).</li>
+</ul></li>
+<li><code>stress_decid</code>. Which drought deciduous approach should
+be used for those PFTs that are drought deciduous: 1 - Obligate (“hard”)
+deciduous; 2 - Semi-deciduous</li>
+<li><code>drought_thresh</code>. Drought threshold for full abscission.
+If positive, this represents the soil moisture [<span
+class="math inline">\(\mathrm{m}^{3} mathrm{m}^{-3}\)</span>]. If
+negative, it represents the soil matric potential [<span
+class="math inline">\(mathrm{mm}\)</span>]. This is applied only for
+drought deciduous PFTs.</li>
+<li><code>moist_thresh</code>. Drought threshold for full flushing. If
+positive, this represents the soil moisture [<span
+class="math inline">\(\mathrm{m}^{3} mathrm{m}^{-3}\)</span>]. If
+negative, it represents the soil matric potential [<span
+class="math inline">\(mathrm{mm}\)</span>]. Relevant only when running
+semi-deciduous.</li>
+</ul>
+<pre class="bash"><code>#                     config_id  config_desc                   inv_suffix  fates_hydro  fates_st3  yeara    yearz  stress_decid  drought_thresh  moist_thresh
+export CONFIG_INFO=(&quot;         1  InitBare_CompeteON_HydroOFF   NA              .false.    .false.   1700     2025             1       -152957.4     -122365.9&quot;
+                    &quot;         2  InitPlot_CompeteON_HydroOFF   nopft_info      .false.    .false.     -5        0             1       -152957.4     -122365.9&quot;
+                    &quot;         3  InitPlot_CompeteOFF_HydroOFF  nopft_info      .false.     .true.     -5        0             1       -152957.4     -122365.9&quot;
+                    &quot;         4  InitBare_CompeteON_HydroON    NA               .true.    .false.   1700     2025             1       -152957.4     -122365.9&quot;
+                    &quot;         5  InitPlot_CompeteON_HydroON    nopft_info       .true.    .false.     -5        0             1       -152957.4     -122365.9&quot;
+                    &quot;         6  InitPlot_CompeteOFF_HydroON   nopft_info       .true.     .true.     -5        0             1       -152957.4     -122365.9&quot;)
 
 
 #---~---
-# Derived settings. No need to change these unless you are using non-standard settings.
+#    Variable CONFIG_USE lets you pick which configuration setting to use. This is an
+# integer variable that must correspond to one of the config_id listed in CONFIG_INFO.
 #---~---
-# isite will take the correct line (in case site_id is not in sequential order). 
-isite    = match(site_use,site_info$site_id)
-# Sub-directory with data sets specific to this site.
-site_name = site_info$site_name[isite]
-# Domain file (it must be in the SITE_NAME sub-directory).
-hlm_usrdat_domain = paste0(&quot;domain.lnd.&quot;,site_name,&quot;_navy.nc&quot;)
-# Surface data file (it must be in the SITE_NAME sub-directory).
-hlm_usrdat_surdat = paste0(&quot;surfdata_&quot;,site_name,&quot;.nc&quot;)
-# Calendar type for the meteorological drivers (&#39;NO_LEAP&#39; or &#39;GREGORIAN&#39;). &#39;NO_LEAP&#39; is strongly encouraged.
-metd_calendar = site_info$calendar[isite]
-# Parameter file, in case a site-specific file exists. Leave it blank for using the
-# default parameter file. 
-fates_params_base = site_info$parameter_set[isite]
-# Control file with information on which patch (pss) and cohort (css) file to use (or blank for no inventory initialisation).
-inventory_base = if(site_info$inv_suffix[isite] %in% &quot;&quot;){&quot;&quot;}else{paste0(site_name,&quot;_&quot;,site_info$inv_suffix[isite],&quot;.txt&quot;)}</code></pre>
-<p>The following variables will help to create the case name.</p>
-<p>#Select suffix to describe the simulation (it may be used for building the case name. case_suffix = “NewPhen”</p>
+if [[ &quot;${CONFIG_USE}&quot; == &quot;&quot; ]]
+then
+   export CONFIG_USE=5
+fi
+#---~---</code></pre>
+<p>Set the base parameter path and file, in case a specific file exists.
+If the file is a site-specific one, set <code>FATES_PARAMS_FILE</code>
+without directories. This will mean that the path is the
+<code>SITE_PATH</code>. If a specific parameter file is to be used
+across sites, set FATES_PARAMS_FILE with full path. Leaving the variable
+empty (i.e., <code>FATES_PARAMS_FILE=""</code>) means that we should be
+using the default parameter file.</p>
+<pre class="bash"><code>export FATES_PARAMS_FILE=&quot;${SITE_BASE_PATH}/ParameterFiles/fates_params_4pfts_opt224_api33.cdl&quot;</code></pre>
+<p>The variable below lists all variables to be updated using the
+<code>xmlchange</code> functionality of CIME.</p>
 <ul>
-<li><strong>case_prefix</strong>. The case name prefix, if this variable is a valid, non-empty character. Alternatively, if you want the case name to be defined automatically, leave this variable blank. Feel free to use site-specific variables from the previous chunk.</li>
-<li><strong>append_git_hash</strong>. This decides whether (<code>TRUE</code>) or not (<code>FALSE</code>) to append the current git commit hash to the case names. Appending the hash can be useful for reproducibility and is encouraged for scientific work. If just testing or debugging the code, setting it to false makes the case name shorter and more friendly. Assign the case name. It is fine to leave this blank, although the name may be less descriptive.</li>
+<li>In case you do not want to change any settings, set the variable as
+an empty vector (i.e., <code>xml_settings=()</code>).</li>
+<li>Otherwise, create an vector with multi-word strings separated by
+space. Within each string, the first word should be the variable name,
+the second argument is the value. For string values, make sure to
+enclose it in single quotes when needed. If you want, you can use the
+generic wildcard YYY for variables that may be either CLM or ELM (lower
+case yyy will replace with the lower-case model name). The code will
+interpret it accordingly.</li>
 </ul>
-<pre class="r"><code># Set case name prefix (set it to &quot;&quot; for default case name).
-case_prefix     = paste0(&quot;S&quot;,sprintf(&quot;%4.4i&quot;,site_use),&quot;_&quot;,site_info$case[isite])
-# Should the case name contain the Git hash?
-append_git_hash = FALSE</code></pre>
-<p>`</p>
-<p>The variable below lists all quantities to be updated using the <code>xmlchange</code> functionality of CIME.</p>
-<ul>
-<li>In case you do not want to change any settings, set the variable as an empty object (i.e., <code>xml_settings=NULL</code>).</li>
-<li>Otherwise, create a tribble object with two string columns, namely <code>variable</code> and <code>value</code>. For string values, make sure to enclose it in single quotes when needed. If you want, you can use the generic wildcard YYY for variables that may be either CLM or ELM (lower case yyy will replace with the lower-case model name). The code will interpret it accordingly.</li>
-</ul>
-<pre class="r"><code>xml_settings = tidyr::tribble( ~variable               , ~value
-                             , &quot;DEBUG&quot;                 , &quot;FALSE&quot;
-                             , &quot;RUN_STARTDATE&quot;         , site_info$start_date[isite]
-                             , &quot;STOP_N&quot;                , as.character(site_info$stop_n[isite])
-                             , &quot;STOP_OPTION&quot;           , &quot;nyears&quot;
-                             , &quot;REST_N&quot;                , &quot;1&quot;
-                             , &quot;YYY_FORCE_COLDSTART&quot;   , &quot;on&quot;
-                             , &quot;DATM_CLMNCEP_YR_START&quot; , as.character(site_info$datm_first[isite])
-                             , &quot;DATM_CLMNCEP_YR_END&quot;   , as.character(site_info$datm_last [isite])
-                             )#end tidyr::tribble</code></pre>
-<p>The variable below lists all quantities to be updated using the <code>modify_fates_paramfile.py</code> functionality of FATES tools.</p>
-<ul>
-<li>In case you do not want to change any settings, set the variable as an empty object (i.e., <code>prm_settings=NULL</code>).</li>
-<li>Otherwise, create a tribble object with three string columns, namely <code>variable</code>, <code>pft</code>, and <code>value</code>, corresponding to the trait/parameter to change, the PFT that should be updated (or zero for global parameters), and the value to be updated.</li>
-</ul>
-<pre class="r"><code>prm_settings = tidyr::tribble( ~variable                     , ~pft,    ~value
-                             , &quot;fates_phen_drought_threshold&quot;,    0, -203943.2
-                             , &quot;fates_alloc_storage_cushion&quot; ,    1,       1.2
-                             , &quot;fates_alloc_storage_cushion&quot; ,    2,       2.4
-                             , &quot;fates_leaf_vcmax25top&quot;       ,    1,  30.94711
-                             , &quot;fates_leaf_vcmax25top&quot;       ,    2,  46.42066
-                             , &quot;fates_seed_suppl&quot;            ,    1,     0.000
-                             , &quot;fates_seed_suppl&quot;            ,    2,     0.000
-                             )#end tidyr::tribble</code></pre>
-<p>Additional settings for the host land model namelist. This is done in two steps, one to define most variables (<code>hlm_settings</code>), and the second to define variables (<code>hlm_variables</code>) for the output. Both are defined as tibbles (using <code>tidyr::tribble</code>). Similar to previous structures, <code>hlm_settings</code> should have two columns (<code>variable</code> and <code>value</code>). Both of them should be characters (even if the value should be numeric), and in case the value in ELM-FATES or CLM-FATES should be a character, then use single quotes inside double quotes (e.g., <code>"'Character Value'"</code>).</p>
-<p>Tibble object <code>hlm_variables</code> should be a tribble with the following columns:</p>
-<ul>
-<li><strong>variable</strong>. The variable name. No need for inside quotes here, but these are <strong>not</strong> case insensitive.</li>
-<li><strong>fates_only</strong>. Should the variable be included in FATES only simulations</li>
-<li><strong>add_hlm</strong>. List of host land models for which the variable is available, separated by “+” signs. Case insensitive. Note that the default list may not reflect which variables are available in the host model. In case the simulation fails to run, check the log files, and remove the host land model from this list.</li>
-</ul>
-<p><strong>Notes</strong>.</p>
-<ol style="list-style-type: decimal">
-<li>For variable names, you can use hlm or HLM as a wild card for the host land model.</li>
-<li>Not required, It helps to keep the variables in alphabetical order.</li>
-</ol>
-<pre class="r"><code># Additional settings for host land model (EXCEPT variables, see below)
-hlm_settings = tidyr::tribble( ~variable          , ~value
-                             , &quot;hist_empty_htapes&quot;, &quot;.true.&quot;
-                             , &quot;fates_parteh_mode&quot;, &quot;     0&quot;
-                             )#end tidyr::tribble
+<pre class="bash"><code>xml_settings=(&quot;DEBUG                             FALSE&quot;
+              &quot;STOP_OPTION                       nyears&quot;
+              &quot;REST_N                            1&quot;
+              &quot;YYY_FORCE_COLDSTART               on&quot;)</code></pre>
+<p>List of parameters to be updated. In case you do not want to change
+any parameter, leave this part blank (i.e., set
+<code>prm_settings=()</code>). Otherwise, the first argument is the
+variable name, the second argument is the PFT number (or zero for global
+parameter), and the third argument is the value. For parameters that are
+linked to multiple organs, list the values for all organs separated by
+commas and with <strong>no spaces</strong> in between the values, like
+in the example below.</p>
+<pre class="bash"><code>prm_settings=(&quot;fates_pftname                             1 DroughtDeciduousStrr&quot;
+              &quot;fates_pftname                             2 EarlyEvergreenThsg&quot;
+              &quot;fates_pftname                             3 MidEvergreenPlnv&quot;
+              &quot;fates_pftname                             4 LateEvergreenCryp&quot;
 
-# List of variables to include in the output.
-hlm_variable = tidyr::tribble( ~variable                       , ~fates_only, ~add_hlm
-                             , &quot;AGB&quot;                           ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AGB_SCPF&quot;                      ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AR&quot;                            ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;AR_AGSAPM_SCPF&quot;                ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AR_CROOTM_SCPF&quot;                ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AR_DARKM_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AR_FROOTM_SCPF&quot;                ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AR_GROW_SCPF&quot;                  ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;AR_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;BA_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;BLEAF_CANOPY_SCPF&quot;             ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;BLEAF_UNDERSTORY_SCPF&quot;         ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;BSTOR_CANOPY_SCPF&quot;             ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;BSTOR_UNDERSTORY_SCPF&quot;         ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;BTRAN&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;BTRANMN&quot;                       ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;C_LBLAYER&quot;                     ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;C_LBLAYER_BY_AGE&quot;              ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;C_STOMATA&quot;                     ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;C_STOMATA_BY_AGE&quot;              ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;CANOPY_AREA_BY_AGE&quot;            ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;CARBON_BALANCE_CANOPY_SCLS&quot;    ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;CARBON_BALANCE_UNDERSTORY_SCLS&quot;,        TRUE, &quot;clm+elm&quot;
-                             , &quot;DDBH_CANOPY_SCPF&quot;              ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;DDBH_UNDERSTORY_SCPF&quot;          ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;DEMOTION_RATE_SCLS&quot;            ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;EFLX_LH_TOT&quot;                   ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;ELAI&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;ESAI&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FIRE&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FGR&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FLDS&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FSH&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FSH_V&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FSH_G&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FSDS&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;FSR&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;GPP&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;GPP_BY_AGE&quot;                    ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;GPP_SCPF&quot;                      ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;HR&quot;                            ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;LAI_BY_AGE&quot;                    ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;LAI_CANOPY_SCPF&quot;               ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;LAI_UNDERSTORY_SCPF&quot;           ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M1_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M2_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M3_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M4_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M5_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M6_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M7_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M8_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M9_SCPF&quot;                       ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;M10_SCPF&quot;                      ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;MORTALITY_CANOPY_SCPF&quot;         ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;MORTALITY_UNDERSTORY_SCPF&quot;     ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NEP&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;NPLANT_CANOPY_SCPF&quot;            ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPLANT_UNDERSTORY_SCPF&quot;        ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_AGDW_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_AGSW_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_BGDW_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_BGSW_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_FNRT_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_LEAF_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_SCPF&quot;                      ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_SEED_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;NPP_STOR_SCPF&quot;                 ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;PATCH_AREA_BY_AGE&quot;             ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;PBOT&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;PROMOTION_RATE_SCLS&quot;           ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;Q2M&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QAF&quot;                           ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;QBOT&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QDIRECT_THROUGHFALL&quot;           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QDRAI&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QDRIP&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QINTR&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QOVER&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QSOIL&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;Qtau&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QVEGE&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;QVEGT&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;RAIN&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;SITE_DAYSINCE_DROUGHTLEAFOFF&quot;  ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;SITE_DAYSINCE_DROUGHTLEAFON&quot;   ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;SITE_DROUGHT_STATUS&quot;           ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;SITE_MEANLIQVOL_DROUGHTPHEN&quot;   ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;SITE_MEANSMP_DROUGHTPHEN&quot;      ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;SMP&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TAF&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TBOT&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TG&quot;                            ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TLAI&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TREFMNAV&quot;                      ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TREFMXAV&quot;                      ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TRIMMING_CANOPY_SCLS&quot;          ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;TRIMMING_UNDERSTORY_SCLS&quot;      ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;TSA&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TSAI&quot;                          ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;TSOI&quot;                          ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;TV&quot;                            ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;U10&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;UAF&quot;                           ,        TRUE, &quot;clm+elm&quot;
-                             , &quot;USTAR&quot;                         ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;ZWT&quot;                           ,       FALSE, &quot;clm+elm&quot;
-                             , &quot;ZWT_PERCH&quot;                     ,       FALSE, &quot;clm+elm&quot;
-                             )#end tidyr::tribble</code></pre>
+              # PFT-specific parameters
+              &quot;fates_wood_density                        1       0.598&quot;
+              &quot;fates_wood_density                        2       0.503&quot;
+              &quot;fates_wood_density                        3       0.561&quot;
+              &quot;fates_wood_density                        4       0.692&quot;
+              &quot;fates_leaf_slatop                         1      0.0285&quot;
+              &quot;fates_leaf_slatop                         2      0.0336&quot;
+              &quot;fates_leaf_slatop                         3      0.0211&quot;
+              &quot;fates_leaf_slatop                         4      0.0176&quot;
+
+              #    PFT-specific, organ-related parameters. All organs must be edited, 
+              # commas for separating organs and NO SPACES.
+              &quot;fates_hydro_epsil_node                    1 15.990,13.330,13.330,10.660&quot;
+              &quot;fates_hydro_epsil_node                    2 14.970,12.480,12.480,09.980&quot;
+              &quot;fates_hydro_epsil_node                    3 10.850,09.040,09.040,07.230&quot;
+              &quot;fates_hydro_epsil_node                    4 11.070,09.230,09.230,07.380&quot;
+
+              # Global parameters, use PFT index 0 for these.
+              &quot;fates_mort_disturb_frac                   0 0.5&quot;
+              &quot;fates_comp_excln                          0  -1&quot;
+              &quot;fates_mort_cstarvation_model              0   2&quot;
+              &quot;fates_mort_understorey_death              0   1&quot;
+              &quot;fates_regeneration_model                  0   3&quot;
+              &quot;fates_rad_model                           0   2&quot;
+              &quot;fates_maintresp_leaf_model                0   1&quot;)</code></pre>
+<p>Additional settings for the host land model namelist.</p>
+<p><strong>Step 1</strong>. Define the output variables by setting
+variable <code>hlm_variables</code>, which should have six entries: -
+<code>variable</code>. The variable name (case sensitive) -
+<code>add_fates</code>. A flag to decide whether or not to include the
+variable based on whether or not this is a FATES run. This is case
+insensitive. Possible options: - <code>yes</code>. Add variable only
+when running FATES - <code>no</code>. Add variable only when NOT running
+FATES - <code>both</code>. Add variable regardless of whether or not
+running FATES - <code>add_hlm</code>. List of the host land models (case
+insensitive) that can use the variable. To list more than one model, use
+<code>+</code> as a separator. - <code>monthly</code>. Add the variable
+to monthly output? Use <code>yes</code>/<code>no</code> (case
+insensitive) - <code>daily</code>. Add the variable to daily output? Use
+<code>yes</code>/<code>no</code> (case insensitive) -
+<code>hourly</code>. Add the variable to hourly output? Use
+<code>yes</code>/<code>no</code> (case insenstive)</p>
+<p>Alternatively, one can define the default list of variables by not
+changing the default variables (<code>hlm_variables=()</code>). In this
+case, the code will only produce monthly output. In this case, set
+<code>hist_empty_tapes</code> to <code>.false.</code> in
+<code>hlm_settings</code> (Step 2), otherwise the model will not write
+any output.</p>
+<p><strong>Step 2</strong>. Define other namelist settings by setting
+variable <code>hlm_settings</code>. This normally contains variable
+<code>hist_empty_htapes</code>, which decides whether or not to include
+the default variables. In case the default configurations are sought,
+set <code>hlm_settings=()</code>.</p>
+<pre class="bash"><code>#               variable                               add_fates    add_hlm  monthly    daily   hourly&quot;
+hlm_variables=(&quot;AR                                            no    clm+elm      yes       no       no&quot;
+               &quot;BTRAN                                       both    clm+elm      yes       no       no&quot;
+               &quot;BTRANMN                                     both        clm      yes       no       no&quot;
+               &quot;EFLX_LH_TOT                                 both    clm+elm      yes       no       no&quot;
+               &quot;ELAI                                        both    clm+elm      yes       no       no&quot;
+               &quot;ESAI                                        both    clm+elm      yes       no       no&quot;
+               &quot;FATES_AGSAPMAINTAR_SZPF                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_AGSAPWOOD_ALLOC_SZPF                   yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_AGSTRUCT_ALLOC_SZPF                    yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_AUTORESP                               yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_AUTORESP_SZPF                          yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_BASALAREA_SZPF                         yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_BGSAPMAINTAR_SZPF                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_BGSAPWOOD_ALLOC_SZPF                   yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_BGSTRUCT_ALLOC_SZPF                    yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_CANOPYAREA_AP                          yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_CROWNAREA_CANOPY_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_CROWNAREA_USTORY_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_DAYSINCE_DROUGHTLEAFOFF_PF             yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_DAYSINCE_DROUGHTLEAFON_PF              yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_DDBH_CANOPY_SZPF                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_DDBH_USTORY_SZPF                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_DEMOTION_RATE_SZ                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_DROUGHT_STATUS_PF                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_ELONG_FACTOR_PF                        yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_FROOT_ALLOC_SZPF                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_FROOTMAINTAR_SZPF                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_GPP                                    yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_GPP_AP                                 yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_GPP_SZPF                               yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_GROWAR_SZPF                            yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_HET_RESP                               yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LAI_AP                                 yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LAI_CANOPY_SZPF                        yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LAI_USTORY_SZPF                        yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LBLAYER_COND                           yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LBLAYER_COND_AP                        yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LEAF_ALLOC_SZPF                        yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LEAFC_CANOPY_SZPF                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_LEAFC_USTORY_SZPF                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MEANLIQVOL_DROUGHTPHEN_PF              yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MEANSMP_DROUGHTPHEN_PF                 yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_AGESCEN_SZPF                 yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_BACKGROUND_SZPF              yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_CANOPY_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_CSTARV_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_FREEZING_SZPF                yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_FIRE_SZPF                    yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_HYDRAULIC_SZPF               yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_IMPACT_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_LOGGING_SZPF                 yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_SENESCENCE_SZPF              yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_TERMINATION_SZPF             yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_MORTALITY_USTORY_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_NEP                                    yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_NPLANT_CANOPY_SZPF                     yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_NPLANT_USTORY_SZPF                     yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_NPP_SZPF                               yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_NPP_CANOPY_SZ                          yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_NPP_USTORY_SZ                          yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_PATCHAREA_AP                           yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_PROMOTION_RATE_SZ                      yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_RDARK_SZPF                             yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_SEED_ALLOC_SZPF                        yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_STOMATAL_COND                          yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_STOMATAL_COND_AP                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_STORE_ALLOC_SZPF                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_STOREC_CANOPY_SZPF                     yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_STOREC_USTORY_SZPF                     yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_TRIMMING_CANOPY_SZ                     yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_TRIMMING_USTORY_SZ                     yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_VEGC_ABOVEGROUND                       yes    clm+elm      yes       no       no&quot;
+               &quot;FATES_VEGC_ABOVEGROUND_SZPF                  yes    clm+elm      yes       no       no&quot;
+               &quot;FIRE                                        both    clm+elm      yes       no       no&quot;
+               &quot;FGR                                         both    clm+elm      yes       no       no&quot;
+               &quot;FLDS                                        both    clm+elm      yes       no       no&quot;
+               &quot;FSH                                         both    clm+elm      yes       no       no&quot;
+               &quot;FSH_V                                       both    clm+elm      yes       no       no&quot;
+               &quot;FSH_G                                       both    clm+elm      yes       no       no&quot;
+               &quot;FSDS                                        both    clm+elm      yes       no       no&quot;
+               &quot;FSR                                         both    clm+elm      yes       no       no&quot;
+               &quot;GPP                                           no    clm+elm      yes       no       no&quot;
+               &quot;HR                                            no    clm+elm      yes       no       no&quot;
+               &quot;NEP                                           no    clm+elm      yes       no       no&quot;
+               &quot;PBOT                                        both    clm+elm      yes       no       no&quot;
+               &quot;Q2M                                         both    clm+elm      yes       no       no&quot;
+               &quot;QAF                                         both        clm      yes       no       no&quot;
+               &quot;QBOT                                        both    clm+elm      yes       no       no&quot;
+               &quot;QDIRECT_THROUGHFALL                         both        clm      yes       no       no&quot;
+               &quot;QDRAI                                       both    clm+elm      yes       no       no&quot;
+               &quot;QDRIP                                       both    clm+elm      yes       no       no&quot;
+               &quot;QINTR                                       both    clm+elm      yes       no       no&quot;
+               &quot;QOVER                                       both    clm+elm      yes       no       no&quot;
+               &quot;QSOIL                                       both    clm+elm      yes       no       no&quot;
+               &quot;Qtau                                        both        clm      yes       no       no&quot;
+               &quot;QVEGE                                       both    clm+elm      yes       no       no&quot;
+               &quot;QVEGT                                       both    clm+elm      yes       no       no&quot;
+               &quot;RAIN                                        both    clm+elm      yes       no       no&quot;
+               &quot;SMP                                         both    clm+elm      yes       no       no&quot;
+               &quot;TAF                                         both        clm      yes       no       no&quot;
+               &quot;TBOT                                        both    clm+elm      yes       no       no&quot;
+               &quot;TG                                          both    clm+elm      yes       no       no&quot;
+               &quot;TLAI                                        both    clm+elm      yes       no       no&quot;
+               &quot;TREFMNAV                                    both    clm+elm      yes       no       no&quot;
+               &quot;TREFMXAV                                    both    clm+elm      yes       no       no&quot;
+               &quot;TSA                                         both    clm+elm      yes       no       no&quot;
+               &quot;TSAI                                        both    clm+elm      yes       no       no&quot;
+               &quot;TSOI                                        both    clm+elm      yes       no       no&quot;
+               &quot;TV                                          both    clm+elm      yes       no       no&quot;
+               &quot;U10                                         both    clm+elm      yes       no       no&quot;
+               &quot;UAF                                         both        clm      yes       no       no&quot;
+               &quot;USTAR                                       both        clm      yes       no       no&quot;
+               &quot;ZWT                                         both    clm+elm      yes       no       no&quot;
+               &quot;ZWT_PERCH                                   both    clm+elm      yes       no       no&quot;)
+#--- Step 2: Additional namelist settings.
+hlm_settings=(&quot;hist_empty_htapes    .true.&quot;)
+#---~---</code></pre>
+<p>Additional settings for output files. These include the
+following:</p>
+<ul>
+<li><code>month_mfilt</code>. How many steps to put in each monthly
+file. The other R scripts expect 1, so unless you are willing to change
+the other scripts, keep it 1.</li>
+<li><code>day_mfilt</code>. How many steps to put in each daily
+file.</li>
+<li><code>hour_mfilt</code>. How many steps to put in each hourly
+file.</li>
+</ul>
+<pre class="bash"><code>month_mfilt=1   # 1   # How many steps to put in each monthly file?
+day_mfilt=365   # 30  # How many steps to put in each daily file?
+hour_mfilt=8760 # 720 # How many steps to put in each hour file?</code></pre>
 </div>
 <div id="script-execution." class="section level1">
 <h1>Script execution.</h1>
-<p><em>Important</em>. Changes beyond this point are needed only for script development.</p>
+<p><em>Important</em>. Changes beyond this point are needed only for
+script development.</p>
 <div id="initial-settings." class="section level2">
 <h2>Initial settings.</h2>
-<p>Here the script defines some useful variables, and replace host Earth System Model wildcards with the current host Earth System Model.</p>
-<pre class="r"><code># Define the host Earth System Model from upper-case CIME_MODEL.
-hesm = toupper(hesm)
+<p>Here the script defines some useful variables, and replace host Earth
+System Model wildcards with the current host Earth System Model.</p>
+<pre class="bash"><code># Define the host Earth System Model from upper-case CIME_MODEL.
+export HESM=$(echo ${HESM} | tr &#39;[:lower:]&#39; &#39;[:upper:]&#39;)
 
 # Update cade and simulation paths, in case a generic name was provided.
-work_path  = gsub(pattern=&quot;XXXX&quot;,replacement=hesm,x=work_path )
-case_root  = gsub(pattern=&quot;XXXX&quot;,replacement=hesm,x=case_root )
-simul_root = gsub(pattern=&quot;XXXX&quot;,replacement=hesm,x=simul_root)
+export WORK_PATH=$(echo ${WORK_PATH}           | sed s@&quot;XXXX&quot;@&quot;${HESM}&quot;@g)
+export CASE_ROOT=$(echo ${CASE_ROOT}           | sed s@&quot;XXXX&quot;@&quot;${HESM}&quot;@g)
+export SIMUL_ROOT=$(echo ${SIMUL_ROOT}         | sed s@&quot;XXXX&quot;@&quot;${HESM}&quot;@g)
 
 # Current date.
-today = Sys.Date()
+export TODAY=$(date +&quot;%Y-%m-%d&quot;)
+
+# Path of the main script
+export SOURCE_PATH=$(dirname ${BASH_SOURCE})
+export SOURCE_PATH=$(cd ${SOURCE_PATH}; pwd)
+export SOURCE_BASE=&quot;$(basename ${BASH_SOURCE})&quot;
 
 # Current path.
-here_path = getwd()
+export HERE_PATH=$(pwd)
 
 # Site path.
-site_path = file.path(site_base_path,site_name)</code></pre>
-<p>Define variables that depend on which host Earth System Model we are using.</p>
-<pre class="r"><code># Make changes to some of the settings based on the host model.
-if ( hesm %in% &quot;E3SM&quot;){
-   #--- E3SM-FATES
-
-   # Set CIME model.
-   cime_model = &quot;e3sm&quot;
-
-   # Set host land model. Set both upper case and lower case for when needed.
-   hlm=&quot;elm&quot;
-   HLM=toupper(hlm)
-
-   # Main path for host model
-   hostmodel_path = dirname(dirname(work_path))
-
-   # Additional options for &quot;create_newcase&quot;
-   newcase_opts = &quot;&quot;
-
-   # Main source path for FATES.
-   fates_src_path = file.path(hostmodel_path,&quot;components&quot;,&quot;elm&quot;,&quot;src&quot;,&quot;external_models&quot;,&quot;fates&quot;)
-
-   # In case compilation settings are not defined, use the default settings.
-   if (comp %in% &quot;&quot;){
-      comp = if (use_fates){&quot;IELMFATES&quot;}else{&quot;IELMBGC&quot;}
-   }#end if (comp %in% &quot;&quot;)
-
-}else if (hesm %in% c(&quot;CESM&quot;,&quot;CTSM&quot;)){
-   #--- CESM-FATES or CTSM-FATES
-
-   # Set CIME model.
-   cime_model = &quot;cesm&quot;
-
-   # Set host land model. Set both upper case and lower case for when needed.
-   hlm = &quot;clm&quot;
-   HLM = &quot;CLM&quot;
-
-   # Main path for host model
-   hostmodel_path = dirname(dirname(work_path))
-
-   # Additional options for &quot;create_newcase&quot;
-   newcase_opts = &quot;--run-unsupported&quot;
-
-   # Main source path for FATES.
-   fates_src_path = file.path(hostmodel_path,&quot;src&quot;,&quot;fates&quot;)
+export SITE_PATH=&quot;${SITE_BASE_PATH}/${SITE_NAME}&quot;</code></pre>
+<p>Check whether the cluster settings make sense.</p>
+<pre class="bash"><code>#---~---
+#   Check if cluster settings make sense (only if running in a HPC environment.
+#---~---
+case &quot;${MACH}&quot; in
+pm-*)
+   #---~---
+   #   pm-cpu (NERSC), in the future, possibly pm-gpu. Set up some global SLURM information.
+   #---~---
+   case &quot;${MACH}&quot; in
+   pm-cpu)
+      export N_NODES_MAX=300
+      export MAX_CPUS_PER_TASK=128
+      export MAX_TASKS_PER_NODE=256
+      export RUN_TIME_MAX=&quot;24:00:00&quot;
+      export CONSTRAINT=&quot;cpu&quot;
+      ;;
+   esac
+   #---~---
 
 
-   # In case compilation settings are not defined, use the default settings.
-   if (comp %in% &quot;&quot;){
-      comp = if(use_fates){&quot;I2000Clm51Fates&quot;}else{&quot;I2000Clm51Bgc&quot;}
-   }#end if (comp %in% &quot;&quot;)
+   #---~---
+   #   Set maximum time allowed for interactive nodes
+   #---~---
+   export RUN_TIME_INT=&quot;04:00:00&quot;
+   #---~---
 
-}#end if ( hesm %in% &quot;E3SM&quot;)</code></pre>
+
+   #---~---
+   #   Set the default partition in case it is not provided.
+   #---~---
+   if [[ &quot;${PARTITION}&quot; == &quot;&quot; ]]
+   then
+      export PARTITION=&quot;regular&quot;
+   fi
+   #---~---
+
+
+   #---~---
+   #   Do not let account to be undefined
+   #---~---
+   if [[ &quot;${PROJECT}&quot; == &quot;&quot; ]]
+   then
+      echo &quot; Variable \&quot;PROJECT\&quot; ought to be defined if using perlmutter (pm-cpu)!&quot;
+      exit 59
+   fi
+   #---~---
+
+
+   #---~---
+   #   Check that CPU requests are reasonable
+   #---~---
+   if [[ ${CPUS_PER_TASK} -gt ${MAX_CPUS_PER_TASK} ]]
+   then
+      echo &quot; Too many CPUs per task requested:&quot;
+      echo &quot; Machine                 = ${MACH}&quot;
+      echo &quot; Maximum CPUs per task   = ${MAX_CPUS_PER_TASK}&quot;
+      echo &quot; Requested CPUs per task = ${CPUS_PER_TASK}&quot;
+      exit 99
+   else
+      #--- Find maximum number of tasks allowed
+      (( N_TASKS_MAX = N_NODES_MAX * CPUS_PER_NODE ))
+      (( N_TASKS_MAX = N_TASKS_MAX / CPUS_PER_TASK ))
+      #---~---
+   fi
+   #---~---
+
+
+   #---~---
+   #   Check time requests
+   #---~---
+   export RUN_TIME=$(echo     ${RUN_TIME}     | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+   export RUN_TIME_MAX=$(echo ${RUN_TIME_MAX} | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+   case &quot;${RUN_TIME}&quot; in
+   infinite)
+      #---~---
+      #   Infinite run time.  Make sure the queue supports this type of submission.
+      #---~---
+      case &quot;${RUN_TIME_MAX}&quot; in
+      infinite)
+         echo &quot;&quot; &gt; /dev/null
+         ;;
+      *)
+         echo &quot; Machine:                    ${MACH}&quot;
+         echo &quot; Maximum run time permitted: ${RUN_TIME_MAX}&quot;
+         echo &quot; Requested run time:         ${RUN_TIME}&quot;
+         echo &quot; This cluster does not support infinite time.&quot;
+         exit 91
+         ;;
+      esac
+      #---~---
+      ;;
+   *)
+      #---~---
+      #   Find out the format provided.
+      #---~---
+      case &quot;${RUN_TIME}&quot; in
+      *-*:*:*|*-*:*)
+         #--- dd-hh:mm:ss.
+         ndays=$(echo ${RUN_TIME}  | sed s@&quot;-.*$&quot;@@g)
+         nhours=$(echo ${RUN_TIME} | sed s@&quot;^[0-9]\+-&quot;@@g | sed s@&quot;:.*&quot;@@g)
+         nminutes=$(echo ${RUN_TIME} | sed s@&quot;^[0-9]\+-[0-9]\+:&quot;@@g | sed s@&quot;:.*$&quot;@@g)
+         #---~---
+         ;;
+      *:*:*)
+         #--- hh:mm:ss.
+         ndays=0
+         nhours=$(echo ${RUN_TIME} | sed s@&quot;:.*&quot;@@g)
+         nminutes=$(echo ${RUN_TIME} | sed s@&quot;^[0-9]\+:&quot;@@g | sed s@&quot;:.*&quot;@@g)
+         #---~---
+         ;;
+      *:*)
+         #--- hh:mm:ss.
+         ndays=0
+         nhours=0
+         nminutes=$(echo ${RUN_TIME} | sed s@&quot;:.*$&quot;@@g)
+         #---~---
+         ;;
+      *)
+         #--- Hours.
+         (( ndays  = RUN_TIME / 24 ))
+         (( nhours = RUN_TIME % 24 ))
+         nminutes=0
+         #---~---
+         ;;
+      esac
+      #---~---
+
+      #---~---
+      #   Find the walltime in hours, and the run time in nice format.
+      #---~---
+      (( wall     = nminutes + 60 * nhours + 1440 * ndays ))
+      (( nhours   = wall / 60 ))
+      (( nminutes = wall % 60 ))
+      fmthr=$(printf &#39;%.2i&#39; ${nhours})
+      fmtmn=$(printf &#39;%2.2i&#39; ${nminutes})
+      RUN_TIME=&quot;${fmthr}:${fmtmn}:00&quot;
+      #---~---
+
+      #---~---
+      #   Find the maximum number of hours allowed in the partition.
+      #---~---
+      case &quot;${RUN_TIME_MAX}&quot; in
+      infinite)
+         (( ndays_max    = ndays + 1 ))
+         (( nhours_max   = nhours    ))
+         (( nminutes_max = nminutes  ))
+         #---~---
+         ;;
+      *-*:*:*|*-*:*)
+         #--- dd-hh:mm:ss.
+         ndays_max=$(echo ${RUN_TIME_MAX}  | sed s@&quot;-.*&quot;@@g)
+         nhours_max=$(echo ${RUN_TIME_MAX} | sed s@&quot;^[0-9]\+-&quot;@@g | sed s@&quot;:.*&quot;@@g)
+         nminutes_max=$(echo ${RUN_TIME_MAX} | sed s@&quot;^[0-9]\+-[0-9]\+:&quot;@@g | sed s@&quot;:.*$&quot;@@g)
+         #---~---
+         ;;
+      *:*:*)
+         #--- hh:mm:ss.
+         ndays_max=0
+         nhours_max=$(echo ${RUN_TIME_MAX}   | sed s@&quot;:.*&quot;@@g)
+         nminutes_max=$(echo ${RUN_TIME_MAX} | sed s@&quot;^[0-9]\+:&quot;@@g | sed s@&quot;:.*&quot;@@g)
+         #---~---
+         ;;
+      *:*)
+         #--- hh:mm:ss.
+         ndays_max=0
+         nhours_max=0
+         nminutes_max=$(echo ${RUN_TIME_MAX} | sed s@&quot;:.*$&quot;@@g)
+         #---~---
+         ;;
+      *)
+         #--- Hours.
+         (( ndays_max  = RUN_TIME_MAX / 24 ))
+         (( nhours_max = RUN_TIME_MAX % 24 ))
+         nminutes_max=0
+         #---~---
+         ;;
+      esac
+      (( wall_max = nminutes_max + 60 * nhours_max + 1440 * ndays_max ))
+      #---~---
+
+      #---~---
+      #   Check requested walltime and the availability.
+      #---~---
+      if [[ ${wall} -gt ${wall_max} ]]
+      then
+         echo &quot; Machine:                    ${MACH}&quot;
+         echo &quot; Maximum run time permitted: ${RUN_TIME_MAX}&quot;
+         echo &quot; Requested run time:         ${RUN_TIME}&quot;
+         echo &quot; - Requested time exceeds limits.&quot;
+         exit 92
+      fi
+      #---~---
+      ;;
+   esac
+   #---~---
+
+   ;;
+esac
+#---~---</code></pre>
+<p>Define variables that depend on which host Earth System Model we are
+using.</p>
+<pre class="bash"><code>#---~---
+#   Make changes to some of the settings based on the host model.
+#---~---
+case &quot;${HESM}&quot; in
+E3SM)
+   #---~---
+   # E3SM-FATES
+   #---~---
+
+   #--- Set CIME model.
+   export CIME_MODEL=&quot;e3sm&quot;
+   #---~---
+
+   #--- Set host land model. Set both upper case and lower case for when needed.
+   export hlm=&quot;elm&quot;
+   export HLM=&quot;ELM&quot;
+   #---~---
+
+   #--- Main path for host model
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   #---~---
+
+   #--- Main path for FATES
+   export FATESMODEL_PATH=&quot;${HOSTMODEL_PATH}/components/elm/src/external_models/fates&quot;
+   #---~---
+
+   #--- Additional options for &quot;create_newcase&quot;
+   export NEWCASE_OPTS=&quot;&quot;
+   #---~---
+
+   #--- Main source path for FATES.
+   export FATES_SRC_PATH=&quot;${HOSTMODEL_PATH}/components/elm/src/external_models/fates&quot;
+   #---~---
+
+   #--- In case compilates settings is not defined, use the default settings.
+   if ${USE_FATES} &amp;&amp; [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;IELMFATES&quot;
+   elif [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;IELMBGC&quot;
+   fi
+   #---~---
+
+   ;;
+CTSM|CESM)
+   #---~---
+   # CESM-FATES or CTSM-FATES
+   #---~---
+
+   #--- Set CIME model.
+   export CIME_MODEL=&quot;cesm&quot;
+   #---~---
+
+   #--- Set host land model. Set both upper case and lower case for when needed.
+   export hlm=&quot;clm&quot;
+   export HLM=&quot;CLM&quot;
+   #---~---
+
+
+   #--- Main path for host model
+   export HOSTMODEL_PATH=$(dirname $(dirname ${WORK_PATH}))
+   #---~---
+
+   #--- Main path for FATES
+   export FATESMODEL_PATH=&quot;${HOSTMODEL_PATH}/src/fates&quot;
+   #---~---
+
+   #--- Additional options for &quot;create_newcase&quot;
+   export NEWCASE_OPTS=&quot;--run-unsupported&quot;
+   #---~---
+
+   #--- Main source path for FATES.
+   export FATES_SRC_PATH=&quot;${HOSTMODEL_PATH}/src/fates&quot;
+   #---~---
+
+
+   #--- In case compilation settings are not defined, use the default settings.
+   if ${USE_FATES} &amp;&amp; [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;I2000Clm51FatesRs&quot;
+   elif [[ &quot;${COMP}&quot; == &quot;&quot; ]]
+   then
+      export COMP=&quot;I2000Clm51Bgc&quot;
+   fi
+   #---~---
+
+   ;;
+esac
+#---~---</code></pre>
 <p>Set the host model + FATES Git commit hashes.</p>
-<pre class="r"><code>hlm_hash   = paste0(HLM,&quot;-&quot; ,substring(sha(last_commit(repository(hostmodel_path))),1,8))
-fates_hash = paste0(&quot;FATES-&quot;,substring(sha(last_commit(repository(fates_src_path))),1,8))</code></pre>
+<pre class="bash"><code>export HLM_HASH=&quot;${HLM}-$(cd ${HOSTMODEL_PATH};   git log -n 1 --pretty=%h)&quot;
+export FATES_HASH=&quot;FATES-$(cd ${FATESMODEL_PATH}; git log -n 1 --pretty=%h)&quot;</code></pre>
 <p>Replace host land model wildcards</p>
-<pre class="r"><code># Define setting for single-point
-v_hlm_usrdat_name=paste0(HLM,&quot;_USRDAT_NAME&quot;)
+<pre class="bash"><code>
+# Define setting for single-point
+export V_HLM_USRDAT_NAME=&quot;${HLM}_USRDAT_NAME&quot;
+export V_HLM_NAMELIST_OPTS=&quot;${HLM}_NAMELIST_OPTS&quot;
 
 # Substitute wildcards in the resolution with the actual model
-resol = gsub(pattern=&quot;YYY&quot;,replacement=HLM,x=resol)
-resol = gsub(pattern=&quot;yyy&quot;,replacement=hlm,x=resol)</code></pre>
-<p>Set default case name prefix in case none was provided. Either way, we always append information on host land model and FATES/Big Leaf settings. We then set up the path containing the case settings (case_path) and the simulation output (simul_path)</p>
-<pre class="r"><code>if (case_prefix %in% &quot;&quot;) case_prefix = paste(&quot;SX&quot;,comp,mach,today,sep=&quot;_&quot;)
+export RESOL=$(echo &quot;${RESOL}&quot; | sed s@&quot;YYY&quot;@&quot;${HLM}&quot;@g | sed s@&quot;yyy&quot;@&quot;${hlm}&quot;@g)</code></pre>
+<p>Take data from variable <code>SITE_INFO</code> and configure
+site.</p>
+<pre class="bash"><code>#---~---
+#   Retrieve site information.
+#---~---
+site_success=false
+for i in ${!SITE_INFO[*]}
+do
+   site_now=${SITE_INFO[i]}
+   export SITE_ID=$(echo ${site_now}   | awk &#39;{print $1}&#39;)
+   
+   if [[ ${SITE_ID} -eq ${SITE_USE} ]]
+   then
+      # Load data and flag that we found the site information.
+      export SITE_DESC=$(echo ${site_now}       | awk &#39;{print $2}&#39;)
+      export SITE_NAME=$(echo ${site_now}       | awk &#39;{print $3}&#39;)
+      export SITE_DATM_FIRST=$(echo ${site_now} | awk &#39;{print $4}&#39;)
+      export SITE_DATM_LAST=$(echo ${site_now}  | awk &#39;{print $5}&#39;)
+      export SITE_CALENDAR=$(echo ${site_now}   | awk &#39;{print $6}&#39;)
 
-# Append github commit hash, or a simple host-model / FATES tag.
-if (use_fates &amp;&amp; append_git_hash){
-   case_name = paste(case_prefix,hlm_hash,fates_hash,sep=&quot;_&quot;)
-}else if (append_git_hash){
-   case_name = paste(case_prefix,hlm_hash,&quot;BigLeaf&quot;,sep=&quot;_&quot;)
-}else if (use_fates){
-   case_name = paste(case_prefix,HLM,&quot;FATES&quot;,sep=&quot;_&quot;)
-}else{
-   case_name = paste(case_prefix,HLM,&quot;BigLeaf&quot;)
-}#end if (use_fates &amp;&amp; append_git_hash)
+      #--- Append site settings to xml_settings.
+      xml_settings+=(&quot;DATM_CLMNCEP_YR_START ${SITE_DATM_FIRST}&quot;
+                     &quot;DATM_CLMNCEP_YR_END   ${SITE_DATM_LAST} &quot;)
+      #---~---
 
-# Set paths for case and simulation.
-case_path  = file.path(case_root ,case_name)
-simul_path = file.path(simul_root,case_name)
+      #---~---
+      #   Set derived quantities.
+      #---~---
+      # Site path.
+      export SITE_PATH=&quot;${SITE_BASE_PATH}/${SITE_NAME}&quot;
+      # Domain file (it must be in the SITE_NAME sub-directory).
+      export HLM_USRDAT_DOMAIN=&quot;domain.lnd.${SITE_NAME}_navy.nc&quot;
+      # Surface data file (it must be in the SITE_NAME sub-directory).
+      export HLM_USRDAT_SURDAT=&quot;surfdata_${SITE_NAME}.nc&quot;
+      #---~---
 
-# Set namelist for the host land model.
-user_nl_hlm = file.path(case_path,paste0(&quot;user_nl_&quot;,hlm))
+      #--- Update status and exit loop.
+      site_success=true
+      break
+      #---~---
+   fi
+done
+#---~---</code></pre>
+<p>Take information from variable <code>CONFIG_USE</code> and set
+configuration options.</p>
+<pre class="bash"><code>#---~---
+#   Retrieve configuration information.
+#---~---
+config_success=false
+export CONFIG_ID_MAX=0
+for i in ${!CONFIG_INFO[*]}
+do
+   config_now=${CONFIG_INFO[i]}
+   export CONFIG_ID=$(echo ${config_now}   | awk &#39;{print $1}&#39;)
 
-# Set additional namelists
-user_nl_datm   = file.path(case_path,&quot;user_nl_datm&quot;  )
-user_nl_mosart = file.path(case_path,&quot;user_nl_mosart&quot;)</code></pre>
-<p>To avoid overwriting simulations, we always ask before if it is fine to delete a previous case setting.</p>
-<pre class="r"><code># Check with user what to do in case directories exist.
-if ( dir.exists(case_path) || dir.exists(simul_path) ){
-   # In case the user want overwriting, we give them one last chance to cancel before it&#39;s too late.
-   if (overwrite_case){
-      cat(&quot;---------------------------------------------------------------------------\n&quot;)
-      cat(&quot;  WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!  \n&quot;)
-      cat(&quot;  WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!  \n&quot;)
-      cat(&quot;---------------------------------------------------------------------------\n&quot;)
-      cat(&quot; One or both case directories already exist, proceeding will delete them.\n&quot;)
-      cat(&quot; - Case: &quot;,case_path,&quot;  Exists = &quot;,dir.exists(case_path),&quot;.\n&quot;         ,sep=&quot;&quot;)
-      cat(&quot; - Simulation: &quot;,simul_path,&quot;  Exists = &quot;,dir.exists(simul_path),&quot;.\n&quot; ,sep=&quot;&quot;)
-      cat(&quot;\n&quot;)
-      cat(&quot; I will start deleting files in 5 seconds.\n&quot;)
-      cat(&quot; In case you change your mind, stop script  before the time is over.\n&quot;)
-      cat(&quot;---------------------------------------------------------------------------\n&quot;)
-      cnt_down = 6
-      for (cnt in sequence(5)){
-         cat(&quot; &quot;,6-cnt,&quot;...&quot;,sep=&quot;&quot;)
-         dummy = Sys.sleep(time=1)
-      }#end for (cnt in sequence(5))
-      cat(&quot; Time is over!\n&quot;)
+   if [[ ${CONFIG_ID} -eq ${CONFIG_USE} ]]
+   then
+      # Load data and flag that we found the configuration information.
+      export CONFIG_DESC=$(echo ${config_now}    | awk &#39;{print  $2}&#39;)
+      export INV_SUFFIX=$(echo ${config_now}     | awk &#39;{print  $3}&#39;)
+      export FATES_HYDRO=$(echo ${config_now}    | awk &#39;{print  $4}&#39;)
+      export FATES_ST3=$(echo ${config_now}      | awk &#39;{print  $5}&#39;)
+      export SIMUL_YEARA=$(echo ${config_now}    | awk &#39;{print  $6}&#39;)
+      export SIMUL_YEARZ=$(echo ${config_now}    | awk &#39;{print  $7}&#39;)
+      export STRESS_DECID=$(echo ${config_now}   | awk &#39;{print  $8}&#39;)
+      export DROUGHT_THRESH=$(echo ${config_now} | awk &#39;{print  $9}&#39;)
+      export MOIST_THRESH=$(echo ${config_now}   | awk &#39;{print $10}&#39;)
+      #---~---
 
-      # Delete files
-      dummy = unlink(x=case_path ,recursive=TRUE,force=TRUE)
-      dummy = unlink(x=simul_path,recursive=TRUE,force=TRUE)
+      #---~---
+      # In case SIMUL_YEARA is non-positive, convert first year to calendar year.
+      #---~---
+      if [[ ${SIMUL_YEARA} -le 0 ]]
+      then
+        let SIMUL_YEARA=${SITE_DATM_FIRST}+${SIMUL_YEARA}
+      fi
+      #---~---
 
-   }else{
-      cat(&quot; One or both case directories already exist, cannot procced.\n&quot;)
-      cat(&quot; - Case: &quot;,case_path,&quot;  Exists = &quot;,dir.exists(case_path),&quot;.\n&quot;         ,sep=&quot;&quot;)
-      cat(&quot; - Simulation: &quot;,simul_path,&quot;  Exists = &quot;,dir.exists(simul_path),&quot;.\n&quot; ,sep=&quot;&quot;)
-      cat(&quot; Either delete directories, or set \&quot;overwrite_case\&quot; to TRUE.\n&quot;)
-      stop(&quot;Case already exists!&quot;)
-   }#end if (overwrite_case)
-}#end if ( dir.exists(case_path) || dir.exists(simul_path) )</code></pre>
-<pre><code>## ---------------------------------------------------------------------------
-##   WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!  
-##   WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!  
-## ---------------------------------------------------------------------------
-##  One or both case directories already exist, proceeding will delete them.
-##  - Case: /Users/marcoslongo/Documents/LocalData/FATES/SingleRuns/Cases/S0000_ParacouTest_CLM_FATES  Exists = TRUE.
-##  - Simulation: /Users/marcoslongo/Documents/LocalData/FATES/SingleRuns/Simulations/S0000_ParacouTest_CLM_FATES  Exists = TRUE.
-## 
-##  I will start deleting files in 5 seconds.
-##  In case you change your mind, stop script  before the time is over.
-## ---------------------------------------------------------------------------
-##  5... 4... 3... 2... 1... Time is over!</code></pre>
+      #---~---
+      # In case SIMUL_YEARZ is non-positive, convert last year to calendar year.
+      # The minus sign ensures that the last year offset will be added to the
+      # last year of the met driver.
+      #---~---
+      if [[ ${SIMUL_YEARZ} -le 0 ]]
+      then
+        let SIMUL_YEARZ=${SITE_DATM_LAST}-${SIMUL_YEARZ}
+      fi
+      #---~---
+
+      #--- Define the first and last year of simulations
+      export SITE_START_DATE=&quot;${SIMUL_YEARA}-01-01&quot;
+      let SITE_STOP_N=${SIMUL_YEARZ}-${SIMUL_YEARA}+1
+      export SITE_STOP_N=${SITE_STOP_N}
+      #---~---
+
+      #--- Update settings as needed.
+      hlm_settings+=(&quot;use_fates_planthydro                     ${FATES_HYDRO}&quot;    )
+      hlm_settings+=(&quot;use_fates_ed_st3                         ${FATES_ST3}&quot;      )
+      prm_settings+=(&quot;fates_phen_drought_threshold           1 ${DROUGHT_THRESH}&quot; )
+      prm_settings+=(&quot;fates_phen_moist_threshold             1 ${MOIST_THRESH}&quot;   )
+      prm_settings+=(&quot;fates_phen_stress_decid                1 ${STRESS_DECID}&quot;   )
+      xml_settings+=(&quot;RUN_STARTDATE                            ${SITE_START_DATE}&quot;)
+      xml_settings+=(&quot;STOP_N                                   ${SITE_STOP_N}    &quot;)
+      #---~---
+
+      #--- Configuration was successful but keep looping to find the maximum ID.
+      config_success=true
+      #---~---
+   fi
+
+
+   #--- Update maximum ID
+   if [[ ${CONFIG_ID} -gt ${CONFIG_ID_MAX} ]]
+   then
+      export CONFIG_ID_MAX=${CONFIG_ID}
+   fi
+   #---~---
+
+done
+#---~---</code></pre>
+<p>Make sure all settings are correct.</p>
+<pre class="bash"><code>#---~---
+#   Check for success. In case so, set additional variables that may depend on both 
+# site and configuration information. Otherwise, stop the shell.
+#---~---
+if ${site_success} &amp;&amp; ${config_success}
+then
+   #---~---
+   #   Set default case prefix
+   #---~---
+   (( SIMUL_ID = CONFIG_ID_MAX * SITE_USE - CONFIG_ID_MAX + CONFIG_USE ))
+   export SIMUL_LABEL=&quot;$(printf &#39;%4.4i&#39; ${SIMUL_ID})&quot;
+   if [[ &quot;${CASE_PREFIX}&quot; == &quot;&quot; ]]
+   then
+      export CASE_PREFIX=&quot;E${SIMUL_LABEL}_${SITE_DESC}_${CONFIG_DESC}&quot;
+   fi
+   #---~---
+
+
+
+   #---~---
+   #    In case the inventory/lidar initialisation is sought, provide the file name of the
+   # control file specification (the control file should be in the 
+   # SITE_NAME sub-directory). Otherwise, do not set this variable (INVENTORY_BASE=&quot;&quot;)
+   #
+   #  For additional information, check
+   # https://github.com/NGEET/fates/wiki/Model-Initialization-Modes#Inventory_Format_Type_1
+   #---~---
+   case &quot;${INV_SUFFIX}&quot; in
+   NA|Na|na|NA)
+      export INVENTORY_BASE=&quot;&quot;
+      ;;
+   *)
+      export INVENTORY_BASE=&quot;${SITE_NAME}_${INV_SUFFIX}.txt&quot;
+      ;;
+   esac
+   #---~---
+else
+   #---~---
+   #   Settings were incorrect, stop the run.
+   #---~---
+   echo &quot; &quot;
+   echo &quot;---~---&quot;
+   echo &quot; Invalid site and/or configuration settings:&quot;
+   echo &quot;&quot;
+   echo &quot; + SITE_USE : ${SITE_USE}&quot;
+   echo &quot; + CONFIG_USE : ${CONFIG_USE}&quot;
+   echo &quot;&quot;
+   echo &quot; + Site settings failed : ${site_failed}&quot;
+   echo &quot; + Model configuration settings failed : ${config_failed}&quot;
+   echo &quot;&quot;
+   echo &quot; Make sure that variables \&quot;SITE_USE\&quot; and \&quot;CONFIG_USE\&quot; are set to a value.&quot;
+   echo &quot;    listed in columns \&quot;site_id\&quot; of array \&quot;SITE_INFO\&quot;, and \&quot;config_id\&quot; of&quot;
+   echo &quot;    array \&quot;CONFIG_INFO\&quot;, respectively.&quot;
+   echo &quot;---~---&quot;
+   exit 91
+   #---~---
+fi
+#---~---</code></pre>
+<p>Set default case name prefix in case none was provided.</p>
+<pre class="bash"><code>#---~---
+#   Append github commit hash, or a simple host-model / FATES tag.
+#---~---
+if ${USE_FATES} &amp;&amp; ${APPEND_GIT_HASH}
+then
+   export CASE_NAME=&quot;${CASE_PREFIX}_${HLM_HASH}_${FATES_HASH}&quot;
+elif ${APPEND_GIT_HASH}
+then
+   export CASE_NAME=&quot;${CASE_PREFIX}_${HLM_HASH}_BigLeaf&quot;
+elif ${USE_FATES}
+then
+   export CASE_NAME=&quot;${CASE_PREFIX}_${HLM}_FATES&quot;
+else
+   export CASE_NAME=&quot;${CASE_PREFIX}_${HLM}_BigLeaf&quot;
+fi
+#---~---
+
+
+#---~---
+#    Set paths for case and simulation.
+#---~---
+export CASE_PATH=&quot;${CASE_ROOT}/${CASE_NAME}&quot;
+export SIMUL_PATH=&quot;${SIMUL_ROOT}/${CASE_NAME}&quot;
+export FIGURE_PATH=&quot;${SIMUL_ROOT}/Figures/${CASE_NAME}&quot;
+export RDATA_FILE=&quot;${SIMUL_ROOT}/RData/Monthly_${CASE_PREFIX}.RData&quot;
+#---~---
+
+
+
+#--- Namelist for the host land model.
+export USER_NL_HLM=&quot;${CASE_PATH}/user_nl_${hlm}&quot;
+#---~---
+
+
+#--- Set additional namelists
+export USER_NL_DATM=&quot;${CASE_PATH}/user_nl_datm&quot;
+export USER_NL_MOSART=&quot;${CASE_PATH}/user_nl_mosart&quot;
+#---~---</code></pre>
+<p>In case the case exists, warn user before assuming it’s fine to
+delete files.</p>
+<pre class="bash"><code>if [[ -s ${CASE_PATH}   ]] || [[ -s ${SIMUL_PATH} ]] || 
+   [[ -s ${FIGURE_PATH} ]] || [[ -s ${RDATA_FILE} ]]
+then
+   #---~---
+   #    Check with user if it&#39;s fine to delete existing case.
+   #---~---
+   echo    &quot; Case directories (${CASE_NAME}) already exist, proceeding will delete them.&quot;
+   echo -n &quot; Proceed (y|N)?   &quot;
+   read proceed
+   proceed=$(echo ${proceed} | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+   #---~---
+
+
+   #---~---
+   #    We give one last chance for users to cancel before deleting the files.
+   #---~---
+   case &quot;${proceed}&quot; in
+   y|yes)
+      echo &quot;---------------------------------------------------------------------&quot;
+      echo &quot; FINAL WARNING!&quot;
+      echo &quot; I will start deleting files in 5 seconds.&quot;
+      echo &quot; In case you change your mind, press Ctrl+C before the time is over.&quot;
+      echo &quot;---------------------------------------------------------------------&quot;
+      when=6
+      echo -n &quot; - &quot;
+      while [[ ${when} -gt 1 ]]
+      do
+         let when=${when}-1
+         echo -n &quot; ${when}...&quot;
+         sleep 1
+      done
+      echo &quot; Time is over!&quot;
+
+      #--- Delete files.
+      /bin/rm -rvf ${CASE_PATH} ${SIMUL_PATH} ${FIGURE_PATH} ${RDATA_FILE}
+      #---~---
+
+      ;;
+   *)
+      echo &quot; - Script interrupted, files were kept.&quot;
+      exit 0
+      ;;
+   esac
+   #---~---
+fi
+#---~---</code></pre>
 </div>
 <div id="create-case" class="section level2">
 <h2>Create case</h2>
-<p>Create the new case and modify some basic settings.</p>
-<pre class="r"><code># Temporarily change path to the working path, then create case.
-dummy   = setwd(work_path)
-command = paste( &quot;./create_newcase&quot;
-               , paste0(&quot;--case=&quot;,case_path)
-               , paste0(&quot;--res=&quot;,resol)
-               , paste0(&quot;--compset=&quot;,comp)
-               , paste0(&quot;--mach=&quot;,mach)
-               , paste0(&quot;--project=&quot;,project)
-               , newcase_opts
-               )#end paste
-dummy   = system(command=command,intern=TRUE)
+<p>Move to main CIME path then create the new case.</p>
+<pre class="bash"><code>#---~---
+#    Move to the main cime path then create the new case
+#---~---
+echo &quot;   - Initialise case for this single-node job.&quot;
+cd ${WORK_PATH}
+./create_newcase --case=${CASE_PATH} --res=${RESOL} --compset=${COMP} --mach=${MACH}       \
+   --project=${PROJECT} ${NEWCASE_OPTS}
+#---~---
 
-# Change working directory to the new case.
-dummy = setwd(case_path)
 
-# Set the CIME output to the main CIME path.
-dummy = system(paste0(&quot;./xmlchange CIME_OUTPUT_ROOT=&quot;,simul_root),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange DOUT_S_ROOT=&quot;,simul_path),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange PIO_DEBUG_LEVEL=&quot;,debug_level),intern=TRUE)</code></pre>
+#---~---
+#     Set the CIME output to the main CIME path.
+#---~---
+echo &quot;   - Update output paths and job run time.&quot;
+cd ${CASE_PATH}
+./xmlchange CIME_OUTPUT_ROOT=&quot;${SIMUL_ROOT}&quot;
+./xmlchange DOUT_S_ROOT=&quot;${SIMUL_PATH}&quot;
+./xmlchange PIO_DEBUG_LEVEL=&quot;${DEBUG_LEVEL}&quot;
+./xmlchange JOB_WALLCLOCK_TIME=&quot;${RUN_TIME}&quot; --subgroup case.run
+./xmlchange JOB_QUEUE=&quot;${PARTITION}&quot;
+#---~---</code></pre>
 </div>
 <div id="modify-case" class="section level2">
 <h2>Modify case</h2>
-<p>In case this is a user-defined site simulation, set the user-specified paths. <strong>Important</strong>. Variable <code>DATM_MODE</code> must be set to <code>CLM1PT</code>, even when running E3SM-FATES.</p>
-<pre class="r"><code># Change working directory to the new case.
-dummy = setwd(case_path)
+<p>In case this is a user-defined site simulation, set the
+user-specified paths. <strong>Important</strong>. Variable
+<code>DATM_MODE</code> must be set to <code>CLM1PT</code>, even when
+running E3SM-FATES.</p>
+<pre class="bash"><code>cd ${CASE_PATH}
+case &quot;${RESOL}&quot; in
+?LM_USRDAT)
+   echo &quot;   - Update paths for surface and domain files.&quot;
 
-# Set the full name for ATM_DOMAIN_FILE
-hlm_usrdat_domain_full = file.path(site_path,hlm_usrdat_domain)
+   # Append site-specific surface data information to the namelist.
+   HLM_SURDAT_FILE=&quot;${SITE_PATH}/${HLM_USRDAT_SURDAT}&quot;
 
-if (resol %in% c(&quot;ELM_USRDAT&quot;,&quot;CLM_USRDAT&quot;)){
-   dummy = system(paste0(&quot;./xmlchange DATM_MODE=\&quot;CLM1PT\&quot;&quot;)                          ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange CALENDAR=\&quot;&quot;,metd_calendar,&quot;\&quot;&quot;)                ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange &quot;,v_hlm_usrdat_name,&quot;=\&quot;&quot;,site_name,&quot;\&quot;&quot;)       ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange ATM_DOMAIN_PATH=\&quot;&quot;,site_path,&quot;\&quot;&quot;)             ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange ATM_DOMAIN_FILE=\&quot;&quot;,hlm_usrdat_domain,&quot;\&quot;&quot;)     ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange LND_DOMAIN_PATH=\&quot;&quot;,site_path,&quot;\&quot;&quot;)             ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange LND_DOMAIN_FILE=\&quot;&quot;,hlm_usrdat_domain,&quot;\&quot;&quot;)     ,intern=TRUE)
-   dummy = system(paste0(&quot;./xmlchange DIN_LOC_ROOT_CLMFORC=\&quot;&quot;,site_base_path,&quot;\&quot;&quot;)   ,intern=TRUE)
-}#end if (resol %in% c(&quot;ELM_USRDAT&quot;,&quot;CLM_USRDAT&quot;))</code></pre>
-<p>Set the PE layout for a single-site run (unlikely that users would change this).</p>
-<pre class="r"><code># Change working directory to the new case.
-dummy = setwd(case_path)
 
-dummy = system(paste0(&quot;./xmlchange NTASKS_ATM=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_LND=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_ROF=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_ICE=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_OCN=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_CPL=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_GLC=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_WAV=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTASKS_ESP=1&quot;),intern=TRUE)
+   ./xmlchange DATM_MODE=&quot;CLM1PT&quot;
+   ./xmlchange CALENDAR=&quot;${SITE_CALENDAR}&quot;
+   ./xmlchange ${V_HLM_USRDAT_NAME}=&quot;${SITE_NAME}&quot;
+   ./xmlchange ${V_HLM_NAMELIST_OPTS}=&quot;fsurdat = &#39;${HLM_SURDAT_FILE}&#39;&quot;
+   ./xmlchange ATM_DOMAIN_PATH=&quot;${SITE_PATH}&quot;
+   ./xmlchange LND_DOMAIN_PATH=&quot;${SITE_PATH}&quot;
+   ./xmlchange ATM_DOMAIN_FILE=&quot;${HLM_USRDAT_DOMAIN}&quot;
+   ./xmlchange LND_DOMAIN_FILE=&quot;${HLM_USRDAT_DOMAIN}&quot;
+   ./xmlchange DIN_LOC_ROOT_CLMFORC=&quot;${SITE_BASE_PATH}&quot;
 
-dummy = system(paste0(&quot;./xmlchange NTHRDS_ATM=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_LND=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_ROF=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_ICE=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_OCN=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_CPL=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_GLC=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_WAV=1&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange NTHRDS_ESP=1&quot;),intern=TRUE)
+   ;;
+esac</code></pre>
+<p>Set the PE layout for a single-site run (unlikely that users would
+change this).</p>
+<pre class="bash"><code>cd ${CASE_PATH}
+./xmlchange NTASKS_ATM=1
+./xmlchange NTASKS_LND=1
+./xmlchange NTASKS_ROF=1
+./xmlchange NTASKS_ICE=1
+./xmlchange NTASKS_OCN=1
+./xmlchange NTASKS_CPL=1
+./xmlchange NTASKS_GLC=1
+./xmlchange NTASKS_WAV=1
+./xmlchange NTASKS_ESP=1
 
-dummy = system(paste0(&quot;./xmlchange ROOTPE_ATM=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_LND=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_ROF=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_ICE=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_OCN=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_CPL=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_GLC=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_WAV=0&quot;),intern=TRUE)
-dummy = system(paste0(&quot;./xmlchange ROOTPE_ESP=0&quot;),intern=TRUE)</code></pre>
+./xmlchange NTHRDS_ATM=1
+./xmlchange NTHRDS_LND=1
+./xmlchange NTHRDS_ROF=1
+./xmlchange NTHRDS_ICE=1
+./xmlchange NTHRDS_OCN=1
+./xmlchange NTHRDS_CPL=1
+./xmlchange NTHRDS_GLC=1
+./xmlchange NTHRDS_WAV=1
+./xmlchange NTHRDS_ESP=1
+
+./xmlchange ROOTPE_ATM=0
+./xmlchange ROOTPE_LND=0
+./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
+./xmlchange ROOTPE_GLC=0
+./xmlchange ROOTPE_WAV=0
+./xmlchange ROOTPE_ESP=0</code></pre>
 <p>Apply the user-specified XML configurations.</p>
-<pre class="r"><code># Change working directory to the new case.
-dummy = setwd(case_path)
+<pre class="bash"><code>cd ${CASE_PATH}
+if [[ ${#xml_settings[*]} -gt 0 ]]
+then
+   #--- Loop through the options to update.
+   echo &quot; + Update XML settings.&quot;
+   for x in ${!xml_settings[*]}
+   do
+      #--- Retrieve settings.
+      xml_id=$(echo ${xml_settings[x]}  | awk &#39;{print $1}&#39;)
+      xml_id=$(echo ${xml_id}           | sed s@&quot;YYY&quot;@${HLM}@g | sed s@&quot;yyy&quot;@${hlm}@g)
+      xml_val=$(echo ${xml_settings[x]} | awk &#39;{print $2}&#39;)
+      echo &quot; ID = ${xml_id}; VAL = ${xml_val}&quot;
+      #---~---
 
-# Loop through settings, and update entries.
-if (is_tibble(xml_settings)){
-   cat(&quot; + Update XML settings based on user specifications.\n&quot;)
-   for (x in sequence(nrow(xml_settings))){
-      # Retrieve settings
-      xml_id  = xml_settings$variable[x]
-      xml_id  = gsub(pattern=&quot;YYY&quot;,replacement=HLM,xml_id)
-      xml_id  = gsub(pattern=&quot;yyy&quot;,replacement=hlm,xml_id)
-      xml_val = xml_settings$value   [x]
-      cat(&quot;   - ID = &quot;,xml_id,&quot;; VAL = &quot;,xml_val,&quot;\n&quot;,sep=&quot;&quot;)
+      #--- Update settings.
+      ./xmlchange ${xml_id}=&quot;${xml_val}&quot;
+      #---~---
 
-      # Update settings
-      dummy   = system(paste0(&quot;./xmlchange &quot;,xml_id,&quot;=\&quot;&quot;,xml_val,&quot;\&quot;&quot;),intern=TRUE)
-   }#end for (x in nrow(xml_settings))
-}else if (is.null(xml_settings)){
-   cat(&quot; + No XML changes required.\n&quot;)
-}else{
-   stop(&quot; Object \&quot;xml_settings\&quot; must be either a tibble object or NULL.&quot;)
-}#end if (is_tibble(xml_settings))</code></pre>
-<pre><code>##  + Update XML settings based on user specifications.
-##    - ID = DEBUG; VAL = FALSE
-##    - ID = RUN_STARTDATE; VAL = 2004-01-01
-##    - ID = STOP_N; VAL = 4
-##    - ID = STOP_OPTION; VAL = nyears
-##    - ID = REST_N; VAL = 1
-##    - ID = CLM_FORCE_COLDSTART; VAL = on
-##    - ID = DATM_CLMNCEP_YR_START; VAL = 2004
-##    - ID = DATM_CLMNCEP_YR_END; VAL = 2019</code></pre>
+   done
+   #---~---
+else
+   #--- No changes needed.
+   echo &quot; + No XML changes required.&quot;
+   #---~---
+fi</code></pre>
 </div>
 </div>
 <div id="set-up-the-case" class="section level1">
 <h1>Set up the case</h1>
-<p>Before we set up the case, we may modify a few parameters. First, we update the DATM namelist.</p>
 <p>Initial case set up.</p>
-<pre class="r"><code># Change working directory to the new case.
-dummy = setwd(case_path)
-cat(&quot; + Set up the case.\n&quot;)</code></pre>
-<pre><code>##  + Set up the case.</code></pre>
-<pre class="r"><code>dummy = system(paste0(&quot;./case.setup&quot;),intern=TRUE)</code></pre>
-<p>We append the site-specific surface data information to the namelist, in case we are using a single-site simulation. We also append MOSART input files (this did not use to be required, but newer CIME versions are giving error messages).</p>
-<p><strong>Important!</strong>. Do <strong>NOT</strong> change this unless you know exactly what you are doing.</p>
-<pre class="r"><code>if (resol %in% c(&quot;ELM_USRDAT&quot;,&quot;CLM_USRDAT&quot;)){
-   # Append site-specific surface data information to the namelist.
-   hlm_surdat_file = file.path(site_path,hlm_usrdat_surdat)
-   dummy           = write( x        = paste0(&quot;fsurdat = &#39;&quot;,hlm_surdat_file,&quot;&#39;&quot;)
-                          , file     = user_nl_hlm
-                          , ncolumns = 1
-                          , append   = TRUE
-                          , sep      = &quot;&quot;
-                          )#end write  
+<pre class="bash"><code>cd ${CASE_PATH}
+./case.setup --silent</code></pre>
+<p>Make sure that the axis mode is configured to cycle, so the
+meteorological drivers are correctly recycled over time.
+<strong>Important!</strong>. Do <strong>NOT</strong> change this unless
+you know exactly what you are doing.</p>
+<pre class="bash"><code># Append time axis mode to the user namelist
+echo &quot;taxmode = &#39;cycle&#39;,&#39;cycle&#39;,&#39;cycle&#39;&quot; &gt;&gt; ${USER_NL_DATM}</code></pre>
+<p>Include settings for the inventory initialisation.</p>
+<pre class="bash"><code>if ${USE_FATES} &amp;&amp; [[ &quot;${INVENTORY_BASE}&quot; != &quot;&quot; ]]
+then
 
-   # Append time axis mode to the user namelist
-   dummy           = write( x        = paste0(&quot;taxmode = &#39;cycle&#39;,&#39;cycle&#39;,&#39;cycle&#39;&quot;)
-                          , file     = user_nl_datm
-                          , ncolumns = 1
-                          , append   = TRUE
-                          , sep      = &quot;&quot;
-                          )#end write  
+   #--- Set inventory file with full path.
+   INVENTORY_FILE=&quot;${SITE_PATH}/${INVENTORY_BASE}&quot;
+   #---~---
 
-   # Append MOSART input file to the user namelist
-   dummy           = write( x        = paste0(&quot;frivinp_rtm = &#39; &#39;&quot;)
-                          , file     = user_nl_mosart
-                          , ncolumns = 1
-                          , append   = TRUE
-                          , sep      = &quot;&quot;
-                          )#end write  
-}#end if (resol %in% c(&quot;ELM_USRDAT&quot;,&quot;CLM_USRDAT&quot;))</code></pre>
-<p>Preview namelists</p>
-<pre class="r"><code># Change working directory to the new case.
-dummy = setwd(case_path)
-cat(&quot; + Preview namelists.\n&quot;)</code></pre>
-<pre><code>##  + Preview namelists.</code></pre>
-<pre class="r"><code>preview_namelists = system(paste0(&quot;./preview_namelists&quot;),intern=TRUE)</code></pre>
-<p>Some meteorological drivers lack incoming longwave irradiance. If this is the case, we ought to delete it from the list of expected variables. <strong>WARNING</strong>. This is all done automatically, and it’s unlikely that users would ever need to change this part.</p>
-<pre class="r"><code>if (resol %in% c(&quot;ELM_USRDAT&quot;,&quot;CLM_USRDAT&quot;)){
-   # Define files with meteorological driver settings.
-   hlm_usrdat_orig=file.path(simul_path,&quot;run&quot;,paste0(&quot;datm.streams.txt.CLM1PT.&quot;,resol))
-   hlm_usrdat_user=file.path(simul_path,paste0(&quot;user_datm.streams.txt.CLM1PT.&quot;,resol))
 
-   # Define meteorological driver path
-   datm_path = file.path(site_path,&quot;CLM1PT_data&quot;)
-   
-   # List files
-   met_nc_list=list.files(path=datm_path,pattern=&quot;^....\\-..\\.nc$&quot;,full.names=TRUE)
+   #--- Instruct the host land model to use the modified parameter set. 
+   touch ${USER_NL_HLM}
+   echo &quot;use_fates_inventory_init = .true.&quot;                   &gt;&gt; ${USER_NL_HLM}
+   echo &quot;fates_inventory_ctrl_filename = &#39;${INVENTORY_FILE}&#39;&quot; &gt;&gt; ${USER_NL_HLM}
+   #---~---
 
-   if (length(met_nc_list) &gt; 0L){
-      # Load one netCDF file.
-      met_nc_1st = met_nc_list[1]
+fi</code></pre>
+<p>Some meteorological drivers lack incoming longwave irradiance. If
+this is the case, we ought to delete it from the list of expected
+variables. <strong>WARNING</strong>. This is all done automatically, and
+it’s unlikely that users would ever need to change this part.</p>
+<pre class="bash"><code># Find the first met driver.
+case &quot;${RESOL}&quot; in
+?LM_USRDAT)
+   #--- Define files with meteorological driver settings.
+   HLM_USRDAT_ORIG=&quot;${SIMUL_PATH}/run/datm.streams.txt.CLM1PT.${RESOL}&quot;
+   HLM_USRDAT_USER=&quot;${CASE_PATH}/user_datm.streams.txt.CLM1PT.${RESOL}&quot;
+   #---~---
 
-      # Get names of all variables in this NetCDF file
-      nc_conn = nc_open(met_nc_1st)
-      nc_vars = names(nc_conn$var)
-      dummy   = nc_close(nc_conn)
+   #--- Define meteorological driver path
+   DATM_PATH=&quot;${SITE_PATH}/CLM1PT_data&quot;
+   #---~---
 
-      # In case incident longwave radiation is missing, we change the stream file.
-      if (&quot;FLDS&quot; %in% nc_vars){
-         cat(&quot; + Incoming longwave radiation available from met driver.\n&quot;)
-      }else{
-         cat(&quot; + Remove incoming longwave radiation from met driver.\n&quot;)
-         dummy = file.copy(from=hlm_usrdat_orig,to=hlm_usrdat_user)
-         dummy = system(command=paste0(&quot;sed -i &#39;@FLDS@d&#39; &quot;,hlm_usrdat_user),intern=TRUE)
-      }#end if (! &quot;FLDS&quot; %in% nc_vars)
-   }else{
-      # Report error.
-      cat(&quot; Meteorological drivers not found in &quot;,datm_path,&quot;.\n&quot;,sep=&quot;&quot;)
-      cat(&quot; Make sure all the met driver files are named as yyyy-mm.nc\n&quot;)
-      stop(&quot; Met drivers not found!&quot;)
-   }#end if (length(any_met_nc) &gt; 0L)
-}#end if (resol %in% c(&quot;ELM_USRDAT&quot;,&quot;CLM_USRDAT&quot;))</code></pre>
-<pre><code>##  + Incoming longwave radiation available from met driver.</code></pre>
-<p>Include settings for the inventory initialisation, in case the user provided a file.</p>
-<pre class="r"><code>if (use_fates &amp;&amp; (! inventory_base %in% &quot;&quot;)){
-   # Set inventory file.
-   cat(&quot; + Append inventory initial conditions to the host land model namelist.\n&quot;)
-   inventory_file=file.path(site_path,inventory_base)
-   
 
-   # Instruct the host land model to use the modified parameter set. 
-   dummy = write ( x        =  c( &quot;use_fates_inventory_init = .true.&quot;
-                                , paste0(&quot;fates_inventory_ctrl_filename = &#39;&quot;,inventory_file,&quot;&#39;&quot;)
-                                )#end c
-                 , file     =  user_nl_hlm
-                 , ncolumns = 1
-                 , append   = TRUE
-                 , sep      = &quot;&quot;
-                 )#end write
-}#end if (use_fates &amp;&amp; (! inventory_base %in% &quot;&quot;))</code></pre>
-<pre><code>##  + Append inventory initial conditions to the host land model namelist.</code></pre>
-<p>Create a netCDF parameter file from the cdl file, and modify parameters if required for this specific simulation.</p>
-<pre class="r"><code>if (use_fates){
-   # Identify original parameter file
-   if ( fates_params_base %in% &quot;&quot;){
-      fates_params_orig = file.path(fates_src_path,&quot;parameter_files&quot;,&quot;fates_params_default.cdl&quot;)
-   }else{
-      fates_params_orig = file.path(site_path,fates_params_base)
-   }#end if ( fates_params_base %in% &quot;&quot;)
+   ANY_METD_NC=$(/bin/ls -1 ${DATM_PATH}/????-??.nc 2&gt; /dev/null | wc -l)
+   if [[ ${ANY_METD_NC} -gt 0 ]]
+   then
+      #--- Load one netCDF file.
+      METD_NC_1ST=$(/bin/ls -1 ${DATM_PATH}/????-??.nc 2&gt; /dev/null | head -1)
+      ANY_FLDS=$(ncdump -h ${METD_NC_1ST} 2&gt; /dev/null | grep FLDS | wc -l)
+      if [[ ${ANY_FLDS} -eq 0 ]]
+      then
+         #--- Incoming long wave radiation is missing, change the stream file
+         echo &quot; + Remove incoming longwave radiation from met driver.&quot;
+         /bin/cp -f ${HLM_USRDAT_ORIG} ${HLM_USRDAT_USER}
+         sed -i&quot;.bck&quot; &#39;/FLDS/d&#39; ${HLM_USRDAT_USER}
+         /bin/rm -f &quot;${HLM_USRDAT_USER}.bck&quot;
+         #---~---
+      else
+         echo &quot; + Incoming longwave radiation available from met driver.&quot;
+      fi
+      #---~---
+   else
+      #--- Report error.
+      echo &quot; FATAL ERROR!&quot;
+      echo &quot; ANY_METD_NC = ${ANY_METD_NC}&quot;
+      echo &quot; Meteorological drivers not found in ${DATM_PATH}&quot;.
+      echo &quot; Make sure all the met driver files are named as yyyy-mm.nc&quot;
+      exit 91
+      #---~---
+   fi
+   #---~---
+   ;;
+esac</code></pre>
+<p>Modify the parameter files based on the settings.</p>
+<pre class="bash"><code>if ${USE_FATES}
+then
 
-   # Create a local parameter file
-   cat(&quot; + Create local parameter file from &quot;,basename(fates_params_orig),&quot;.\n&quot;,sep=&quot;&quot;)
-   fates_params_case = file.path(case_path,paste0(&quot;fates_params_&quot;,case_name,&quot;.nc&quot;))
-   dummy = system(paste(&quot;ncgen -o&quot;,fates_params_case,fates_params_orig,sep=&quot; &quot;))
+   #--- Identify original parameter file
+   if [[ &quot;${FATES_PARAMS_FILE}&quot; == &quot;&quot; ]]
+   then
+      FATES_PARAMS_ORIG=&quot;${FATES_SRC_PATH}/parameter_files/fates_params_default.cdl&quot;
+   else
+      FATES_PARAMS_ORIG=&quot;${FATES_PARAMS_FILE}&quot;
+   fi
+   #---~---
 
-   # Check whether or not to edit parameters
-   if ( is_tibble(prm_settings)){
-      # Set python script for updating parameters.
-      modify_params_py = file.path(fates_src_path,&quot;tools&quot;,&quot;modify_fates_paramfile.py&quot;)
 
-      # Loop through the parameters to update.
-      cat(&quot; + Create local parameter file.\n&quot;)
-      for (p in sequence(nrow(prm_settings))){
-         # Retrieve settings.
-         prm_var = prm_settings$variable[p]
-         prm_pft = prm_settings$pft     [p]
-         prm_val = prm_settings$value   [p]
+   #--- Create a local parameter file.
+   echo &quot; + Create local parameter file from $(basename ${FATES_PARAMS_ORIG}).&quot;
+   FATES_PARAMS_CASE=&quot;${CASE_PATH}/fates_params_${CASE_NAME}.nc&quot;
+   ncgen -o ${FATES_PARAMS_CASE} ${FATES_PARAMS_ORIG}
+   #---~---
 
-         # Set command to change parameters, skipping PFT in case it is zero.
-         if (prm_pft == 0){
-            command = paste( modify_params_py
-                             , &quot;--var&quot; , prm_var
-                             , &quot;--val&quot; , prm_val
-                             , &quot;--fin&quot; , fates_params_case
-                             , &quot;--fout&quot;, fates_params_case
-                             , &quot;--O&quot;
-                             , sep =&quot; &quot;
-            )#end paste
-         }else{
-            command = paste( modify_params_py
-                             , &quot;--var&quot; , prm_var
-                             , &quot;--pft&quot; , prm_pft
-                             , &quot;--val&quot; , prm_val
-                             , &quot;--fin&quot; , fates_params_case
-                             , &quot;--fout&quot;, fates_params_case
-                             , &quot;--O&quot;
-                             , sep =&quot; &quot;
-            )#end paste
-         }#end if (pft_val == 0)
 
-         # Append command
-         # dummy  = write(x = command, file = temp_shell, ncolumns = 1, append = TRUE)
-         out_mess = system(command=command,intern=TRUE)
-         cat(&quot;   - &quot;,out_mess[1],&quot;.\n&quot;,sep=&quot;&quot;)
-      }#end for (p in sequence(nrow(prm_settings)))
+   #---~---
+   #   Check whether or not to edit parameters
+   #---~---
+   if [[ ${#prm_settings[*]} -gt 0 ]]
+   then
 
-      # Instruct the host land model to use the modified parameter set. 
-      dummy = write ( x        = paste0(&quot;fates_paramfile = &#39;&quot;,fates_params_case,&quot;&#39;&quot;)
-                    , file     = user_nl_hlm
-                    , ncolumns = 1
-                    , append   = TRUE
-                    , sep      = &quot;&quot;
-                    )#end write
+      #--- Set python script for updating parameters.
+      MODIFY_PARAMS_PY=&quot;${FATES_SRC_PATH}/tools/modify_fates_paramfile.py&quot;
+      #---~---
 
-   }else if (is.null(prm_settings)){
-      # No changes needed.
-      cat(&quot; + No parameter settings required.\n&quot;)
-   }else{
-      # Incorrect settings.
-      stop(&quot; Object \&quot;prm_settings\&quot; must be either a tibble object or NULL.&quot;)
-   }#end if ( is_tibble(prm_settings))
-}else{   
-   cat(&quot; + Not a FATES run, skip parameter settings.\n&quot;)
-}#end if (use_fates)</code></pre>
-<pre><code>##  + Create local parameter file from fates_params_2trop_koven_opt224+api16_c210722.cdl.
-##  + Create local parameter file.
-##    - replacing prior value of scalar variable fates_phen_drought_threshold, which was -152957.4, with new value of -203943.2.
-##    - replacing prior value of variable fates_alloc_storage_cushion, for PFT 1, which was 1.2, with new value of 1.2.
-##    - replacing prior value of variable fates_alloc_storage_cushion, for PFT 2, which was 1.2, with new value of 2.4.
-##    - replacing prior value of variable fates_leaf_vcmax25top, for PFT 1, which was [30.94711], with new value of 30.94711.
-##    - replacing prior value of variable fates_leaf_vcmax25top, for PFT 2, which was [30.94711], with new value of 46.42066.
-##    - replacing prior value of variable fates_seed_suppl, for PFT 1, which was 0.001, with new value of 0.0.
-##    - replacing prior value of variable fates_seed_suppl, for PFT 2, which was 0.001, with new value of 0.0.</code></pre>
-<p>Add other variables to the namelist of the host land model.</p>
-<pre class="r"><code>if (is_tibble(hlm_settings)){
-   # Loop through the options to update.
-   cat(&quot; + Update host land model settings.\n&quot;)
+      #--- Loop through the parameters to update.
+      echo &quot; + Create local parameter file.&quot;
+      for p in ${!prm_settings[*]}
+      do
+         #--- Retrieve settings.
+         prm_var=$(echo ${prm_settings[p]} | awk &#39;{print $1}&#39;)
+         prm_num=$(echo ${prm_settings[p]} | awk &#39;{print $2}&#39;)
+         prm_val=$(echo ${prm_settings[p]} | awk &#39;{print $3}&#39;)
+         #---~---
 
-   for (h in sequence(nrow(hlm_settings))){
-      # Retrieve settings.
-      hlm_id  = hlm_settings$variable[h]
-      hlm_val = hlm_settings$value   [h]
+         #--- Update parameters, skipping the PFT setting in case it is zero (global).
+         case ${prm_num} in
+         0)
+            ${MODIFY_PARAMS_PY} --var=${prm_var} --val=${prm_val}                          \
+               --fin=${FATES_PARAMS_CASE} --fout=${FATES_PARAMS_CASE} --O
+            ;;
+         *)
+            ${MODIFY_PARAMS_PY} --var=${prm_var} --pft=${prm_num} --val=${prm_val}         \
+               --fin=${FATES_PARAMS_CASE} --fout=${FATES_PARAMS_CASE} --O
+            ;;
+         esac
+         #---~---
+      done
+      #---~---
+   fi
+   #---~---
 
-      # Check whether or not this is a FATES variable
-      is_fates_var = grepl( pattern=&quot;fates&quot;,ignore.case=TRUE,x=hlm_id)
 
-      #    Check whether this is a FATES variable.  In case it is and USE_FATES is false,
+   #--- Instruct the host land model to use the modified parameter set. 
+   touch ${USER_NL_HLM}
+   echo &quot;fates_paramfile = &#39;${FATES_PARAMS_CASE}&#39;&quot; &gt;&gt; ${USER_NL_HLM}
+   #---~---
+else
+   #--- No changes needed.
+   echo &quot; + No change to parameter settings required.&quot;
+   #---~---
+fi</code></pre>
+<p>Modify configurations for the host land model.</p>
+<pre class="bash"><code>if  [[ ${#hlm_settings[*]} -gt 0 ]]
+then
+   #--- Loop through the options to update.
+   echo &quot; + Update host land model settings.&quot;
+   for h in ${!hlm_settings[*]}
+   do
+      #--- Retrieve settings.
+      hlm_id=$(echo ${hlm_settings[h]}  | awk &#39;{print $1}&#39;)
+      hlm_id=$(echo ${hlm_id}           | sed s@&quot;YYY&quot;@${HLM}@g | sed s@&quot;yyy&quot;@${hlm}@g)
+      hlm_val=$(echo ${hlm_settings[h]} | awk &#39;{for(i=2;i&lt;=NF;++i)printf $i&quot;&quot;FS ; print &quot;&quot;}&#39;)
+      #---~---
+
+      #--- Check whether or not this is a FATES variable.
+      is_fates_var=$(echo ${hml_id} | grep -i fates | wc -l)
+      #---~---
+
+      #---~---
+      #   Check whether this is a FATES variable.  In case it is and USE_FATES is false,
       # we ignore the variable.
-      if ( use_fates || (! is_fates_var) ){
-         #  Update namelist
-         cat(&quot;   - Append variable &quot;,hlm_id,&quot; = &quot;,hlm_val,&quot; to &quot;,basename(user_nl_hlm),&quot;.\n&quot;,sep=&quot;&quot;)
-         dummy = write( x        = paste0(hlm_id,&quot; = &quot;,hlm_val) 
-                      , file     = user_nl_hlm
-                      , ncolumns = 1
-                      , append   = TRUE
-                      , sep      = &quot;&quot;
-                      )#end write
-      }else{
-         # Do not update.  Instead, warn the user.
-         cat(&quot;  - Ignoring &quot;,hlm_id,&quot; as this a FATES variable, and use_fates is FALSE.\n&quot;)
-      }#end if ( use_fates || (! is_fates_var) )
-   }#end for (h in sequence(nrow(hlm_settings)))
-}else if (is.null(hlm_settings)){
-   # No changes needed.
-   cat(&quot; + No general HLM namelist settings required.\n&quot;)
-}else{
-   # Incorrect settings.
-   stop(&quot; Object \&quot;hlm_settings\&quot; must be either a tibble object or NULL.&quot;)
-}#end if (is_tibble(hlm_settings))</code></pre>
-<pre><code>##  + Update host land model settings.
-##    - Append variable hist_empty_htapes = .true. to user_nl_clm.
-##    - Append variable fates_parteh_mode =      0 to user_nl_clm.</code></pre>
-<p>Check whether or not the user provided a list of variables. The code will select them based on whether or not FATES is being called, and whether the host land model is ELM or CLM.</p>
-<pre class="r"><code>if (is_tibble(hlm_variable)){
+      #---~---
+      if ${USE_FATES} || [[ ${is_fates_var} -eq 0 ]]
+      then
+         #--- Update namelist
+         echo &quot; + Append variable ${hlm_id} = ${hlm_val} to $(basename ${USER_NL_HLM}).&quot;
+         touch ${USER_NL_HLM}
+         echo &quot;${hlm_id} = ${hlm_val}&quot; &gt;&gt; ${USER_NL_HLM}
+         #---~---
+      else
+         #--- Do not update.  Instead, warn the user.
+         echo &quot; + Ignoring ${hlm_id} as this a FATES variable, and USE_FATES=false.&quot;
+         #---~---
+      fi
+      #---~---
+   done
+   #---~---
+else
+   #--- No changes needed.
+   echo &quot; + No general HLM namelist settings required.&quot;
+   #---~---
+fi</code></pre>
+<p>Add the variable list to the namelist of the host land model.</p>
+<pre class="bash"><code>if  [[ ${#hlm_variables[*]} -gt 0 ]]
+then
+   #---~---
+   #   Initialise variables assuming no output, then update them.
+   #---~---
+   hlm_mlist=&quot;&quot;
+   hlm_dlist=&quot;&quot;
+   hlm_hlist=&quot;&quot;
+   #---~---
 
-   # Decide which variables to append.
-   sel_fates = use_fates | (! hlm_variable$fates_only)
-   sel_hlm   = grepl(pattern=hlm,x=hlm_variable$add_hlm)
-   sel       = sel_fates &amp; sel_hlm
 
-   # Pool variables to be included, then append it to the nameslist
-   hlm_vlist = paste(paste0(&quot;&#39;&quot;,hlm_variable$variable[sel],&quot;&#39;&quot;),collapse=&quot;,&quot;)
 
-      
-   cat(&quot;   - Append list of variables to &quot;,basename(user_nl_hlm),&quot;.\n&quot;,sep=&quot;&quot;)
-   dummy = write( x        = paste0(&quot;hist_fincl1 = &quot;,hlm_vlist) 
-                , file     = user_nl_hlm
-                , ncolumns = 1
-                , append   = TRUE
-                , sep      = &quot;&quot;
-                )#end write
-}else if (is.null(hlm_variable)){
-   # No variables needed.  A bit odd, issue a warning.
-   warning(&quot; + No HLM-FATES variables required (are you sure about this?).\n&quot;)
-}else{
-   # Incorrect settings.
-   stop(&quot; Object \&quot;hlm_variables\&quot; must be either a tibble object or NULL.&quot;)
-}#end if (is_tibble(hlm_variable))</code></pre>
-<pre><code>##    - Append list of variables to user_nl_clm.</code></pre>
-<p>Build the case (and delete previous case run in case it exists). We save the log to verify whether or not the case was successfully built, before attempting to run it.</p>
-<pre class="r"><code># List of commands for shell
-case_shell = c(&quot;#!/bin/bash&quot;
-              , &quot;if [[ -s \&quot;${HOME}/.bashrc\&quot;       ]]; then . ${HOME}/.bashrc      ; fi&quot;
-              , &quot;if [[ -s \&quot;${HOME}/.bash_profile\&quot; ]]; then . ${HOME}/.bash_profile; fi&quot;
-              , &quot;if [[ -s \&quot;${HOME}/.profile\&quot;      ]]; then . ${HOME}/.profile     ; fi&quot;
-              , paste0(&quot;cd &quot;,case_path)
-              , &quot;./case.build --clean&quot;
-              , &quot;./case.build&quot;
-              )#end c
+   #--- Loop through the options to update.
+   echo &quot; + Check whether to append list of variables to $(basename ${USER_NL_HLM}).&quot;
+   n_month_add=0
+   n_day_add=0
+   n_hour_add=0
+   for h in ${!hlm_variables[*]}
+   do
+      #--- Retrieve settings.
+      hlm_now=${hlm_variables[h]}
+      hlm_var=$(echo ${hlm_now}   | awk &#39;{print $1}&#39;                             )
+      add_fates=$(echo ${hlm_now} | awk &#39;{print $2}&#39; | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+      add_hlm=$(echo ${hlm_now}   | awk &#39;{print $3}&#39; | grep -i ${hlm} | wc -l    )
+      add_month=$(echo ${hlm_now} | awk &#39;{print $4}&#39; | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+      add_day=$(echo ${hlm_now}   | awk &#39;{print $5}&#39; | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+      add_hour=$(echo ${hlm_now}  | awk &#39;{print $6}&#39; | tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)
+      #---~---
 
-# Create temporary shell
-temp_shell = file.path(here_path,&quot;temp_case_shell.sh&quot;)
-dummy      = write(x=case_shell,file=temp_shell,ncolumns=1,append=FALSE)
-dummy      = Sys.chmod(paths=temp_shell,mode=&quot;744&quot;)
+      #---~---
+      #   We only add the variable if the variable is compatible with the host land model
+      # and if we will use FATES or it is not a FATES variable
+      #---~---
+      if [[ ${add_hlm} -gt 0 ]]
+      then
+         if ${USE_FATES}
+         then
+            case &quot;${add_fates}&quot; in
+               yes|both) add_var=true  ;;
+               *)        add_var=false ;;
+            esac
+         else
+            case &quot;${add_fates}&quot; in
+               no|both) add_var=true  ;;
+               *)       add_var=false ;;
+            esac
+         fi
+      else
+         add_var=false
+      fi
+      #---~---
 
-# Run shell
-build_log  = system(command=temp_shell,intern=TRUE)
+      #---~---
+      #    Append variable to the list in case the variable is fine for this settings.
+      # Then check which time scales to include.
+      #---~---
+      if ${add_var}
+      then
+         echo &quot;   - Append variable \&quot;${hlm_var}\&quot; to the output variable list.&quot;
 
-# Delete shell
-dummy      = file.remove(temp_shell)
+         #---~---
+         #   Monthly
+         #---~---
+         if [[ &quot;${add_month}&quot; == &quot;yes&quot; ]]
+         then
+            #--- Increment variable counter
+            (( n_month_add = n_month_add + 1 ))
+            #---~---
 
-# Verify success
-is_success = grepl(pattern = &quot;MODEL BUILD HAS FINISHED SUCCESSFULLY&quot;,x=build_log[length(build_log)])
+            #---~---
+            #    Append variable to the list. Make sure commas are added for all but
+            # the first.
+            #---~---
+            case ${n_month_add} in
+               1) hlm_mlist=&quot;${hlm_mlist} &#39;${hlm_var}&#39;&quot; ;;
+               *) hlm_mlist=&quot;${hlm_mlist},&#39;${hlm_var}&#39;&quot; ;;
+            esac
+            #---~---
+         fi
+         #---~---
 
-# If case build was unsuccessful, issue an error.
-if (! is_success){
-   stop(&quot; Case build failed. Check variable \&quot;build_log\&quot; in the R terminal for more information.&quot;)
-}#end if (! is_success)</code></pre>
-<p>In case the case building was successful, run the model if the user wants it to be run from within R. Because the simulations may take a while to run, we do not save the output in an internal variable, and do not wait for the simulation to finish.</p>
-<pre class="r"><code># Decide whether or not to submit case.
-if (case_submit &amp;&amp; case_wait){
-   # Run the model, and don&#39;t release the terminal until the simulation is finished.
-   cat(&quot; + Submit case.  This will take a while to run.\n&quot;)
-   dummy     = setwd(case_path)
-   dummy     = system(command = &quot;./case.submit&quot;,wait = TRUE, intern = TRUE)
-}else if (case_submit){
-   # Run the model.
-   cat(&quot; + Submit case.  Note that it will run in the background.\n&quot;)
-   dummy     = setwd(case_path)
-   dummy     = system(command = &quot;./case.submit&quot;,wait = FALSE, intern = FALSE)
-}else{
-   # Write message that the case is ready to submit.
-   cat(&quot; + Case is ready to be submitted. You can copy the following to your terminal. \n&quot;)
-   cat(&quot; (cd &quot;,case_path,&quot;; ./case.submit)\n&quot;,sep=&quot;&quot;)
-}#end if (case_submit) </code></pre>
-<pre><code>##  + Submit case.  Note that it will run in the background.</code></pre>
+         #---~---
+         #   Daily
+         #---~---
+         if [[ &quot;${add_day}&quot; == &quot;yes&quot; ]]
+         then
+            #--- Increment variable counter
+            (( n_day_add = n_day_add + 1 ))
+            #---~---
+
+            #---~---
+            #    Append variable to the list. Make sure commas are added for all but
+            # the first.
+            #---~---
+            case ${n_day_add} in
+               1) hlm_dlist=&quot;${hlm_dlist} &#39;${hlm_var}&#39;&quot; ;;
+               *) hlm_dlist=&quot;${hlm_dlist},&#39;${hlm_var}&#39;&quot; ;;
+            esac
+            #---~---
+         fi
+         #---~---
+
+         #---~---
+         #   Hourly
+         #---~---
+         if [[ &quot;${add_hour}&quot; == &quot;yes&quot; ]]
+         then
+            #--- Increment variable counter
+            (( n_hour_add = n_hour_add + 1 ))
+            #---~---
+
+            #---~---
+            #    Append variable to the list. Make sure commas are added for all
+            # but the first.
+            #---~---
+            case ${n_hour_add} in
+               1) hlm_hlist=&quot;${hlm_hlist} &#39;${hlm_var}&#39;&quot; ;;
+               *) hlm_hlist=&quot;${hlm_hlist},&#39;${hlm_var}&#39;&quot; ;;
+            esac
+            #---~---
+         fi
+         #---~---
+      else
+         #--- Do not update.  Instead, warn the user.
+         echo &quot;   - Ignoring \&quot;${hlm_var}\&quot; because it is incompatible with the settings.&quot;
+         #---~---
+      fi
+      #---~---
+   done
+   #---~---
+
+
+   #---~---
+   #    We only append the variable lists if at least one variable was included and the
+   # output variable is to be included. Regardless, we always set monthly outputs as the
+   # primary, to avoid generating large data sets for daily or hourly.
+   #---~---
+   hlm_nhtfrq=&quot;hist_nhtfrq = 0&quot;
+   hlm_mfilt=&quot;hist_mfilt  = ${month_mfilt}&quot;
+   hlm_incl=1
+   #---~---
+
+
+   #---~---
+   #   Check monthly. The settings will be always included, so the default output
+   # is always monthly, even if nothing is written.
+   #---~---
+   if [[ ${n_month_add} -gt 0 ]]
+   then
+      #--- Add list of monthly variables to the output.
+      hlm_mlist=&quot;hist_fincl1 = ${hlm_mlist}&quot;
+      touch ${USER_NL_HLM}
+      echo ${hlm_mlist} &gt;&gt; ${USER_NL_HLM}
+      #---~---
+   fi
+   #---~---
+
+
+   #---~---
+   #   Check daily, and add if any variable is to be in the output.
+   #---~---
+   if [[ ${n_day_add} -gt 0 ]]
+   then
+      #--- Add list of daily variables to the output.
+      (( hlm_incl = hlm_incl + 1 ))
+      hlm_dlist=&quot;hist_fincl${hlm_incl} = ${hlm_dlist}&quot;
+      touch ${USER_NL_HLM}
+      echo ${hlm_dlist} &gt;&gt; ${USER_NL_HLM}
+      #---~---
+
+      #---~---
+      #   Update frequency and steps.
+      #---~---
+      hlm_nhtfrq=&quot;${hlm_nhtfrq}, -24&quot;
+      hlm_mfilt=&quot;${hlm_mfilt}, ${day_mfilt}&quot;
+      #---~---
+   fi
+   #---~---
+
+
+   #---~---
+   #   Check hourly, and add if any variable is to be in the output.
+   #---~---
+   if [[ ${n_hour_add} -gt 0 ]]
+   then
+      #--- Add list of daily variables to the output.
+      (( hlm_incl = hlm_incl + 1 ))
+      hlm_hlist=&quot;hist_fincl${hlm_incl} = ${hlm_hlist}&quot;
+      touch ${USER_NL_HLM}
+      echo ${hlm_hlist} &gt;&gt; ${USER_NL_HLM}
+      #---~---
+
+      #---~---
+      #   Update frequency and steps.
+      #---~---
+      hlm_nhtfrq=&quot;${hlm_nhtfrq}, -1&quot;
+      hlm_mfilt=&quot;${hlm_mfilt}, ${hour_mfilt}&quot;
+      #---~---
+   fi
+   #---~---
+
+
+   #--- Append time table instructions
+   touch ${USER_NL_HLM}
+   echo ${hlm_nhtfrq} &gt;&gt; ${USER_NL_HLM}
+   echo ${hlm_mfilt}  &gt;&gt; ${USER_NL_HLM}
+   #---~---
+
+else
+   #--- Append time table instructions
+   touch ${USER_NL_HLM}
+   echo &quot;hist_nhtfrq = 0&quot;               &gt;&gt; ${USER_NL_HLM}
+   echo &quot;hist_mfilt  = ${month_mfilt}&quot;  &gt;&gt; ${USER_NL_HLM}
+   #---~---
+
+   #--- Other than the time table, no further changes needed.
+   echo &quot; + No additional HLM variables required.&quot;
+   #---~---
+fi</code></pre>
+<p>Make sure namelists are set as expected.</p>
+<pre class="bash"><code>echo &quot;   - Preview namelists.&quot;
+cd ${CASE_PATH}
+./preview_namelists --silent</code></pre>
+<p>Build the case (and delete previous case run in case it exists).</p>
+<pre class="bash"><code>#--- Build case.
+./case.build --clean
+./case.build</code></pre>
+<p>Return to the original path.</p>
+<pre class="bash"><code>cd ${HERE_PATH}</code></pre>
+<p>Check whether the case was successfully built.</p>
+<pre class="bash"><code>if [[ ${IS_SUCCESS} -gt 0 ]] &amp;&amp; ${AUTO_SUBMIT}
+then
+   # Case was successfully built. Submitting the case.
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   echo &quot; CASE WAS SUCCESSFULLY BUILT, CONGRATULATIONS!&quot;
+   echo &quot; I will start running the case in 10 seconds.&quot;
+   echo &quot; In case you change your mind, press Ctrl+C before the time is over.&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   when=11
+   echo -n &quot; - &quot;
+   while [[ ${when} -gt 1 ]]
+   do
+      let when=${when}-1
+      echo -n &quot; ${when}...&quot;
+      sleep 1
+   done
+   echo &quot; Time is over!&quot;
+
+   #  Proceed with submission, but check whether this is a local machine or a cluster.
+   case &quot;${MACH}&quot; in
+   eschweilera)
+      #  Local machine, we save the standard output to a file.
+      SUBMIT_LOG=&quot;${SOURCE_PATH}/$(echo ${SOURCE_BASE} | sed s@&quot;\\.sh$&quot;@&quot;.log&quot;@g)&quot;
+      cd ${CASE_PATH}
+      ./case.submit | tee ${SUBMIT_LOG}
+      cd ${SOURCE_PATH}
+      ;;
+   *)
+      #  Cluster, we save the standard output will be saved in files specified by job scheduler.
+      cd ${CASE_PATH}
+      ./case.submit
+      cd ${SOURCE_PATH}
+      ;;
+   esac
+
+
+elif [[ ${IS_SUCCESS} -gt 0 ]]
+then
+   # Case was successfully built. Give instructions on how to submit the job.
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   echo &quot; CASE WAS SUCCESSFULLY BUILT, CONGRATULATIONS!&quot;
+   echo &quot; To submit the case, use the following commands&quot;
+   if ${IS_INTERACTIVE}
+   then
+      case &quot;${MACH}&quot; in
+      pm-*)
+         echo &quot;salloc --qos=interactive --constraint=${CONSTRAINT} --time=${RUN_TIME_INT}&quot;
+         echo &quot;cd ${CASE_PATH}&quot;
+         echo &quot;case.submit --no-batch&quot;
+         ;;
+      eschweilera)
+         echo &quot;(cd ${CASE_PATH}; ./case.submit)&quot;
+         ;;
+      *)
+         echo &quot; &lt;Launch interactive job on ${MACH}&gt;&quot;
+         echo &quot;cd ${CASE_PATH}&quot;
+         echo &quot;&lt;Job submission command&gt; case.submit --no-batch&quot;
+         ;;
+      esac
+   else
+      echo &quot;(cd ${CASE_PATH}; ./case.submit)&quot;
+   fi
+   echo &quot;---------------------------------------------------------------------&quot;
+elif [[ &quot;${HESM}&quot; == &quot;E3SM&quot; ]]
+then
+   N_HESM_LOG=$(cat ${BUILD_LOG}  | grep &quot;ERROR: BUILD FAIL: build e3sm failed | wc -l&quot;)
+   if [[ ${N_HESM_LOG} -eq 0 ]]
+   then
+      ERROR_LOG=${BUILD_LOG}
+   else
+      ERROR_LINE=$(cat ${BUILD_LOG}  | grep &quot;ERROR: BUILD FAIL: build e3sm failed&quot;)
+      ERROR_LOG=$(echo ${ERROR_LINE} | awk &#39;{print $8}&#39;)
+   fi
+
+
+   # Case building failed for E3SM. Stop and report.
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   echo &quot; Case building was unsuccessful.&quot;
+   echo &quot; Check file ${ERROR_LOG} for additional information.&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   exit 89
+else
+   # Case building failed. Stop and report.
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   echo &quot; Case building was unsuccessful.&quot;
+   echo &quot; Check file ${BUILD_LOG} for additional information.&quot;
+   echo &quot;---------------------------------------------------------------------&quot;
+   exit 89
+fi</code></pre>
 </div>
 
 

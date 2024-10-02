@@ -52,56 +52,108 @@ invisible(gc())
 
 In this part, we set a few useful global paths, files, and variables.
 
-First, we define the case (variable `case_info`). For convenience, we use a *tibble* structure (`tribble`) containing the following elements for a few simulations:
+First, we define the case. This is done through two *tibble* variables (`site_info` and `config_info`), which allows to efficently loop through multiple configurations for each site.
 
-* **idx**. A simple index number, so we can select the simulation to process. This is useful for when handling multiple runs.
-* **name**. The case name.  This should be typically the name of the case sub-directory to where the simulation output files were written.  This will be used together with `hesm_main` (see below) to define the full path.
-* **model**. Which model was used (typically `CLM-FATES` or `ELM-FATES`). The name may appear in `name` too, but this is used for titles.
-* **desc**. The case description. Not a path, but useful for plot titles (put here so it's easy to remember to update).
-* **tstampa**.  The first time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
-* **tstampz**.  The last time for the simulation that will be used for plotting. This can be either a character string with date in the format MM/DD/YYYY, or `NA_character_` in case it should be defined automatically. 
-* **site**. The sub-directory name in `site_main` containing the tower averages by month and year for this particular site.  This uses the structure created by the [FATES Utilities](https://github.com/mpaiao/FATES_Utils) tools.
+Variable `site_info` contains the following elements:
+* **idx**. A simple index number, so we can select the simulation to process. This is useful for when handling multiple runs. Make sure it is consistent with element `site_id` in variable `site_info` in `create_case_hlm-fates.Rmd`.
+* **prefix**. The prefix associated with the site. This must be consistent with the case path (i.e., no spaces).
+* **desc**. The site name to show in titles. Spaces are fine here.
+* **base**. Base directory of the site data.
+* **datm_yeara**. First year of the site-specific meteorological driver.
+* **datm_yearz**. Last year of the site-specific meteorological driver.
 
-It is possible to select the simulation to process using the variable case_idx
+Variable `config_info` contains the following elements:
+* **idx**. A simple index number, so we can select the simulation to process. Make sure it is consistent with element `config_id` in variable `config_info` in `create_case_hlm-fates.Rmd`.
+* **suffix**. The suffix describing the settings. It must be consistent with the case path (i.e., no spaces)
+* **model**. Which model was used (typically `CLM-FATES` or `ELM-FATES`). The name may appear in `suffix` too, but this is used for titles.
+* **desc**. The case description. This is used in titles and annotation.  Keep it short, but feel free to use spaces.
+* **simul_yeara**.  The first year for the simulation that will be used for plotting. The meaning will depend on the value:
+ - **Positive**. The actual calendar year (e.g., 2021).
+ - **Zero** or **Negative**. The offset relative to the first year of the meteorological driver. The absolute value will indicate
+  how many years _before_ the first meteorological driver year should be included.
+ - **Missing** (`NA_integer`). Let the code define it automatically.
+* **simul_yearz**.  The last year for the simulation that will be used for plotting. The meaning will depend on the value:
+ - **Positive**. The actual calendar year (e.g., 2025).
+ - **Zero** or **Negative**. The offset relative to the last year of the meteorological driver. The absolute value will indicate
+  how many years _after_ the last meteorological driver year should be included.
+ - **Missing** (`NA_integer`). Let the code define it automatically.
+* **colour**. Colour to use for this simulation
+* **show**. Should this run be used?
+
+To select the site, use variable `site_idx`.
+
+Finally, use `case_prefix` to define the prefix used for single-site runs (normally the text before the case number in the case directory name).
 
 **Note**. Regardless of `tstampa`, we will always read in the very first file to retrieve some data that are only written in the first output.
 
 ```{r, label='case-settings',message=FALSE, results='hide'}
+# Define site structure.
+site_info = tidyr::tribble( ~idx, ~prefix        , ~desc             , ~base                                  , ~datm_yeara, ~datm_yearz
+                          ,   1L, "BarroColorado", "Barro Colorado"  , "1x1pt-bciPAN_v5.0_c20240616"          ,        2003,        2016
+                          ,   2L, "Paracou"      , "Paracou"         , "1x1pt-paracouGUF_v1.8_c20220114"      ,        2004,        2019
+                          ,   3L, "Tapajos"      , "Tapajos"         , "1x1pt-tapajosPABR_v1.0_c20231201"     ,        1999,        2020
+                          ,   4L, "Tanguro"      , "Tanguro"         , "1x1pt-tanguroMTBR_v1.2_c20210913"     ,        2008,        2018
+                          ,   5L, "SerraTalhada" , "Serra Talhada"   , "1x1pt-serratalhadaPEBR_v1.0_c20220114",        2008,        2021
+                          ,   6L, "ESECSerido"   , "ESEC Serido"     , "1x1pt-esecseridoRNBR_v1.0_c20220119"  ,        2008,        2021
+                          ,   7L, "Petrolina"    , "Petrolina"       , "1x1pt-petrolinaPE-BR_v1.2_c20210913"  ,        2004,        2012
+                          )#end tidyr::tribble
 
-# Define the data structure
-case_info = tidyr::tribble( ~idx, ~name                                      , ~model       , ~tstampa     , ~tstampz     , ~colour  , ~desc                                      , ~site
-                          ,    0, "S0000_ParacouTest_CLM_FATES"              , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "Paracou Test"                             , "1x1pt-paracouGUF_v1.6_c20210913"
-                          ,    1, "S0001_ParacouNewPhen_CLM_FATES"           , "CLM-FATES"  , NA_character_, NA_character_, "#1F78B4", "PFT: EG+DD; Alloc: Simple; Thresh: SMP"   , "1x1pt-paracouGUF_v1.6_c20210913"
-                          ,    2, "S0002_TanguroNewPhen_CLM_FATES"           , "CLM-FATES"  , NA_character_, NA_character_, "#1F78B4", "PFT: EG+DD; Alloc: Simple; Thresh: SMP"   , "1x1pt-tanguroMT-BR_v1.2_c20210913"
-                          ,    3, "S0003_PetrolinaNewPhen_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#1F78B4", "PFT: EG+DD; Alloc: Simple; Thresh: SMP"   , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
-                          ,    4, "S0004_ParacouEvergreen_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#B2DF8A", "PFT: EG Only; Alloc: Simple; Thresh: SMP" , "1x1pt-paracouGUF_v1.6_c20210913"
-                          ,    5, "S0005_TanguroEvergreen_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#B2DF8A", "PFT: EG Only; Alloc: Simple; Thresh: SMP" , "1x1pt-tanguroMT-BR_v1.2_c20210913"
-                          ,    6, "S0006_PetrolinaEvergreen_CLM_FATES"       , "CLM-FATES"  , NA_character_, NA_character_, "#B2DF8A", "PFT: EG Only; Alloc: Simple; Thresh: SMP" , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
-                          ,    7, "S0007_ParacouOldCAllocEGDD_CLM_FATES"     , "CLM-FATES"  , NA_character_, NA_character_, "#FF7F00", "PFT: EG+DD; Alloc: Default; Thresh: SMP"  , "1x1pt-paracouGUF_v1.6_c20210913"
-                          ,    8, "S0008_TanguroOldCAllocEGDD_CLM_FATES"     , "CLM-FATES"  , NA_character_, NA_character_, "#FF7F00", "PFT: EG+DD; Alloc: Default; Thresh: SMP"  , "1x1pt-tanguroMT-BR_v1.2_c20210913"
-                          ,    9, "S0009_PetrolinaOldCAllocEGDD_CLM_FATES"   , "CLM-FATES"  , NA_character_, NA_character_, "#FF7F00", "PFT: EG+DD; Alloc: Default; Thresh: SMP"  , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
-                          ,   10, "S0010_ParacouOldCAllocEGOnly_CLM_FATES"   , "CLM-FATES"  , NA_character_, NA_character_, "#FB9A99", "PFT: EG Only; Alloc: Default; Thresh: SMP", "1x1pt-paracouGUF_v1.6_c20210913"
-                          ,   11, "S0011_TanguroOldCAllocEGOnly_CLM_FATES"   , "CLM-FATES"  , NA_character_, NA_character_, "#FB9A99", "PFT: EG Only; Alloc: Default; Thresh: SMP", "1x1pt-tanguroMT-BR_v1.2_c20210913"
-                          ,   12, "S0012_PetrolinaOldCAllocEGOnly_CLM_FATES" , "CLM-FATES"  , NA_character_, NA_character_, "#FB9A99", "PFT: EG Only; Alloc: Default; Thresh: SMP", "1x1pt-petrolinaPE-BR_v1.2_c20210913"
-                          ,   13, "S0013_ParacouOldThresh_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "PFT: EG+DD; Alloc: Simple; Thresh: SWC"   , "1x1pt-paracouGUF_v1.6_c20210913"
-                          ,   14, "S0014_TanguroOldThresh_CLM_FATES"         , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "PFT: EG+DD; Alloc: Simple; Thresh: SWC"   , "1x1pt-tanguroMT-BR_v1.2_c20210913"
-                          ,   15, "S0015_PetrolinaOldThresh_CLM_FATES"       , "CLM-FATES"  , NA_character_, NA_character_, "#CAB2D6", "PFT: EG+DD; Alloc: Simple; Thresh: SWC"   , "1x1pt-petrolinaPE-BR_v1.2_c20210913"
-                          )#end tribble
+# List of additional configuration settings
+config_info = tidyr::tribble( ~idx, ~suffix                       , ~model     , ~desc                             , ~simul_yeara, ~simul_yearz,   ~colour, ~show
+                            ,   1L, "InitBare_CompeteON_HydroOFF" , "CLM-FATES", "Bare ground; Dynamic; Hydro OFF" ,        1700L,        2025L, "#1B9E77", FALSE
+                            ,   2L, "InitPlot_CompeteON_HydroOFF" , "CLM-FATES", "Inventory; Dynamic; Hydro OFF"   ,           0L,           0L, "#FC8D62", FALSE
+                            ,   3L, "InitPlot_CompeteOFF_HydroOFF", "CLM-FATES", "Inventory; Static; Hydro OFF"    ,           0L,           0L, "#7570B3", FALSE
+                            ,   4L, "InitBare_CompeteON_HydroON"  , "CLM-FATES", "Bare ground; Dynamic; Hydro ON"  ,        1700L,        2025L, "#66C2A5", FALSE
+                            ,   5L, "InitPlot_CompeteON_HydroON"  , "CLM-FATES", "Inventory; Dynamic; Hydro ON"    ,           0L,           0L, "#E6AB02", FALSE
+                            ,   6L, "InitPlot_CompeteOFF_HydroON" , "CLM-FATES", "Inventory; Static; Hydro ON"     ,           0L,           0L, "#8DA0CB", FALSE
+                            )#end tidyr::tribble
 
-# Use case_sel to select which simulations to process
-idx_case  = 1
-case_site = c("1x1pt-paracouGUF_v1.6_c20210913","1x1pt-tanguroMT-BR_v1.2_c20210913","1x1pt-petrolinaPE-BR_v1.2_c20210913")[idx_case]
-case_pref = c("Paracou","Tanguro","Petrolina")[idx_case]
-case_sel  = (case_info$site %in% case_site) & (! grepl(pattern="S0000",x=case_info$name))
 
-# Select simulations to process.
-case_info    = case_info[case_sel,,drop=FALSE]
-n_case_info  = nrow(case_info)
+# Use site_idx  to select which site to process.
+site_idx    = 1L
 
+# Set case prefix (text before the case number in the case directory name).
+case_prefix = "E"
+
+#---~---
+# You don't need to update anything in this block unless you are developing the code.
+#---~---
+# Handy scalaras
+isite          = match(site_idx,site_info$idx)
+iconfig        = which(config_info$show) 
+case_idx       = max(config_info$idx)*(site_idx-1)+config_info$idx[iconfig]
+site_prefix    = site_info$prefix[isite]
+site_yeara     = site_info$datm_yeara[isite]
+site_yearz     = site_info$datm_yearz[isite]
+case_pref      = site_info$prefix[isite]
+case_suffix    = config_info$suffix[iconfig]
+case_model     = config_info$model [iconfig]
+case_name      = paste0(case_prefix,sprintf("%4.4i",case_idx),"_",site_prefix,"_",case_suffix,"_",gsub(pattern="-",replacement="_",x=case_model))
+case_site      = site_info$desc[isite]
+case_base      = site_info$base[isite]
+case_showa     = config_info$simul_yeara[iconfig]
+case_showz     = config_info$simul_yearz[iconfig]
+# Define time stamp for first and last year depending on the setting.
+case_showa = ifelse(test=case_showa <= 0L,yes=site_yeara-abs(case_showa),no=case_showa)
+case_showz = ifelse(test=case_showz <= 0L,yes=site_yearz-abs(case_showz),no=case_showz)
+case_tstampa = ifelse(test=is.na(case_showa),yes=NA_character_,no=paste0("01/01/",case_showa))
+case_tstampz = ifelse(test=is.na(case_showz),yes=NA_character_,no=paste0("01/01/",case_showz))
+# Build tibble with configuration information
+case_info      = tidyr::tibble( idx     = case_idx
+                              , name    = case_name
+                              , model   = config_info$model[iconfig]
+                              , tstampa = case_tstampa
+                              , tstampz = case_tstampz
+                              , colour  = config_info$colour[iconfig]
+                              , desc    = paste0(config_info$desc[iconfig]," (",config_info$model[iconfig],")")
+                              )#end tibble
+n_case_info = nrow(case_info)
+#---~---
 ```
 
 We then set some global paths:
 * **home_path**. Typically the user's home path.  Useful for building other paths. `path.expand("~")` typically works for all users.
+* **base_path**. Typically the main directory where cases are generated.
 * **hesm_main**. The main directory to where all simulation results are written. The script will assume that the main path for this case simulation `case_path=file.path(hesm_main,case_name)`.
 * **site_main**. The main path where the individual site files are located (excluding the sub-directory for the specific site).
 * **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
@@ -112,10 +164,11 @@ We then set some global paths:
 
 ```{r, label='path-settings',message=FALSE, results='hide'}
 home_path  = path.expand("~")
-hesm_main  = file.path(home_path,"Documents/LocalData/FATES/SingleRuns/Simulations")
-site_main  = file.path(home_path,"Data/FATES_DataSets")
-util_path  = file.path(home_path,"Util/RUtils")
-plot_main  = file.path(hesm_main,"Figures","Evaluation",case_pref)
+base_path  = file.path(home_path,"Documents","LocalData","FATES","SingleRuns")
+hesm_main  = file.path(base_path,"Simulations")
+site_main  = file.path(home_path,"Data","FATES_DataSets")
+util_path  = file.path(home_path,"Util","RUtils")
+plot_main  = file.path(base_path,"Figures","Evaluation",case_pref)
 ```
 
 
@@ -162,7 +215,6 @@ source(file.path(util_path,"load.everything.r"),chdir=TRUE)
 We then make sure to set up the derived paths and files.
 
 ```{r, label='set-derived-paths',message=FALSE, results='hide'}
-
 # Output path for time series.
 comparison_path     = file.path(plot_main,"comparison"    )
 taylor_biasvar_path = file.path(plot_main,"taylor_biasvar")
@@ -172,7 +224,7 @@ dummy = dir.create(comparison_path    ,recursive = TRUE,showWarnings = FALSE)
 dummy = dir.create(taylor_biasvar_path,recursive = TRUE,showWarnings = FALSE)
 
 # Define eddy covariance tower and leaf area index files.
-site_path = file.path(site_main,case_site)
+site_path = file.path(site_main,case_base)
 eddy_base = list.files(path=site_path,pattern="_eddy-summ\\.nc$")
 mlai_base = list.files(path=site_path,pattern="_c6modis-summ\\.nc$")
 
@@ -187,7 +239,7 @@ if (length(eddy_base) > 0){
 }else{
    cat(" Tower file data not found.  Check your settings.\n")
    cat(" site_main = \"",site_main,"\"\n",sep="")
-   cat(" case_site = \"",case_site,"\"\n",sep="")
+   cat(" case_base = \"",case_base,"\"\n",sep="")
    cat(" site_path = \"",site_path,"\"\n",sep="")
    cat(" Path \"site_main\" exists = ",file.exists(site_main),"\n",sep="")
    cat(" Path \"site_path\" exists = ",file.exists(site_path),"\n",sep="")
@@ -206,7 +258,7 @@ if (length(mlai_base) > 0){
 }else{
    cat(" MODIS file data not found.  Check your settings.\n")
    cat(" site_main = \"",site_main,"\"\n",sep="")
-   cat(" case_site = \"",case_site,"\"\n",sep="")
+   cat(" case_base = \"",case_base,"\"\n",sep="")
    cat(" site_path = \"",site_path,"\"\n",sep="")
    cat(" Path \"site_main\" exists = ",file.exists(site_main),"\n",sep="")
    cat(" Path \"site_path\" exists = ",file.exists(site_path),"\n",sep="")
@@ -254,8 +306,7 @@ for (i in sequence(n_case_info)){
    # Extract scalars
    case_name    = case_info$name   [i]
    case_model   = case_info$model  [i]
-   case_desc    = paste0(case_info$desc[i]," (",case_model,")")
-   case_site    = case_info$site   [i]
+   case_desc    = case_info$desc   [i]
    case_tstampa = case_info$tstampa[i]
    case_tstampz = case_info$tstampz[i]
    cat0("   - ",case_name,".")
@@ -329,6 +380,10 @@ for (i in sequence(n_case_info)){
    }#end for (d in seq_along(nc_file))
 }#end for for (i in sequence(n_case_info))
 
+# Remove simulations that do not exist
+case_info = case_info %>%
+   filter (! nc_zero %in% "") 
+n_case_info = nrow(case_info)
 ```
 
 
@@ -505,9 +560,13 @@ if (file.exists(mlai_file)){
    rm(nc_mlai)
 
    # Merge the two objects
-   site1d      = full_join(x=eddy1d,y=mlai1d,by=c("time","source")) %>% 
+   site1d      = inner_join(x=eddy1d,y=mlai1d,by=c("time","source")) %>% 
                  arrange(time,source)
    n_site_time = nrow(site1d)
+   
+   
+   # Temporary patch: rename LAI as fates_lai
+   names(site1d)[names(site1d) %in% "lai"] = "fates_lai"
 }else{
    # MODIS data not found. Turn eddy1d into site1d.
    site1d = eddy1d
@@ -542,7 +601,7 @@ Here we perform the following tasks, using the actual first history file from th
 * Determine which path and file name structure .
 * Initialise a `tibble` object for all the candidate variables (Check `hlm1dvar` settings in [RUtils/hlm_varlist.r](https://github.com/mpaiao/FATES_Utils/blob/master/RUtils/hlm_varlist.r) for the list of variables).
 * Retrieve soil information (which will be useful when comparing the model against soil measurements).
-* Retrieve size and PFT indices for the `_SCPF` variables (which will be useful in the future for comparing the model against census measurements).
+* Retrieve size and PFT indices for the `_SZPF` variables (which will be useful in the future for comparing the model against census measurements).
 
 ```{r, label='load-hlm-data',message=FALSE, results='hide'}
 if ("nc_info" %in% ls()){dummy = nc_close(nc_info); rm(nc_info)}
@@ -553,8 +612,7 @@ if ("nc_info" %in% ls()){dummy = nc_close(nc_info); rm(nc_info)}
 i            = 1
 case_name    = case_info$name   [i]
 case_model   = case_info$model  [i]
-case_desc    = paste0(case_info$desc[i]," (",case_model,")")
-case_site    = case_info$site   [i]
+case_desc    = case_info$desc   [i]
 case_tstampa = case_info$tstampa[i]
 case_tstampz = case_info$tstampz[i]
 nc_zero      = case_info$nc_zero[i]
@@ -579,19 +637,19 @@ cat0("   - Identify all HLM variables.")
 # Retrieve all "1D" variables that are available at the host model. 
 # A few variables may not exist in truly 1D, so we check if they may be reconstructed.
 nc_pref   = tolower(x=nc_vlist)
-nc_scpf   = ( nc_pref %in% paste0(hlm1dvar$vnam,"_canopy_scpf"    )
-            | nc_pref %in% paste0(hlm1dvar$vnam,"_understory_scpf") )
-nc_scls   = ( nc_pref %in% paste0(hlm1dvar$vnam,"_canopy_scls"    )
-            | nc_pref %in% paste0(hlm1dvar$vnam,"_understory_scls") )
-nc_keep   = nc_pref %in% hlm1dvar$vnam | ( ( !  nc_pref %in% hlm1dvar$vnam ) & ( nc_scpf | nc_scls ) )
+nc_szpf   = ( nc_pref %in% paste0(hlm1dvar$vnam,"_canopy_szpf"    )
+            | nc_pref %in% paste0(hlm1dvar$vnam,"_ustory_szpf") )
+nc_size   = ( nc_pref %in% paste0(hlm1dvar$vnam,"_canopy_sz"    )
+            | nc_pref %in% paste0(hlm1dvar$vnam,"_ustory_sz") )
+nc_keep   = nc_pref %in% hlm1dvar$vnam | ( ( !  nc_pref %in% hlm1dvar$vnam ) & ( nc_szpf | nc_size ) )
 no_hlm1d  = nc_vlist[! nc_keep]
 nc_hlm1d  = nc_vlist[  nc_keep]
 
 # Remove suffix, we will add them back later when needed.
-nc_hlm1d  = gsub(pattern="_CANOPY_SCPF$"    ,replacement="",x=nc_hlm1d)
-nc_hlm1d  = gsub(pattern="_CANOPY_SCLS$"    ,replacement="",x=nc_hlm1d)
-nc_hlm1d  = gsub(pattern="_UNDERSTORY_SCPF$",replacement="",x=nc_hlm1d)
-nc_hlm1d  = gsub(pattern="_UNDERSTORY_SCLS$",replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_CANOPY_SZPF$",replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_CANOPY_SZ$"  ,replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_USTORY_SZPF$",replacement="",x=nc_hlm1d)
+nc_hlm1d  = gsub(pattern="_USTORY_SZ$"  ,replacement="",x=nc_hlm1d)
 nc_hlm1d  = sort(unique(nc_hlm1d))
 
 # Check whether to append "evapotranspiration"
@@ -666,13 +724,12 @@ We also read the soil information and the indices for PFT and size classes. Beca
 ```{r, label='load-soil-dim-data',message=FALSE, results='hide'}
 # For soil layers and size-pft indices, we save a list for each simulation, as the PFT definitions and soil depth may vary across simulations.
 slayer     = list()
-index_scpf = list()
+index_szpf = list()
 for (i in sequence(n_case_info)){
    # Select the first case to retrieve general information on files
    case_name    = case_info$name   [i]
    case_model   = case_info$model  [i]
-   case_desc    = paste0(case_info$desc[i]," (",case_model,")")
-   case_site    = case_info$site   [i]
+   case_desc    = case_info$desc   [i]
    case_tstampa = case_info$tstampa[i]
    case_tstampz = case_info$tstampz[i]
    nc_zero      = case_info$nc_zero[i]
@@ -704,7 +761,7 @@ for (i in sequence(n_case_info)){
    # census comparisons.
    #---~---
    cat0("   - Load indices for size- and pft-dependent variables.")
-   index_scpf[[case_name]] = tibble( scls   = ncvar_get(nc=nc_info,varid='fates_scmap_levscpf'  )
+   index_szpf[[case_name]] = tibble( size   = ncvar_get(nc=nc_info,varid='fates_scmap_levscpf'  )
                                    , pft    = ncvar_get(nc=nc_info,varid='fates_pftmap_levscpf' )
                                    )#end tibble
 
@@ -729,8 +786,7 @@ for (i in sequence(n_case_info)){
    # Select the first case to retrieve general information on files
    case_name    = case_info$name      [i]
    case_model   = case_info$model     [i]
-   case_desc    = paste0(case_info$desc[i]," (",case_model,")")
-   case_site    = case_info$site      [i]
+   case_desc    = case_info$desc      [i]
    case_tstampa = case_info$tstampa   [i]
    case_tstampz = case_info$tstampz   [i]
    nc_zero      = case_info$nc_zero   [i]
@@ -763,10 +819,10 @@ for (i in sequence(n_case_info)){
       for (v in sequence(nhlm1d-etr_last-er_last)){
          # Retrieve variable
          nc_nvnow            = nc_hlm1d[v]
-         nc_can_scpf         = paste0(nc_nvnow,"_CANOPY_SCPF")
-         nc_und_scpf         = paste0(nc_nvnow,"_UNDERSTORY_SCPF")
-         nc_can_scls         = paste0(nc_nvnow,"_CANOPY_SCLS")
-         nc_und_scls         = paste0(nc_nvnow,"_UNDERSTORY_SCLS")
+         nc_can_szpf         = paste0(nc_nvnow,"_CANOPY_SZPF")
+         nc_und_szpf         = paste0(nc_nvnow,"_USTORY_SZPF")
+         nc_can_size         = paste0(nc_nvnow,"_CANOPY_SZ")
+         nc_und_size         = paste0(nc_nvnow,"_USTORY_SZ")
          nc_pref             = tolower(x=nc_nvnow)
          
          # Map variable to variable table, get the addition and multiplication factors.
@@ -783,15 +839,15 @@ for (i in sequence(n_case_info)){
             # Read variable as is.
             nc_dat               = ncvar_get(nc=nc_hlm,varid=nc_nvnow)
             hlm1d[[h_vnam]][iw]  = h_add0 + h_mult * nc_dat
-         }else if(all(c(nc_can_scpf,nc_und_scpf) %in% nc_vlist)){
+         }else if(all(c(nc_can_szpf,nc_und_szpf) %in% nc_vlist)){
             # Build variable from the size- and PFT- arrays.
-            nc_can               = ncvar_get(nc=nc_hlm,varid=nc_can_scpf)
-            nc_und               = ncvar_get(nc=nc_hlm,varid=nc_und_scpf)
+            nc_can               = ncvar_get(nc=nc_hlm,varid=nc_can_szpf)
+            nc_und               = ncvar_get(nc=nc_hlm,varid=nc_und_szpf)
             hlm1d[[h_vnam]][iw]  = h_add0 + h_mult * sum(nc_can+nc_und)
-         }else if(all(c(nc_can_scls,nc_und_scls) %in% nc_vlist)){
+         }else if(all(c(nc_can_size,nc_und_size) %in% nc_vlist)){
             # Build variable from the size- and PFT- arrays.
-            nc_can               = ncvar_get(nc=nc_hlm,varid=nc_can_scls)
-            nc_und               = ncvar_get(nc=nc_hlm,varid=nc_und_scls)
+            nc_can               = ncvar_get(nc=nc_hlm,varid=nc_can_size)
+            nc_und               = ncvar_get(nc=nc_hlm,varid=nc_und_size)
             hlm1d[[h_vnam]][iw]  = h_add0 + h_mult * sum(nc_can+nc_und)
          }else{
             cat0("--------------------------------------------------")
@@ -949,7 +1005,7 @@ for (v in seq_along(var_both)){
 # Wrap plots then global settings and x axis.
 gg_patch = wrap_plots(gg_emean)
 gg_patch = gg_patch + guide_area() + plot_layout(guides="collect")
-gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_pref)
+gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_site)
 
 # Save plots.
 for (d in sequence(ndevice)){
@@ -1058,7 +1114,7 @@ for (v in seq_along(var_both)){
 # Wrap plots then global settings and x axis.
 gg_patch = wrap_plots(gg_emean)
 gg_patch = gg_patch + guide_area() + plot_layout(guides="collect")
-gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_pref)
+gg_patch = gg_patch + plot_annotation(tag_levels = "a", title = case_site)
 
 # Save plots.
 for (d in sequence(ndevice)){
@@ -1219,7 +1275,7 @@ gg_good = gg_taylor( x                  = td_eval
                                               )#end list
                    , group_opts         = list( title = "Variable", label = group_label)
                    , colour_opts        = list(by="model")
-                   , main_title         = paste0("Taylor Diagram: ",case_pref)
+                   , main_title         = paste0("Taylor Diagram: ",case_site)
                    , base_size          = gg_ptsz
                    , extra_legend       = TRUE
                    )#end gg_taylor
@@ -1333,7 +1389,7 @@ gg_good = gg_biasvar( x                  = td_eval
                                                )#end list
                     , group_opts         = list( title = "Variable", label = group_label)
                     , colour_opts        = list(by="model")
-                    , main_title         = paste0("Bias-Variance Diagram: ",case_pref)
+                    , main_title         = paste0("Bias-Variance Diagram: ",case_site)
                     , base_size          = gg_ptsz
                     , show_nsme          = FALSE
                     , extra_legend       = TRUE

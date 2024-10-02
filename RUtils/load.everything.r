@@ -89,25 +89,40 @@ discreet.require <<- function(...){
 
 #--- Load all packages needed.
 loaded.package = list()
-loaded.package[["agricolae"   ]] = discreet.require(agricolae   )
-loaded.package[["data.table"  ]] = discreet.require(data.table  )
-loaded.package[["fields"      ]] = discreet.require(fields      )
-loaded.package[["geobr"       ]] = discreet.require(geobr       )
-loaded.package[["lubridate"   ]] = discreet.require(lubridate   )
-loaded.package[["ncdf4"       ]] = discreet.require(ncdf4       )
-loaded.package[["openair"     ]] = discreet.require(openair     )
-loaded.package[["patchwork"   ]] = discreet.require(patchwork   )
-loaded.package[["purrr"       ]] = discreet.require(purrr       )
-loaded.package[["raster"      ]] = discreet.require(raster      )
-loaded.package[["RColorBrewer"]] = discreet.require(RColorBrewer)
-loaded.package[["reshape2"    ]] = discreet.require(reshape2    )
-loaded.package[["rgdal"       ]] = discreet.require(rgdal       )
-loaded.package[["scales"      ]] = discreet.require(scales      )
-loaded.package[["tabularaster"]] = discreet.require(tabularaster)
-loaded.package[["tidyverse"   ]] = discreet.require(tidyverse   )
-loaded.package[["viridis"     ]] = discreet.require(viridis     )
+loaded.package[["agricolae"     ]] = discreet.require(agricolae     )
+loaded.package[["cluster"       ]] = discreet.require(cluster       )
+loaded.package[["data.table"    ]] = discreet.require(data.table    )
+loaded.package[["egg "          ]] = discreet.require(egg           )
+loaded.package[["extrafont "    ]] = discreet.require(extrafont     )
+loaded.package[["FactoMineR"    ]] = discreet.require(FactoMineR    )
+loaded.package[["fields"        ]] = discreet.require(fields        )
+loaded.package[["geojsonsf"     ]] = discreet.require(geojsonsf     )
+loaded.package[["geomtextpath"  ]] = discreet.require(geomtextpath  )
+loaded.package[["ggtext"        ]] = discreet.require(ggtext        )
+loaded.package[["hexbin"        ]] = discreet.require(hexbin        )
+loaded.package[["lubridate"     ]] = discreet.require(lubridate     )
+loaded.package[["MASS"          ]] = discreet.require(MASS          )
+loaded.package[["missMDA"       ]] = discreet.require(missMDA       )
+loaded.package[["ncdf4"         ]] = discreet.require(ncdf4         )
+loaded.package[["nlme"          ]] = discreet.require(nlme          )
+loaded.package[["openair"       ]] = discreet.require(openair       )
+loaded.package[["patchwork"     ]] = discreet.require(patchwork     )
+loaded.package[["raster"        ]] = discreet.require(raster        )
+loaded.package[["RColorBrewer"  ]] = discreet.require(RColorBrewer  )
+loaded.package[["reshape2"      ]] = discreet.require(reshape2      )
+loaded.package[["rgbif"         ]] = discreet.require(rgbif         )
+loaded.package[["rworldmap"     ]] = discreet.require(rworldmap     )
+loaded.package[["scales"        ]] = discreet.require(scales        )
+loaded.package[["sf"            ]] = discreet.require(sf            )
+loaded.package[["smatr"         ]] = discreet.require(smatr         )
+loaded.package[["stringr"       ]] = discreet.require(stringr       )
+loaded.package[["tabularaster"  ]] = discreet.require(tabularaster  )
+loaded.package[["terra"         ]] = discreet.require(terra         )
+loaded.package[["tidyverse"     ]] = discreet.require(tidyverse     )
+loaded.package[["viridis"       ]] = discreet.require(viridis       )
 #--- Packages that must be loaded at the end.
-loaded.package[["forecast"    ]] = discreet.require(forecast    )
+loaded.package[["forecast"      ]] = discreet.require(forecast      )
+loaded.package[["ggfortify"     ]] = discreet.require(ggfortify     )
 #---~---
 
 
@@ -224,6 +239,11 @@ options(locatorBell=FALSE,dplyr.summarise.inform=FALSE)
 
 #--- Assume time zone to be GMT.
 Sys.setenv(TZ="GMT")
+#---~---
+
+
+#--- Load GhostScript fonts.
+extrafont::loadfonts(device="all")
 #---~---
 
 
