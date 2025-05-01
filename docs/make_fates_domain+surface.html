@@ -14,8 +14,8 @@
 
 <title>Generating ELM/CLM domain and surface files for a single point</title>
 
-<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -58,6 +58,7 @@ if (window.hljs) {
 
 
 
+
 <link rel="stylesheet" href="styles.css" type="text/css" />
 
 
@@ -82,6 +83,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -139,11 +143,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -172,8 +180,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -181,16 +189,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -234,7 +235,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -279,7 +280,8 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Generating ELM/CLM domain and surface files for a single point</h1>
+<h1 class="title toc-ignore">Generating ELM/CLM domain and surface files
+for a single point</h1>
 <h4 class="author">Marcos Longo</h4>
 <h4 class="date">16-Jun-2021</h4>
 
@@ -288,7 +290,11 @@ $(document).ready(function () {
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>This document shows how to generate domain and surface files for a single point of interest. This is needed for when setting a new site. Currently this script simply uses existing domain and surface files, extracts information from the nearest grid cell, and complements with site-specific information you might have.</p>
+<p>This document shows how to generate domain and surface files for a
+single point of interest. This is needed for when setting a new site.
+Currently this script simply uses existing domain and surface files,
+extracts information from the nearest grid cell, and complements with
+site-specific information you might have.</p>
 </div>
 <div id="reset-session" class="section level1">
 <h1>Reset session</h1>
@@ -316,16 +322,22 @@ invisible(gc())</code></pre>
 <h1>Main settings</h1>
 <div id="required-packages" class="section level2">
 <h2>Required packages</h2>
-<p>Load some packages. By default, we skip the warning messages, but it may be a good idea to visualise them if it is the first time running.</p>
+<p>Load some packages. By default, we skip the warning messages, but it
+may be a good idea to visualise them if it is the first time
+running.</p>
 <pre class="r"><code>isfine = c( data.table = require(data.table,quietly=TRUE,warn.conflicts=FALSE)
           , fields     = require(fields    ,quietly=TRUE,warn.conflicts=FALSE)
           , lubridate  = require(lubridate ,quietly=TRUE,warn.conflicts=FALSE)
           , ncdf4      = require(ncdf4     ,quietly=TRUE,warn.conflicts=FALSE)
           , purrr      = require(purrr     ,quietly=TRUE,warn.conflicts=FALSE)
           , reshape2   = require(reshape2  ,quietly=TRUE,warn.conflicts=FALSE)
+          , soilDB     = require(soilDB    ,quietly=TRUE,warn.conflicts=FALSE)
+          , terra      = require(terra     ,quietly=TRUE,warn.conflicts=FALSE)
           , tidyverse  = require(tidyverse ,quietly=TRUE,warn.conflicts=FALSE)
-          )#end c
-if (! all(isfine)){
+          )#end c</code></pre>
+<pre><code>## Warning: package &#39;ncdf4&#39; was built under R version 4.3.3</code></pre>
+<pre><code>## Warning: package &#39;soilDB&#39; was built under R version 4.3.3</code></pre>
+<pre class="r"><code>if (! all(isfine)){
    cat0(&quot; List of required packages, and the success status loading them:\n&quot;)
    print(isfine)
    stop(&quot; Some packages are missing and must be installed.&quot;)
@@ -335,22 +347,57 @@ if (! all(isfine)){
 <h2>Path and file location</h2>
 <p>Set paths and files for input and output.</p>
 <ul>
-<li><strong>main_path</strong>. The main path for processing data. The output path will be generated here.</li>
-<li><strong>input_path</strong>. The location where existing surface and domain netcdf files are located</li>
-<li><strong>output_path</strong>. The main output path for the data. A sub-directory for this site will be created.</li>
+<li><strong>here_path</strong>. The main path for processing data. The
+output path will be generated here.</li>
+<li><strong>input_path</strong>. The location where existing surface and
+domain netcdf files are located</li>
+<li><strong>output_path</strong>. The main output path for the data. A
+sub-directory for this site will be created.</li>
 </ul>
-<pre class="r"><code>main_path   = file.path(path.expand(&quot;~&quot;),&quot;Documents&quot;,&quot;LocalData&quot;,&quot;TowerData&quot;,&quot;Paracou&quot;,&quot;make_single_site&quot;)
-input_path  = file.path(main_path,&quot;input_netcdf&quot;)
+<pre class="r"><code>here_path   = getwd()
+input_path  = file.path(path.expand(&quot;~&quot;),&quot;Documents&quot;,&quot;LocalData&quot;,&quot;TowerData&quot;,&quot;GriddedData&quot;)
 output_path = file.path(path.expand(&quot;~&quot;),&quot;Data&quot;,&quot;FATES_DataSets&quot;)</code></pre>
-<p>Set the URL for the input surface data. <em>This is normally a gridded data file</em>, not a single-site one. We will only download the data in case we cannot locate these files at <code>input_netcdf</code>. If you have your own set of input data, set a dummy URL with the actual file name. For example, if you have the domain file <code>my_surface_grid_file.nc</code>, set <code>url.surfgrid="https://localhost/my_surface_grid_file.nc"</code>.</p>
-<pre class="r"><code>url_surfgrid = &quot;https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.24/surfdata_0.125x0.125_hist_16pfts_Irrig_CMIP6_simyr2005_c190613.nc&quot;</code></pre>
+<p>Set the URL for the input surface data and soil texture file.
+<em>These are normally a gridded data file</em>, not single-site files.
+These files are large and the servers can be slow, so we will only
+download the data in case we cannot locate the corresponding files at
+<code>input_path</code>.</p>
+<ul>
+<li><strong>url_surfgrid</strong>. This is the surface data, in NetCDF
+format. Normally we use a surface file retrieved from either the CESM or
+the E3SM archive.</li>
+<li><strong>url_soildepth</strong>. This is the soil depth data, in
+GeoTIFF format. By default this is the <a
+href="https://dx.doi.org/10.1002/2016MS000686">Shangguan et
+al. (2017)</a>, available at the <a
+href="https://data.isric.org/geonetwork/srv/api/records/f36117ea-9be5-4afd-bb7d-7a3e77bf392a">ISRIC
+website</a> as part of the original SoilGrids data base (version 1).
+Note that SoilGrids 2.0 no longer provides soil depth although according
+to their <a
+href="https://www.isric.org/explore/soilgrids/faq-soilgrids#Which_soil_properties_will_be_available_in_the_future">FAQ</a>
+they plan to release it at some point, in which case this may be
+replaced.</li>
+</ul>
+<p>If you have your own set of input surface or soil depth data, set a
+dummy URL with the actual file name. For example, if you have the
+surface file <code>my_surface_grid_file.nc</code>, set
+<code>url.surfgrid="https://localhost/my_surface_grid_file.nc"</code>.</p>
+<pre class="r"><code># Gridded surface file
+url_surfgrid = &quot;https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/lnd/clm2/surfdata_map/release-clm5.0.24/surfdata_0.125x0.125_hist_16pfts_Irrig_CMIP6_simyr2005_c190613.nc&quot;
+
+# Gridded depth to bedrock
+url_soildepth = &quot;https://files.isric.org/soilgrids/former/2017-03-10/data/BDTICM_M_250m_ll.tif&quot;</code></pre>
 </div>
 <div id="author-information" class="section level2">
 <h2>Author information</h2>
-<p>Provide information about yourself. This will be included in the netCDF headers. In case you do not want to specify any of them, set them to <code>NA_character_</code></p>
+<p>Provide information about yourself. This will be included in the
+netCDF headers. In case you do not want to specify any of them, set them
+to <code>NA_character_</code></p>
 <ul>
-<li><strong>author_name</strong>. Person who is generating these files (typically it’s you).</li>
-<li><strong>author_email</strong>. Contact email (so people can reach out to you if problems arise).</li>
+<li><strong>author_name</strong>. Person who is generating these files
+(typically it’s you).</li>
+<li><strong>author_email</strong>. Contact email (so people can reach
+out to you if problems arise).</li>
 </ul>
 <pre class="r"><code>author_name  = &quot;This Is You&quot;
 author_email = &quot;yourself@somewhere.gov&quot;</code></pre>
@@ -360,38 +407,141 @@ author_email = &quot;yourself@somewhere.gov&quot;</code></pre>
 <p>Provide some basic information about the site:</p>
 <ul>
 <li><strong>xid</strong>. Unique site ID.</li>
-<li><strong>site_desc</strong>. Site description (to be added to the NetCDF files headers).</li>
+<li><strong>site_desc</strong>. Site description (to be added to the
+NetCDF files headers).</li>
 <li><strong>site_lon</strong>. Longitude (degrees east).</li>
 <li><strong>site_lat</strong>. Latitude (degrees north).</li>
 <li><strong>site_alt</strong>. Altitude (metres above sea level).</li>
 <li><strong>dxy</strong>. Intended grid size.</li>
-<li><strong>site_pcsand</strong>; <strong>site_pcclay</strong>. Percentage of sand and clay, respectively. They should be both be limited between 0 and 100., and their sum shall not exceed 100. Silt fraction will be derived from these fractions. If these fractions are not known, set them to <code>NA</code>. If texture information is provided, we assume that all layers have the same texture (this should be revisited once I figure out the soil layers).</li>
-<li><strong>site_organic</strong>. Soil organic content <span class="math inline">\(\left[\mathrm{kg\,m^{-3}}\right]\)</span>. For now we use this value to rescale the gridded organic content of all input layers.</li>
-<li><strong>site_bedrock</strong>. Soil depth to bedrock <span class="math inline">\(\left[\mathrm{m}\right]\)</span>. In case depth is unknown, leave it as <code>NA_real_</code>.</li>
-<li><strong>undef</strong>. A number to denote missing values. This is needed by NetCDF, but the data should not have any.</li>
-<li><strong>force_natural</strong>. Should we overwrite the fraction cover of global gridded data set, so natural vegetation becomes 100%?</li>
+<li><strong>site_pcsand</strong>; <strong>site_pcclay</strong>.
+Percentage of sand and clay, respectively. They should be both be
+limited between 0 and 100., and their sum shall not exceed 100. Silt
+fraction will be derived from these fractions. If these fractions are
+not known, set them to <code>NA_real_</code>. Provide either a single
+value (for all layers) or a vector with values for each soil layer
+(defined by <code>site_depth</code>). If the texture should be obtained
+from <a href="https://soilgrids.org">SoilGrids2.0</a>, set one of the
+variables to <code>"SoilGrids"</code> (case insensitive).</li>
+<li><strong>site_organic</strong>. Soil organic content <span
+class="math inline">\(\left[\mathrm{kg\,m^{-3}}\right]\)</span>. If
+these fractions are not known, set them to <code>NA_real_</code>.
+Provide either a single value (for all layers) or a vector with values
+for each soil layer (defined by <code>site_depth</code>). If the soil
+organic content should be obtained from <a
+href="https://soilgrids.org">SoilGrids2.0</a>, set one of the variables
+to <code>"SoilGrids"</code> (case insensitive).</li>
+<li><strong>site_zbot</strong>. This is used only if
+<code>site_pcsand</code>, <code>site_pcclay</code> or
+<code>site_organic</code> are vectors. In this case, this value provides
+the soil depth at the bottom of each layer for which site-specific soil
+information is provided <span
+class="math inline">\(\left[\mathrm{m}\right]\)</span>. The top of the
+soil layers will match the bottom of the previous layer, and the top of
+the first layer will be assumed to be at the surface (i.e., at
+<code>site_ztop=0</code>). If no site-specific information is provided
+(i.e., if <code>site_zbot=NA_real_</code>), we assume that the input is
+provided at the same layers as the host land models.
+<ul>
+<li><strong>Important:</strong> This <strong>will not</strong> reset the
+soil layer depths in the host land model. Instead, this will be used for
+interpolating the site-specific quantities onto the host land model soil
+depth layers.</li>
+<li>This will be ignored if retrieving data from SoilGrids 2.0.</li>
+</ul></li>
+<li><strong>site_bedrock</strong>. Soil depth to bedrock. If the value
+is valid and numeric, this will be used as the soil depth. To use the
+gridded dataset provided in <code>url_soildepth</code>, set variable
+<code>site_bedrock</code> to <code>"Gridded"</code> (case insensitive).
+The code will reset the number of active soil layers to the one whose
+top is still above the bedrock layer. In case soil depth is unknown,
+leave it as <code>NA_real_</code>, in which case the code will not
+change the default thickness of the active layer.</li>
+<li><strong>br_scale</strong>. If soil depth is provided either as a
+number or through the GeoTIFF, this variable can be used for converting
+the original units to metres <span
+class="math inline">\(\left[\mathrm{m}\right]\)</span>. For example, if
+using the <a href="https://dx.doi.org/10.1002/2016MS000686">Shangguan et
+al. (2017)</a>, the values are originally in <span
+class="math inline">\(\left[\mathrm{cm}\right]\)</span>, in which case
+you must set up <code>bedrock_scale = 0.01</code></li>
+<li><strong>br_window</strong>. Which window size <span
+class="math inline">\(\left[\mathrm{m}\right]\)</span> around the
+nearest pixel should we consider for sampling of soil depth to bedrock,
+in case <code>site_bedrock="Gridded"</code>. If the code should sample
+only the actual pixel, set <code>br_window=NA_real_</code>.</li>
+<li><strong>undef</strong>. A number to denote missing values. This is
+needed by NetCDF, but the data should not have any.</li>
+<li><strong>force_natural</strong>. Should we overwrite the fraction
+cover of global gridded data set, so natural vegetation becomes
+100%?</li>
 </ul>
 <pre class="r"><code>xid           = &quot;paracouGUF&quot;
 site_desc     = &quot;Guyaflux tower at Paracou, French Guiana&quot;
-dat_version   = &quot;1.5&quot;
+dat_version   = &quot;3.1&quot;
 site_lon      = -52.912222
 site_lat      =   5.281667
 site_alt      =  30.000000
 dxy           =  1.0
-site_xsand    = NA_real_ # 56.2
-site_xclay    = NA_real_ # 37.2
-site_organic  = NA_real_ # 31.1
-site_bedrock  = NA_real_
+site_xsand    = &quot;SoilGrids&quot; 
+site_xclay    = &quot;SoilGrids&quot; 
+site_organic  = &quot;SoilGrids&quot;
+site_zbot     = NA_real_
+site_bedrock  = &quot;Gridded&quot;
+br_scale      = 0.01       # Unit conversion scale for depth to bedrock
+br_window     = 2500.      # Buffer size for the pixel extraction
 undef         = -9999.99
 force_natural = TRUE</code></pre>
 <p>Additional settings for retrieving the surface gridded data</p>
 <ul>
-<li><strong>pcveg_min</strong>. Minimum percentage of natural vegetation to consider when loading surface grid. This can be useful to avoid selecting a grid cell over non-natural vegetation when using a site in heavily degraded areas.</li>
-<li><strong>landfrac_min</strong>. Minimum fraction of land to consider when loading surface grid. This can be useful to avoid selecting a grid cell over the ocean when using a coastal site.</li>
+<li><strong>pcveg_min</strong>. Minimum percentage of natural vegetation
+to consider when loading surface grid. This can be useful to avoid
+selecting a grid cell over non-natural vegetation when using a site in
+heavily degraded areas.</li>
+<li><strong>landfrac_min</strong>. Minimum fraction of land to consider
+when loading surface grid. This can be useful to avoid selecting a grid
+cell over the ocean when using a coastal site.</li>
 </ul>
 <pre class="r"><code>pcveg_min    = 8.00
 landfrac_min = 0.50</code></pre>
-<p>This concludes the initial settings. From this point on, you may not need to change anything, unless you are debugging or adding new features.</p>
+<p><strong>Please read this before changing the settings in the next
+chunk</strong>. This allows for changing the soil layers settings in the
+surface file. As of 2025-05-01, there is a pull request in <a
+href="https://github.com/E3SM-Project/E3SM/pull/7305">E3SM</a> that
+enables non-standard soil layers in ELM. As of 2025-05-01, this is not
+available in CLM. This message may be revised if ELM integrates the pull
+request and CLM implements a similar configuration.</p>
+<ul>
+<li><strong>user_def_zsoi</strong>. Use the default ELM/CLM soil layers
+(<code>user_def_zsoi=FALSE</code>) or specify a different soil layer
+grid (<code>user_def_zsoi_TRUE</code>). Unless you use the code
+available in the ELM pull request (or ELM if this pull request is
+merged), you know what you are doing, and understand the consequences of
+changing from defaults, we <strong>strongly recommend</strong> sticking
+with <code>user_def_zsoi=FALSE</code></li>
+<li><strong>user_nlevgrnd</strong>. The user-defined number of soil
+layers. This must not exceed the default in the land model. Currently
+both ELM and CLM allow for 15 layers. If you need more than 15 layers,
+you will need to change the host land model code.</li>
+<li><strong>user_nlevsoi</strong>. The default number of active soil
+layers. This cannot exceed the default <code>nlevgrnd</code> in the
+model, but it can be less, in which case some soil layers will not be
+hydrologically active.</li>
+<li><strong>user_scalez</strong>. The scaling factor for the exponential
+term used to calculate the layer thickness.</li>
+<li><strong>user_zecoeff</strong>. The exponent coefficient for
+increasing soil layer depth for deeper layers.</li>
+</ul>
+<pre class="r"><code># Set soil layer parameters
+user_def_zsoi = c(FALSE,TRUE)[1L] # Process soil using the user-defined settings?
+                                  # - Leave this set as FALSE unless you know what you are
+                                  #   doing and the consequences of setting it to TRUE
+user_nlevgrnd = 15L               # User-defined number of soil layers
+user_nlevsoi  = 15L               # User-defined (maximum) number of active soil layers
+user_scalez   = 0.030             # User-defined scaling factor for soil layers
+user_zecoeff  = 0.45              # User-defined exponential coefficient for soil layers</code></pre>
+<p>This concludes the initial settings. From this point on, you may not
+need to change anything, unless you are debugging or adding new
+features.</p>
 </div>
 </div>
 <div id="data-processing" class="section level1">
@@ -400,8 +550,11 @@ landfrac_min = 0.50</code></pre>
 <h2>Check inputs</h2>
 <p>Ensure the input and output paths</p>
 <pre class="r"><code>dummy = dir.create(input_path ,showWarnings=FALSE,recursive=TRUE)</code></pre>
-<p>First, we check whether the input surface data file is already available at the input path. In case it is not, we download it. Because some of the files may be very large, we temporarily expand R’s default timeout for the operation to one day.</p>
-<pre class="r"><code># Find base name
+<p>First, we check whether the input surface data file is already
+available at the input path. In case it is not, we download it. Because
+some of the files may be very large, we temporarily expand R’s default
+timeout for the operation to one day.</p>
+<pre class="r"><code># Find base name for soil depth
 input_surfgrid = file.path(input_path,basename(url_surfgrid))
 
 # Download data in case they are not found.  Often these files are huge, so we tempo
@@ -410,7 +563,20 @@ if (! file.exists(input_surfgrid)){
   dummy = options(timeout=86400)
   dummy = download.file(url=url_surfgrid,destfile=input_surfgrid)
   dummy = options(timeout=orig.timeout)
-}#end if (! file.exists(input_surfgrid))</code></pre>
+}#end if (! file.exists(input_surfgrid))
+
+if (tolower(site_bedrock) %in% &quot;gridded&quot;){
+   # Find base name for soil depth
+   input_soildepth = file.path(input_path,basename(url_soildepth))
+
+   # Download data in case they are not found.  Often these files are huge, so we tempo
+   if (! file.exists(input_soildepth)){
+      orig.timeout = getOption(&quot;timeout&quot;)
+      dummy = options(timeout=86400)
+      dummy = download.file(url=url_soildepth,destfile=input_soildepth)
+      dummy = options(timeout=orig.timeout)
+   }#end if (! file.exists(input_surfgrid))
+}#end if (tolower(site_bedrock) %in% &quot;gridded&quot;)</code></pre>
 </div>
 <div id="output-names" class="section level2">
 <h2>Output names</h2>
@@ -428,16 +594,75 @@ dummy       = dir.create(site_path  ,recursive=TRUE,showWarnings=FALSE)
 
 # Domain file.  In case the file exists, remove it.
 output_domain   = file.path(site_path,paste0(&quot;domain.lnd.&quot;,site_tag,&quot;_navy.nc&quot;))
-if (file.exists(output_domain)) file.remove(output_domain)
-
-# Surface data file
+if (file.exists(output_domain)) file.remove(output_domain)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code># Surface data file
 output_surfdata = file.path(site_path,paste0(&quot;surfdata_&quot;,site_tag,&quot;.nc&quot;))
 if (file.exists(output_surfdata)) file.remove(output_surfdata)</code></pre>
 </div>
+<div
+id="define-function-that-calculates-soil-depths-for-the-surface-file"
+class="section level2">
+<h2>Define function that calculates soil depths for the surface
+file</h2>
+<p>This defines the middle, top and bottom of the soil layers using the
+default settings in ELM. This is needed because the default surface
+files for ELM and CLM do not contain the soil grid, and cannot be used
+for modifying the soil grid. ELM does not have a straightforward way of
+modifying the soil profile for now, so we always assume the default
+soil.</p>
+<pre class="r"><code># Define the original CLM/ELM settings
+orig_nlevgrnd = 15L
+orig_nlevsoi  = 10L
+orig_scalez   = 0.025
+orig_zecoeff  = 0.50
+
+# Decide whether to use default soil layers or not:
+if (user_def_zsoi){
+   nlevgrnd = user_nlevgrnd
+   nlevsoi  = user_nlevsoi
+   scalez   = user_scalez
+   zecoeff  = user_zecoeff
+}else{
+   # Use the standard CLM/ELM parameters
+   nlevgrnd = 15L
+   nlevsoi  = 10L
+   scalez   = 0.025
+   zecoeff  = 0.50
+}#end if (user_def_zsoi)
+
+# Middle of the soil layer
+active         = sequence(nlevsoi)
+zsoi           = rep(NA_real_,times=nlevgrnd)
+zsoi[active]   = scalez * ( exp( zecoeff * (active-0.5) ) - 1.0 )
+znlevsoi       = zsoi[nlevsoi]
+if (nlevsoi &lt; nlevgrnd){
+   inactive       = seq(from=nlevsoi+1L,to=nlevgrnd,by=1L)
+   zsoi[inactive] = znlevsoi + orig_scalez * ( exp( orig_zecoeff * (inactive-0.5) )
+                                             - exp( orig_zecoeff * (nlevsoi -0.5) ) )
+}#end if (nlevsoi &lt; nlevgrnd)
+# Indices for derived quantities
+jtop     = pmax(1L      ,sequence(nlevgrnd)-1)
+jbot     = pmin(nlevgrnd,sequence(nlevgrnd)+1)
+
+# Soil layer thickness
+dzsoi    = c( 0.5 * (zsoi[jbot[-nlevgrnd]] + zsoi[jtop[-nlevgrnd]])
+            , zsoi[nlevgrnd]-zsoi[nlevgrnd-1]
+            )#end c
+
+# Soil layer interfaces
+ztop     = c(0,0.5*(zsoi[-nlevgrnd]+zsoi[jbot[-nlevgrnd]]))
+zbot     = c(ztop[-1L],zsoi[nlevgrnd]+0.5*dzsoi[nlevgrnd])</code></pre>
+</div>
 <div id="domain-file" class="section level2">
 <h2>Domain file</h2>
-<p>The domain file is written entirely from the information provided at the beginning of this document.</p>
-<p>First, we set the centre and edge of the grid cells. Make sure longitude is always set from <span class="math inline">\(0^\circ\)</span> to <span class="math inline">\(360^\circ\)</span>, and that the centre of the latitude points are not too close to the poles.</p>
+<p>The domain file is written entirely from the information provided at
+the beginning of this document.</p>
+<p>First, we set the centre and edge of the grid cells. Make sure
+longitude is always set from <span
+class="math inline">\(0^\circ\)</span> to <span
+class="math inline">\(360^\circ\)</span>, and that the centre of the
+latitude points are not too close to the poles.</p>
 <pre class="r"><code># Find precision for the coordinates (typically 1% of the grid size).
 cprec = -floor(log10(dxy*0.01))
 
@@ -450,9 +675,23 @@ wlon = (clon - 0.5 * dxy) %% 360.
 elon = (clon + 0.5 * dxy) %% 360.
 slat = max(-90.,clat - 0.5 * dxy)
 nlat = min(+90.,clat + 0.5 * dxy)</code></pre>
-<p>Find the area of this grid cell, in steradians, using the definition of solid angle <span class="math inline">\(\omega\)</span>: <span class="math display">\[\begin{align}
-&amp; \omega = \left[\sin{\left(\varphi_{N}\right)} - \sin{\left(\varphi_{S}\right)} \right] \, \left[ \left(\lambda_{E} - \lambda_{W} \right) \mod{2\,\pi{}} \right]
-\end{align}\]</span> where <span class="math inline">\(\varphi_{S}\)</span> and <span class="math inline">\(\varphi_{N}\)</span> are the latitudes of the southern and northern edges [<span class="math inline">\(\mathrm{rad}\)</span>], and <span class="math inline">\(\lambda_{W}\)</span> and <span class="math inline">\(\lambda_{E}\)</span> are the longitude of the western and eastern edges [<span class="math inline">\(\mathrm{rad}\)</span>]. The modulo operator ensures that the results are correct when the centre of the grid cell crosses the Greenwich meridian.</p>
+<p>Find the area of this grid cell, in steradians, using the definition
+of solid angle <span class="math inline">\(\omega\)</span>: <span
+class="math display">\[\begin{align}
+&amp; \omega = \left[\sin{\left(\varphi_{N}\right)} -
+\sin{\left(\varphi_{S}\right)} \right] \, \left[ \left(\lambda_{E} -
+\lambda_{W} \right) \mod{2\,\pi{}} \right]
+\end{align}\]</span> where <span
+class="math inline">\(\varphi_{S}\)</span> and <span
+class="math inline">\(\varphi_{N}\)</span> are the latitudes of the
+southern and northern edges [<span
+class="math inline">\(\mathrm{rad}\)</span>], and <span
+class="math inline">\(\lambda_{W}\)</span> and <span
+class="math inline">\(\lambda_{E}\)</span> are the longitude of the
+western and eastern edges [<span
+class="math inline">\(\mathrm{rad}\)</span>]. The modulo operator
+ensures that the results are correct when the centre of the grid cell
+crosses the Greenwich meridian.</p>
 <pre class="r"><code># Turn angles to radians.
 wlonr = wlon * pi / 180.
 elonr = elon * pi / 180.
@@ -461,7 +700,8 @@ nlatr = nlat * pi / 180.
 
 # Find solid angle area (assuming radius=1 so results are in steradians).
 solid_angle = (sin(nlatr)-sin(slatr)) * ((elonr-wlonr) %% (2*pi))</code></pre>
-<p>Define the dimensions for the new file. It should be always a single point:</p>
+<p>Define the dimensions for the new file. It should be always a single
+point:</p>
 <pre class="r"><code># Dimensions are unitless
 ni = ncdim_def( name=&quot;ni&quot;,units=&quot;&quot;,vals=sequence(1L),create_dimvar=FALSE)
 nj = ncdim_def( name=&quot;nj&quot;,units=&quot;&quot;,vals=sequence(1L),create_dimvar=FALSE)
@@ -470,13 +710,20 @@ nv = ncdim_def( name=&quot;nv&quot;,units=&quot;&quot;,vals=sequence(4L),create_
 # List of dimensions
 ij  = list(ni,nj)
 vij = list(nv,ni,nj)</code></pre>
-<p>Create a list with the variables to be added to the single-point domain file. Each list element contains the following variables.</p>
+<p>Create a list with the variables to be added to the single-point
+domain file. Each list element contains the following variables.</p>
 <ul>
-<li><strong>vals</strong>. The values to be included in the variables.</li>
-<li><strong>long</strong>. The variable long (and descriptive) name.</li>
-<li><strong>unit</strong>. The variable units. In case the variable does not have units, leave it blank (<code>""</code>).</li>
-<li><strong>dims</strong>. The variable dimensions (a list with the dimensions defined above).</li>
-<li><strong>attx</strong>. Other relevant information to be added as attributes. In case no additional attribute is needed, set this to <code>list()</code></li>
+<li><strong>vals</strong>. The values to be included in the
+variables.</li>
+<li><strong>long</strong>. The variable long (and descriptive)
+name.</li>
+<li><strong>unit</strong>. The variable units. In case the variable does
+not have units, leave it blank (<code>""</code>).</li>
+<li><strong>dims</strong>. The variable dimensions (a list with the
+dimensions defined above).</li>
+<li><strong>attx</strong>. Other relevant information to be added as
+attributes. In case no additional attribute is needed, set this to
+<code>list()</code></li>
 </ul>
 <pre class="r"><code># List of data to write.
 nco_dat      = list()
@@ -591,7 +838,8 @@ for (l in seq_along(glob_att)){
    # Add attribute 
    dummy = ncatt_put(nc=nc_domaout,varid=0,attname=att_name,attval=att_value)
 }#end for (l in seq_along(global_att))</code></pre>
-<p>Populate the netCDF with the domain variables, and include the attributes for each variable.</p>
+<p>Populate the netCDF with the domain variables, and include the
+attributes for each variable.</p>
 <pre class="r"><code>for (v in seq_along(nco_dat)){
    # Retrieve variable information
    v_vnow  = names(nco_dat)[v]
@@ -609,21 +857,28 @@ for (l in seq_along(glob_att)){
       dummy = ncatt_put(nc = nc_domaout, varid=v_vnow,attname=a_name,attval=a_value)
    }#end for (a in seq_along(v_attx))
 }#end for (v in seq_along(nco_vlist))</code></pre>
-<p>Save new netCDF, and close the output file. We remove the connection from memory.</p>
+<p>Save new netCDF, and close the output file. We remove the connection
+from memory.</p>
 <pre class="r"><code>   dummy = nc_close(nc_domaout)
    rm(nc_domaout)</code></pre>
 </div>
 </div>
 <div id="surface-data-file" class="section level1">
 <h1>Surface data file</h1>
-<p>To generate the grid surface data file, we will load an existing surface data file, locate the grid cell that is the closest to the point of interest, abd extract the data. For some of the variables, such as soil texture and soil organic carbon, there may be local observations. If this is the case, we replace the gridded information with the local observations.</p>
+<p>To generate the grid surface data file, we will load an existing
+surface data file, locate the grid cell that is the closest to the point
+of interest, abd extract the data. For some of the variables, such as
+soil texture and soil organic carbon, there may be local observations.
+If this is the case, we replace the gridded information with the local
+observations.</p>
 <div id="load-the-gridded-surface-data" class="section level2">
 <h2>Load the gridded surface data</h2>
 <p>Open the surface data file, and retrieve the grid dimensions.</p>
 <pre class="r"><code># Open gridded surface data
 if (&quot;nc_gridin&quot; %in% ls()){dummy=nc_close(nc_gridin);rm(nc_gridin)}
 nc_gridin = nc_open(filename=input_surfgrid)</code></pre>
-<p>Retrieve global attributes from the input file, and add information about this processing.</p>
+<p>Retrieve global attributes from the input file, and add information
+about this processing.</p>
 <pre class="r"><code># Retrieve original attributes. We only make minor edits.
 glob_att = ncatt_get(nc = nc_gridin, varid = 0)
 
@@ -682,7 +937,10 @@ in_near = in_coord %&gt;%
           filter((pcveg &gt; pcveg_min) &amp; (fland &gt; landfrac_min)) %&gt;% 
           slice(which.min(dist))
 in_xy   = in_near %&gt;% select(c(x,y)) %&gt;% unlist(); names(in_xy) = NULL</code></pre>
-<p>Load all the dimensions from the input netCDF file, and create dimensions for the output file that are essentially copies of the input. The only exceptions are the longitude and latitude, which will be always one (single site).</p>
+<p>Load all the dimensions from the input netCDF file, and create
+dimensions for the output file that are essentially copies of the input.
+The only exceptions are the longitude and latitude, which will be always
+one (single site).</p>
 <pre class="r"><code># List of dimension names
 nc_dnames = names(nc_gridin$dim)
 
@@ -723,7 +981,87 @@ for (d in seq_along(nc_dnames)){
                                  , calendar      = nc_calendar
                                  )#end ncdim_def
 }#end for (d in seq_along(nc_dnames))</code></pre>
-<p>Define variables that should feature in the output. Every variable in the input should be in the output too.</p>
+<p>In case depth to bedrock in known, include it in the list of
+variables. We also reset the number of active soil layers
+<code>nlevsoi</code> and adjust the variables that depend upon
+<code>nlevsoi</code></p>
+<pre class="r"><code>#   Check whether or not to overwrite the number of active layers
+use_depth_geotiff  = tolower(site_bedrock) %in% &quot;gridded&quot;
+use_depth_constant = (! use_depth_geotiff) &amp;&amp; (! is.na(site_bedrock))
+
+if (use_depth_geotiff || use_depth_constant){
+   # Check how to define the depth to bedrock
+   if (use_depth_constant){
+      # Depth to bedrock is from user-defined constant
+      ud_bedrock = br_scale * site_bedrock
+   }else{
+
+      # Obtain depth to bedrock from the GeoTIFF file
+      rast_bedrock = rast(x=input_soildepth)
+      
+      #    Append the coordinates into a spatial vector
+      site_coord = data.frame(lon = site_lon, lat = site_lat)
+      site_coord = vect(x = site_coord, geom = c(&quot;lon&quot;,&quot;lat&quot;), crs = &quot;epsg:4326&quot;)
+
+      # Decide how to extract the sample
+      if (is.na(br_window)){
+         # Reproject coordinates to the same projection used by the raster
+         site_coord = project(x = site_coord, y = crs(rast_bedrock))
+         
+         # No window, simply extract the nearest pixel
+         br_neighbour = terra::extract(x=rast_bedrock, y = site_coord)[,2L]
+         
+      }else{
+         # Add a buffer so we extract multiple pixels
+         site_buffer = buffer(x=site_coord,width=br_window)
+
+         # Reproject the coordinates so they match the raster.
+         site_coord  = project(x = site_coord , y = crs(rast_bedrock))
+         site_buffer = project(x = site_buffer, y = crs(rast_bedrock))
+         
+         # Extract the pixels within the buffer
+         br_neighbour = terra::extract(x=rast_bedrock, y = site_buffer)[,2L]
+      }#end if (! is.na(br_window))
+
+      # Average the sampled points, and fix units
+      ud_bedrock = br_scale * mean(br_neighbour,na.rm = TRUE)
+   }#end if (is.na(br_direction))
+
+
+   # Find the layer associated with the depth to bedrock
+   nlevsoi            = max(which(ud_bedrock &gt;= ztop))
+   nlevsoi_orig       = nc_dims$nlevsoi$len
+
+   # Overwrite dimensions for nlevsoi
+   nc_dims$nlevsoi = ncdim_def( name          = nc_dims$nlevsoi$name
+                              , units         = nc_dims$nlevsoi$units
+                              , vals          = sequence(nlevsoi)
+                              , unlim         = nc_dims$nlevsoi$unlim
+                              , create_dimvar = nc_dims$nlevsoi$create_dimvar
+                              , calendar      = nc_calendar
+                              )#end ncdim_def
+
+      
+   # Find the sequence of indices for updating variables that depend on the soil
+   idx_levsoi = pmin(nlevsoi_orig,sequence(nlevsoi))
+
+
+   # Append information for depth to bedrock
+   if (use_depth_geotiff){
+      map_soil_depth_file = basename(input_soildepth)
+   }else{
+      map_soil_depth_file = &quot;site-specific information&quot;
+   }#end if (use_soilgrids)
+   glob_att = modifyList( x   = glob_att
+                        , val = list( map_soil_depth_file = map_soil_depth_file )
+                        )#end modifyList
+}else{
+   # Save the number of active soil layers in case we need for soil interpolation
+   nlevsoi_orig = nc_dims$nlevsoi$len
+   idx_levsoi   = sequence(nlevsoi)
+}#end if (use_geotiff || use_constant)</code></pre>
+<p>Define variables that should feature in the output. Every variable in
+the input should be in the output too.</p>
 <pre class="r"><code># List of variable names
 nc_vnames = names(nc_gridin$var)
 
@@ -777,18 +1115,65 @@ for (v in seq_along(nc_vnames)){
                                  , prec     = v_vprec
                                  )#end ncvar_def
 
-   # Load the data 
-   nc_values[[v_vname]] = ncvar_get( nc             = nc_gridin
-                                   , varid          = v_vname
-                                   , start          = v_start
-                                   , count          = v_count
-                                   , collapse_degen = FALSE
-                                   )#end ncvar_get
+   #    Load the data to a temporary array. We may need to adjust it if the soil depth 
+   # dimension was updated.
+   nc_datum = ncvar_get( nc             = nc_gridin
+                       , varid          = v_vname
+                       , start          = v_start
+                       , count          = v_count
+                       , collapse_degen = FALSE
+                       )#end ncvar_get
 
+   # Update the data with the revised number of dimensions if this is a soil variable.
+   if (&quot;nlevsoi&quot; %in% names(nc_vars[[v_vname]]$dim)){
+      nc_values[[v_vname]] = nc_datum[,,idx_levsoi,drop=FALSE]
+   }else{
+      nc_values[[v_vname]] = nc_datum
+   }#end if (&quot;nlevsoi&quot; %in% names(nc_vars[[v_vname]]$dim))
+
+   
    # Update the list of dimensions used.
    nc_dimused = sort(unique(c(nc_dimused,names(v_vdims))))
 }#end for (v in seq_along(nc_vnames))</code></pre>
-<p>Create dummy variables for unused dimensions. It may not be necessary, but this ensures every variable is included.</p>
+<p>Append soil depth.</p>
+<pre class="r"><code># Append soil layer information to surface data.
+nc_vars$ZSOI  = ncvar_def( name     = &quot;ZSOI&quot;
+                         , units    = &quot;m&quot;
+                         , dim      = nc_dims[c(&quot;nlevsoi&quot;)]
+                         , missval  = nc_gridin$var$PCT_SAND$missval
+                         , longname = &quot;mid-layer soil depth. Note: in ELM, this will overwrite the default soil depth.&quot;
+                         )#end ncvar_def 
+
+# Append value to the list of values
+nc_values$ZSOI  = zsoi</code></pre>
+<p>If soil depth was provided, make sure that the value is appended to
+the output. This must be done after loading the other variables and
+updating the dimensions. The default name in CLM is
+<code>zbedrock</code>, whilst ELM uses <code>aveDTB</code>. To ensure
+that the surface file is is agnostic to the host land model, we add it
+twice. If ELM accepts the pull request for cross-model compatibility, we
+can keep one of these defaults only.</p>
+<pre class="r"><code>if (use_depth_geotiff || use_depth_constant){
+   # Append depth to bedrock to surface data.
+   nc_vars$zbedrock = ncvar_def( name     = &quot;zbedrock&quot;
+                               , units    = &quot;m&quot;
+                               , dim      = nc_dims[c(&quot;lsmlon&quot;,&quot;lsmlat&quot;)]
+                               , missval  = nc_gridin$var$PCT_SAND$missval
+                               , longname = &quot;soil depth&quot;
+                               )#end ncvar_def 
+   nc_vars$aveDTB   = ncvar_def( name     = &quot;aveDTB&quot;
+                               , units    = &quot;m&quot;
+                               , dim      = nc_dims[c(&quot;lsmlon&quot;,&quot;lsmlat&quot;)]
+                               , missval  = nc_gridin$var$PCT_SAND$missval
+                               , longname = &quot;soil depth&quot;
+                               )#end ncvar_def 
+
+   # Append value to the list of values
+   nc_values$zbedrock = array(data=ud_bedrock,dim=c(1L,1L))
+   nc_values$aveDTB   = array(data=ud_bedrock,dim=c(1L,1L))
+}#end if (use_depth_geotiff || use_depth_constant)</code></pre>
+<p>Create dummy variables for unused dimensions. It may not be
+necessary, but this ensures every variable is included.</p>
 <pre class="r"><code># Make data set
 is_unused = which(! (names(nc_dims) %in% nc_dimused))
 for (u in is_unused){
@@ -812,7 +1197,8 @@ for (u in is_unused){
    nc_values[[u_dname]] = u_dvals
    
 }#end for (u in is_unused)</code></pre>
-<p>In case texture and soil organic content were provided, we use the site-specific information instead. Currently the site-specific soil texture will be assumed constant, and the site-specific soil organic contant will be used to re-scale all the layers. We also replace the longitude and latitude information with the site-specific information. Finally, in case <code>force_natural</code> is true, we impose percentage of natural vegetation to 100%.</p>
+<p>In case <code>force_natural</code> is true, we impose percentage of
+natural vegetation to 100%.</p>
 <pre class="r"><code># Re-set coordinates
 nc_values$LONGXY = 0. * nc_values$LONGXY + clon
 nc_values$LATIXY = 0. * nc_values$LATIXY + clat
@@ -825,58 +1211,250 @@ if (force_natural){
    nc_values$PCT_WETLAND = 0. * nc_values$PCT_WETLAND
    nc_values$PCT_LAKE    = 0. * nc_values$PCT_LAKE
    nc_values$PCT_GLACIER = 0. * nc_values$PCT_GLACIER
-}#end if (force_natural)
+}#end if (force_natural)</code></pre>
+<p>In case texture and soil organic content were provided, we use the
+site-specific information instead. We test whether the user provided the
+information directly or if we are supposed to retrieve it from
+SoilGrids.</p>
+<pre class="r"><code># In case texture was defined, set the values.
+use_soilgrids = any(tolower(c(site_xsand,site_xclay)) %in% &quot;soilgrids&quot;)
+use_site      = (! use_soilgrids) &amp;&amp; all(! is.na(c(site_xsand,site_xclay)))
+if ( use_soilgrids || use_site){
+   
+   # Check how to retrieve the soil layers.
+   if (use_soilgrids){
+      # Retrieve soil texture from SoilGrids
+      ud_texture = fetchSoilGrids( x         = data.frame(id=1,lat=site_lat,lon=site_lon)
+                                 , variables = c(&quot;sand&quot;,&quot;clay&quot;)
+                                 )#end fetchSoilGrids
 
+      # Save variables to vectors.
+      n_ud_layer = length(ud_texture$id)
+      ud_ztop    = 0.01 * ud_texture$hzdept
+      ud_zbot    = 0.01 * ud_texture$hzdepb
+      ud_xsand   = ud_texture$sandmean
+      ud_xclay   = ud_texture$claymean
+      
+   }else{
+      #    Retrieve soil texture from user input. 
 
-# In case texture was defined, set the values.
-if (! ( is.na(site_xsand) || is.na(site_xclay) )){
-   # Find silt fraction
-   site_xsilt = 100. - site_xsand - site_xclay
+      #    Define soil layers from user input. If the user did not provide user layers,
+      # assume the layers to be the same as the default soil grid in the host land models.
+      if (is.na(site_zbot)){
+         # Soil depths not specified. Assume the same as the host land model.
+         ud_ztop = ztop[sequence(nlevsoi)]
+         ud_zbot = zbot[sequence(nlevsoi)]
+      }else{
+         #    Soil depths provided. Define the top of each layer, assuming top depth = 0 for
+         # the topmost layer.
+         ud_ztop = c(0,site_zbot[-length(site_zbot)])
+         ud_zbot = site_zbot
+      }#end if (is.na(site_zbot))
 
-   # Set a vector with textures to test whether or not to use site-specific data
-   site_xtext = c(site_xsand,site_xsilt,site_xclay)
+      # Number of user-defined layer
+      n_ud_layer = length(ud_ztop)
 
-   # Make sure the texture provided is valid.
-   if (all( (site_xtext &gt;= 0.) &amp; (site_xtext &lt;= 100.) ) ){
-      # Replace sand and clay with the site-specific data
-      nc_values$PCT_SAND = 0. * nc_values$PCT_SAND + site_xsand
-      nc_values$PCT_CLAY = 0. * nc_values$PCT_CLAY + site_xclay
+      #    Make sure that the length of user-defined textures and soil layers match, or 
+      # that the user provided a single value to be used everywhere.
+      if (length(site_xsand) == 1L ){
+         ud_xsand = rep(site_xsand,times=n_ud_layer)
+      }else{
+         ud_xsand = site_xsand
+      }#end if (length(site_xsand) == 1L )
+      if (length(site_xclay) == 1L ){
+         ud_xclay = rep(site_xclay,times=n_ud_layer)
+      }else{
+         ud_xclay = site_xclay
+      }#end if (length(site_xclay) == 1L )
 
-      # Update global attribute list to inform that the data are site-specific
-      map_soil_texture_file = &quot;site-specific information&quot;
-      glob_att = modifyList( x   = glob_att
-                           , val = list( map_soil_texture_file = map_soil_texture_file )
-                           )#end modifyList
-   }#end if (all( (site_xtext =&gt; 0.) &amp; (site_xtext &lt;= 100.) ))
-}#end if (! ( is.na(site_xsand) || is.na(site_xclay) ))
+      #    Make sure the lengths of the input soil textures are all consistent with the 
+      # number of input soil layers.
+      if (any(c(length(ud_xsand),length(ud_xclay)) != n_ud_layer)){
+         cat(&quot;---~---\n&quot;)
+         cat(&quot; - Length of input sand texture: &quot;,length(site_xsand),&quot;.\n&quot;,sep=&quot;&quot;)
+         cat(&quot; - Length of input clay texture: &quot;,length(site_xclay),&quot;.\n&quot;,sep=&quot;&quot;)
+         cat(&quot; - Number of soil layers: &quot;       ,length(n_ud_layer),&quot;.\n&quot;,sep=&quot;&quot;)
+         cat(&quot;    Soil texture must be either a scalar or a vector that matches\n&quot;)
+         cat(&quot; the number of layers.\n&quot;)
+         cat(&quot;---~---\n&quot;)
+         stop(&quot; Mismatch between input texture and soil layers.&quot;)
+      }#end if (any(c(length(ud_xsand),length(ud_xclay)) != n_ud_layer))
+   }# end if (use_soilgrids)
 
-# In case site-specific organic content was defined, rescale the gridded values.
-is_site_organic = ! is.na(site_organic)
-if (is_site_organic){
-   f_scal = site_organic / max(c(nc_values$ORGANIC))
-   nc_values$ORGANIC = f_scal * nc_values$ORGANIC   
+      
+   # Keep only layers that are within the model grid.
+   ud_keep    = ud_ztop &lt; zbot[nlevsoi]
+   ud_ztop    = ud_ztop [ud_keep]
+   ud_zbot    = ud_zbot [ud_keep]
+   ud_xsand   = ud_xsand[ud_keep]
+   ud_xclay   = ud_xclay[ud_keep]
+   
+   #    We carry over the information of the deepest SoilGrids layer all the way to the 
+   # bottom of the host land model grid
+   ud_zbot[n_ud_layer] = zbot[nlevsoi]
+
+   #    Loop through the surface file soil layers and interpolate texture.
+   for (z in sequence(nlevsoi)){
+      #    For the interpolation, we find how much of the input layer overlaps with the
+      # host land model layer. We use the overlapping thickness of each input layer as 
+      # weights for the host land model interpolated texture.
+      ud_lyr_ztop  = ifelse( test = ud_zbot &lt; ztop[z]
+                           , yes  = ztop[z]
+                           , no   = ifelse( test = ud_ztop &gt; zbot[z]
+                                          , yes  = zbot[z]
+                                          , no   = pmax(ud_ztop,ztop[z])
+                                          )#end ifelse
+                           )#end ifelse
+      ud_lyr_zbot  = ifelse( test = ud_zbot &lt; ztop[z]
+                           , yes  = ztop[z]
+                           , no   = ifelse( test = ud_ztop &gt; zbot[z]
+                                          , yes  = zbot[z]
+                                          , no   = pmin(ud_zbot,zbot[z])
+                                          )#end ifelse
+                           )#end ifelse
+      ud_lyr_thick = ud_lyr_zbot - ud_lyr_ztop
+
+      # Find the interpolated texture.
+      ud_lyr_xsand = weighted.mean(x=ud_xsand,w=ud_lyr_thick)
+      ud_lyr_xclay = weighted.mean(x=ud_xclay,w=ud_lyr_thick)
+      ud_lyr_xsilt = 100. - ud_lyr_xsand - ud_lyr_xclay
+
+      # Set a vector with textures to test whether or not to use site-specific data
+      ud_lyr_xtext = c(ud_lyr_xsand,ud_lyr_xsilt,ud_lyr_xclay)
+
+      # If the interpolated texture is valid, update the values
+      if (all( (ud_lyr_xtext &gt;= 0.) &amp; (ud_lyr_xtext &lt;= 100.) ) ){
+         nc_values$PCT_SAND[,,z] = ud_lyr_xsand
+         nc_values$PCT_CLAY[,,z] = ud_lyr_xclay
+      }#end if (all( (ud_lyr_xtext &gt;= 0.) &amp; (ud_lyr_xtext &lt;= 100.) ) )
+   }#end for (z in sequence(nlevsoi))
 
    # Update global attribute list to inform that the data are site-specific
-   map_soil_organic_file = paste0( glob_att$map_soil_texture_file
-                                 ,&quot; scaled with site-specific information.&quot;)
+   if (use_soilgrids){
+      map_soil_texture_file = &quot;SoilGrids 2.0 (obtained for the site through R package soilDB)&quot;
+   }else{
+      map_soil_texture_file = &quot;site-specific information&quot;
+   }#end if (use_soilgrids)
    glob_att = modifyList( x   = glob_att
-                        , val = list( map_soil_texture_file = &quot;site-specific information&quot; )
+                        , val = list( map_soil_texture_file = map_soil_texture_file )
                         )#end modifyList
-}#end if (! is.na(site_organic))</code></pre>
-<p>In case depth to bedrock in known, include it in the list of variables.</p>
-<pre class="r"><code>if (! is.na(site_bedrock)){
-   # Append depth to bedrock to surface data.
-   nc_vars$zbedrock = ncvar_def( name     = &quot;zbedrock&quot;
-                               , units    = &quot;m&quot;
-                               , dim      = nc_dims[c(&quot;lsmlon&quot;,&quot;lsmlat&quot;)]
-                               , missval  = nc_gridin$var$PCT_SAND$missval
-                               , longname = &quot;soil depth&quot;
-                               )#end ncvar_def 
+}#end if (use_soilgrids || use_site)</code></pre>
+<p>In case texture and soil organic content were provided, we use the
+site-specific information instead. We test whether the user provided the
+information directly or if we are supposed to retrieve it from
+SoilGrids.</p>
+<pre class="r"><code># In case texture was defined, set the values.
+use_soilgrids = tolower(site_organic) %in% &quot;soilgrids&quot;
+use_site      = ( ! use_soilgrids ) &amp;&amp; (! is.na(site_organic) )
+if ( use_soilgrids || use_site){
+   
+   # Check how to retrieve the soil layers.
+   if (use_soilgrids){
+      # Retrieve soil texture from SoilGrids
+      ud_extract = fetchSoilGrids( x         = data.frame(id=1,lat=site_lat,lon=site_lon)
+                                 , variables = &quot;ocd&quot;
+                                 )#end fetchSoilGrids
 
-   # Append value to the list of values
-   nc_values$zbedrock = array(data=site_bedrock,dim=c(1,1))
-}#end if (! is.na(site_bedrock))</code></pre>
-<p>Variable <code>T_BUILDING_MAX</code> used to be part of every surface data. Apparently CLM dropped this variable, but ELM continues to require it. If the reference surface data set is a recent one, this variable will be missing and the surface data file will not work with ELM. To address this, we use <code>T_BUILDING_MIN</code> to re-generate <code>T_BUILDING_MAX</code>, by applying an offset compatible with older surface data files.</p>
+      # Retrieve the variables
+      n_ud_layer = length(ud_extract$id)
+      ud_ztop    = 0.01 * ud_extract$hzdept
+      ud_zbot    = 0.01 * ud_extract$hzdepb
+      ud_organic = ud_extract$ocdmean / 0.58 # To convert it to kg organic matter
+
+   }else{
+      #    Retrieve soil organic matter density from user input. 
+
+      #    Define soil layers from user input. If the user did not provide user layers,
+      # assume the layers to be the same as the default soil grid in the host land models.
+      if (is.na(site_zbot)){
+         # Soil depths not specified. Assume the same as the host land model.
+         ud_ztop = ztop[sequence(nlevsoi)]
+         ud_zbot = zbot[sequence(nlevsoi)]
+      }else{
+         #    Soil depths provided. Define the top of each layer, assuming top depth = 0 for
+         # the topmost layer.
+         ud_ztop = c(0,site_zbot[-length(site_zbot)])
+         ud_zbot = site_zbot
+      }#end if (is.na(site_zbot))
+
+      # Number of user-defined layer
+      n_ud_layer = length(ud_ztop)
+
+      # If the user provided constant soil organic matter density, turn it into a vector.
+      if (length(site_organic) == 1L ){
+         ud_organic = rep(site_organic,times=n_ud_layer)
+      }else{
+         ud_organic = site_organic
+      }#end if (length(site_organic) == 1L )
+
+      #    Make sure the length of the input data is consistent with the number of input 
+      # soil layers.
+      if (length(ud_organic) != n_ud_layer){
+         cat(&quot;---~---\n&quot;)
+         cat(&quot; - Length of input organic matter: &quot;,length(site_organic),&quot;.\n&quot;,sep=&quot;&quot;)
+         cat(&quot; - Number of soil layers: &quot;         ,length(n_ud_layer)  ,&quot;.\n&quot;,sep=&quot;&quot;)
+         cat(&quot;    Site organic matter density must be either a scalar or a vector\n&quot;)
+         cat(&quot; that matches the number of layers.\n&quot;)
+         cat(&quot;---~---\n&quot;)
+         stop(&quot; Mismatch between input texture and soil layers.&quot;)
+      }#end if (length(ud_organic) != n_ud_layer)
+   }# end if (use_soilgrids)
+
+      
+   # Keep only layers that are within the model grid.
+   ud_keep    = ud_ztop &lt; zbot[nlevsoi]
+   ud_ztop    = ud_ztop [ud_keep]
+   ud_zbot    = ud_zbot [ud_keep]
+   ud_xsand   = ud_xsand[ud_keep]
+   ud_xclay   = ud_xclay[ud_keep]
+   
+   #    We carry over the information of the deepest SoilGrids layer all the way to the 
+   # bottom of the host land model grid
+   ud_zbot[n_ud_layer] = zbot[nlevsoi]
+
+   #    Loop through the surface file soil layers and interpolate soil organic matter 
+   # density.
+   for (z in sequence(nlevsoi)){
+      #    For the interpolation, we find how much of the input layer overlaps with the
+      # host land model layer. We use the overlapping thickness of each input layer as 
+      # weights for the host land model interpolated texture.
+      ud_lyr_ztop  = ifelse( test = ud_zbot &lt; ztop[z]
+                           , yes  = ztop[z]
+                           , no   = ifelse( test = ud_ztop &gt; zbot[z]
+                                          , yes  = zbot[z]
+                                          , no   = pmax(ud_ztop,ztop[z])
+                                          )#end ifelse
+                           )#end ifelse
+      ud_lyr_zbot  = ifelse( test = ud_zbot &lt; ztop[z]
+                           , yes  = ztop[z]
+                           , no   = ifelse( test = ud_ztop &gt; zbot[z]
+                                          , yes  = zbot[z]
+                                          , no   = pmin(ud_zbot,zbot[z])
+                                          )#end ifelse
+                           )#end ifelse
+      ud_lyr_thick = ud_lyr_zbot - ud_lyr_ztop
+
+      #    Find the interpolated soil organic matter density.
+      nc_values$ORGANIC[,,z] = weighted.mean(x=ud_organic,w=ud_lyr_thick)
+   }#end for (z in sequence(nlevsoi))
+
+   # Update global attribute list to inform that the data are site-specific
+   if (use_soilgrids){
+      map_soil_organic_file = &quot;SoilGrids 2.0 (obtained for the site through R package soilDB)&quot;
+   }else{
+      map_soil_organic_file = &quot;site-specific information&quot;
+   }#end if (use_soilgrids)
+   glob_att = modifyList( x   = glob_att
+                        , val = list( map_soil_organic_file = map_soil_organic_file )
+                        )#end modifyList
+}#end if (use_soilgrids || use_site)</code></pre>
+<p>Variable <code>T_BUILDING_MAX</code> used to be part of every surface
+data. Apparently CLM dropped this variable, but ELM continues to require
+it. If the reference surface data set is a recent one, this variable
+will be missing and the surface data file will not work with ELM. To
+address this, we use <code>T_BUILDING_MIN</code> to re-generate
+<code>T_BUILDING_MAX</code>, by applying an offset compatible with older
+surface data files.</p>
 <pre class="r"><code>if (! (&quot;T_BUILDING_MAX&quot; %in% names(nc_vars))){
    # Create maximum interior building temperature
    nc_vars$T_BUILDING_MAX = ncvar_def( name     = &quot;T_BUILDING_MAX&quot;
